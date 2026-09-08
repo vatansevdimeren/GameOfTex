@@ -56,11 +56,27 @@ bool MiningRig::IsPoweredOn() const {
 }
 
 void MiningRig::SetPoweredOn(bool on) {
+    if (!m_isPoweredOn && on) {
+        m_startupSurgeTimer = 3.0; // 3 saniye kalkış / demeraj akımı
+    }
     m_isPoweredOn = on;
 }
 
 void MiningRig::TogglePower() {
-    m_isPoweredOn = !m_isPoweredOn;
+    SetPoweredOn(!m_isPoweredOn);
+}
+
+void MiningRig::Update(double dt) {
+    if (m_startupSurgeTimer > 0.0) {
+        m_startupSurgeTimer -= dt;
+        if (m_startupSurgeTimer < 0.0) {
+            m_startupSurgeTimer = 0.0;
+        }
+    }
+}
+
+bool MiningRig::IsInStartupSurge() const {
+    return m_isPoweredOn && (m_startupSurgeTimer > 0.0);
 }
 
 double MiningRig::CalculateTotalHashrate() const {
@@ -86,6 +102,10 @@ double MiningRig::CalculateTotalPowerWatts() const {
         if (gpu) {
             total += gpu->GetEffectivePowerWatts();
         }
+    }
+    // Demeraj kalkış güç sıçraması: Fanlar %100 hızla döner ve güç kaynakları +%30 ani akım çeker!
+    if (m_startupSurgeTimer > 0.0) {
+        total *= 1.30;
     }
     return total;
 }

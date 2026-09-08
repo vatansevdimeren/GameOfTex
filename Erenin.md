@@ -327,5 +327,34 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * `void DrawGPUsCategory(...)`, `DrawPowerCategory(...)`, `DrawCoolingCategory(...)`, `DrawFacilitiesCategory(...)`:
   * İlgili sekmenin kartlarını ve fiyatlarını seçili para birimine (USD, USDT, TRY, EUR) göre yerelleştirerek listeler.
 
+---
+
+## ⚡ 10. Ekstra Watt Olayları & Depo Akıcı Kaydırma (Power Surges & Warehouse Scroll)
+
+### 10.1. Ekstra Watt Çekme & Şebeke Sıçrama Mekanikleri
+* **Demeraj / İlk Çalışma Güç Sıçraması (`MiningRig::m_startupSurgeTimer`):**
+  * **İşlevi:** Bir rig açıldığında (`SetPoweredOn(true)` veya `TogglePower()`) fanlar %100 hızla döner ve güç kaynağı filtre kondansatörleri dolar. Bu esnada ilk 3 saniye boyunca rig **+30% anlık ekstra watt** çeker.
+  * **Oynanış Dengesi:** Şebeke sınırına yakınken aynı anda birden fazla rig açılırsa şalter atar! Oyuncu şebeke kapasitesini doğru yönetmelidir.
+  * **Görsel Rozet:** Detaylı rig görünümünde `[⚡ DEMERAJ KALKIS AKIMI: +30% GUC CEKISI]` kutusu belirir.
+* **Küresel Ağ Zorluk & Güç Zirvesi (`PowerGrid::Update` / Network Spike):**
+  * **İşlevi:** 45 saniyede bir küresel blok zincirinde rastgele bir blok yarışması (Proof-of-Work Spike) başlar.
+  * 8 saniye boyunca ekran kartları turbo boost frekansına çıkar: **+25% ekstra güç** çeker, karşılığında **%40 daha fazla coin** üretir!
+  * **Görsel Efekt:** HUD panelinin hemen altında altın/turuncu parlayan canlı geri sayım banner'ı açılır.
+* **Voltaj Düşümü & Şebeke Zorlanması (`PowerGrid::IsGridStrained`):**
+  * Toplam tüketim trafo kapasitesinin %85'ini aştığında voltaj düşüşünden (voltage sag) dolayı kartlar %15 daha fazla ısınır.
+
+---
+
+### 10.2. Depo Kuşbakışı Akıcı Kaydırma & Hızlı Seçim (`RigRenderer`)
+* **`DrawWarehouseOverviewGrid` Akıcı Kaydırma (Smooth Scroll):**
+  * **Çözülen Problem:** Önceden 3-4 rig'den fazlası ekrana sığmadığı için çizim döngüsü kesiliyordu (`break`).
+  * **Fare Tekerleği:** `GetMouseWheelMove()` ile farenin tekerleği döndürüldüğünde pazar hangarı akıcı şekilde aşağı/yukarı kaydırılır.
+  * **Scissor Viewport Kırpması:** `BeginScissorMode` ile kartlar çerçeve dışına taşmadan temizce kesilir.
+  * **Görsel Neon Scrollbar:** Listenin neresinde olunduğunu gösteren sağ kenar kaydırma çubuğu.
+* **Hızlı Rig Seçici Şeridi (`DrawQuickRigSelector`):**
+  * **İşlevi:** Detaylı rig görünümünde alt tarafa tüm rig'lerin mini durum butonlarını (`[Rig 1: 180M] [Rig 2: 65M]...`) yan yana yerleştirir.
+  * Oyuncu onlarca rig arasından tek bir tıkla istediği kasanın detayına sıçrayabilir.
+
+
 
 

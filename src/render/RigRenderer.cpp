@@ -219,29 +219,46 @@ int RigRenderer::GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2
 
 void RigRenderer::DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, const Core::ThermalModel& thermalModel,
                                            const Rectangle& bounds, double animTime, Vector2 mousePos,
+                                           float scrollOffsetY, float& outMaxScrollY,
                                            int& outSelectedRigIndex, int& outToggledRigIndex) const {
     outSelectedRigIndex = -1;
     outToggledRigIndex = -1;
 
     const auto& rigs = warehouse.GetAllRigs();
-    if (rigs.empty()) return;
+    if (rigs.empty()) {
+        outMaxScrollY = 0.0f;
+        return;
+    }
 
-    // Her bir rig için kart yüksekliği ve aralığı
     const float cardH = 92.0f;
     const float cardGap = 10.0f;
-    const float startY = bounds.y + 10.0f;
-    const float cardW = bounds.width - 24.0f;
+    const float totalContentHeight = 20.0f + static_cast<float>(rigs.size()) * (cardH + cardGap);
+    outMaxScrollY = std::max(0.0f, totalContentHeight - bounds.height);
+    const float effectiveScroll = std::clamp(scrollOffsetY, 0.0f, outMaxScrollY);
+
+    const float startY = bounds.y + 10.0f - effectiveScroll;
+    const float cardW = bounds.width - (outMaxScrollY > 0.0f ? 32.0f : 24.0f);
     const float cardX = bounds.x + 12.0f;
+
+    bool mouseInBounds = CheckCollisionPointRec(mousePos, bounds);
+
+    // Kırpma Modu (Scissor): Kartların başlık veya alt barın dışına taşmasını engeller
+    BeginScissorMode(static_cast<int>(bounds.x), static_cast<int>(bounds.y),
+                     static_cast<int>(bounds.width), static_cast<int>(bounds.height));
 
     for (size_t i = 0; i < rigs.size(); ++i) {
         const auto* rig = rigs[i].get();
         if (!rig) continue;
 
-        float cy = startY + i * (cardH + cardGap);
-        if (cy + cardH > bounds.y + bounds.height) break; // Viewport sınırını aşma
+        float cy = startY + (static_cast<float>(i) * (cardH + cardGap));
+
+        // Ekran dışındaki kartları hesaplamadan geç (Culling)
+        if (cy + cardH < bounds.y || cy > bounds.y + bounds.height) {
+            continue;
+        }
 
         Rectangle rigCardRect{cardX, cy, cardW, cardH};
-        bool isHovered = CheckCollisionPointRec(mousePos, rigCardRect);
+        bool isHovered = mouseInBounds && CheckCollisionPointRec(mousePos, rigCardRect);
         bool isCurrentActive = (i == warehouse.GetActiveRigIndex());
         bool isPowered = rig->IsPoweredOn();
 
@@ -322,8 +339,8 @@ void RigRenderer::DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, co
         Rectangle btnPowerRect{cardW - 190.0f + cardX, cy + 24.0f, 85.0f, 44.0f};
         Rectangle btnInspectRect{cardW - 95.0f + cardX, cy + 24.0f, 85.0f, 44.0f};
 
-        bool hoverPower = CheckCollisionPointRec(mousePos, btnPowerRect);
-        bool hoverInspect = CheckCollisionPointRec(mousePos, btnInspectRect);
+        bool hoverPower = mouseInBounds && CheckCollisionPointRec(mousePos, btnPowerRect);
+        bool hoverInspect = mouseInBounds && CheckCollisionPointRec(mousePos, btnInspectRect);
 
         // Güç Butonu
         Color pBtnBg = isPowered ? (hoverPower ? Color{100, 30, 30, 255} : Color{70, 25, 25, 255})
@@ -339,12 +356,71 @@ void RigRenderer::DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, co
         UIFrame::DrawTextCustom("INCELE", btnInspectRect.x + 18.0f, btnInspectRect.y + 14.0f, 13.0f, Color{0, 220, 255, 255}, true);
 
         // Tıklama Kontrolleri
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && mouseInBounds) {
             if (hoverPower) {
                 outToggledRigIndex = static_cast<int>(i);
             } else if (hoverInspect || (isHovered && !hoverPower && !hoverInspect)) {
                 outSelectedRigIndex = static_cast<int>(i);
             }
+        }
+    }
+
+    EndScissorMode();
+
+    // Dikey Neon Kaydırma Çubuğu (Scrollbar)
+    if (outMaxScrollY > 0.0f) {
+        const float sbX = bounds.x + bounds.width - 12.0f;
+        const float sbY = bounds.y + 6.0f;
+        const float sbH = bounds.height - 12.0f;
+        const float sbW = 6.0f;
+
+        // İz (Track)
+        DrawRectangleRounded(Rectangle{sbX, sbY, sbW, sbH}, 0.5f, 4, Color{20, 25, 35, 200});
+
+        // Kaydırma Butonu (Thumb)
+        float thumbH = std::max(28.0f, sbH * (bounds.height / totalContentHeight));
+        float scrollRatio = effectiveScroll / outMaxScrollY;
+        float thumbY = sbY + scrollRatio * (sbH - thumbH);
+
+        DrawRectangleRounded(Rectangle{sbX, thumbY, sbW, thumbH}, 0.5f, 4, Color{0, 220, 255, 230});
+    }
+}
+
+void RigRenderer::DrawQuickRigSelector(const Core::Warehouse& warehouse, const Rectangle& bounds,
+                                      Vector2 mousePos, int& outSelectedRigIndex) const {
+    outSelectedRigIndex = -1;
+    const auto& rigs = warehouse.GetAllRigs();
+    if (rigs.empty()) return;
+
+    const size_t activeIdx = warehouse.GetActiveRigIndex();
+    const float pillH = bounds.height;
+    const float pillGap = 6.0f;
+    const float pillW = std::clamp((bounds.width - (rigs.size() - 1) * pillGap) / static_cast<float>(rigs.size()), 70.0f, 120.0f);
+
+    for (size_t i = 0; i < rigs.size(); ++i) {
+        float px = bounds.x + (static_cast<float>(i) * (pillW + pillGap));
+        if (px + pillW > bounds.x + bounds.width) break;
+
+        Rectangle pillRect{px, bounds.y, pillW, pillH};
+        bool isHovered = CheckCollisionPointRec(mousePos, pillRect);
+        bool isActive = (i == activeIdx);
+        bool isPowered = rigs[i]->IsPoweredOn();
+
+        Color bg = isActive ? Color{35, 55, 80, 255} : (isHovered ? Color{25, 35, 50, 240} : Color{16, 20, 28, 230});
+        Color border = isActive ? Color{0, 230, 255, 255} : (isPowered ? Color{50, 80, 110, 255} : Color{80, 35, 35, 255});
+
+        DrawRectangleRounded(pillRect, 0.25f, 4, bg);
+        DrawRectangleRoundedLines(pillRect, 0.25f, 4, isActive ? 1.8f : 1.0f, border);
+
+        std::string label = "Rig " + std::to_string(i + 1);
+        Color textColor = isActive ? Color{0, 240, 255, 255} : (isPowered ? RAYWHITE : Color{255, 100, 100, 255});
+        UIFrame::DrawTextCustom(label, px + 8.0f, bounds.y + 4.0f, 12.0f, textColor, true);
+
+        std::string sub = isPowered ? (std::to_string(static_cast<int>(rigs[i]->CalculateTotalHashrate())) + "M") : "OFF";
+        UIFrame::DrawTextCustom(sub, px + 8.0f, bounds.y + 18.0f, 11.0f, isPowered ? Color{100, 220, 150, 255} : Color{180, 80, 80, 255}, false);
+
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && isHovered) {
+            outSelectedRigIndex = static_cast<int>(i);
         }
     }
 }

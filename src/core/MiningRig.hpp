@@ -58,6 +58,8 @@ public:
     [[nodiscard]] bool IsPoweredOn() const;
     void SetPoweredOn(bool on);
     void TogglePower();
+    void Update(double dt);
+    [[nodiscard]] bool IsInStartupSurge() const;
 
     // Aggregate performance metrics
     [[nodiscard]] double CalculateTotalHashrate() const;
@@ -68,6 +70,7 @@ private:
     size_t m_maxCapacity;
     double m_motherboardBaseWatts;
     bool m_isPoweredOn{true};
+    double m_startupSurgeTimer{0.0};
     std::vector<std::unique_ptr<GPU>> m_gpus;
 };
 

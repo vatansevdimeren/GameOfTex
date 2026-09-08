@@ -38,18 +38,18 @@ public:
     [[nodiscard]] int GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2 mousePos) const;
 
     /**
-     * @brief Draws an overview grid of all rigs in the facility.
-     * @param warehouse Reference to warehouse holding all rigs.
-     * @param thermalModel Reference to thermal model.
-     * @param bounds Bounds of the overview panel area.
-     * @param animTime Animation timer for fans/lights.
-     * @param mousePos Mouse cursor position.
-     * @param outSelectedRigIndex Returns index of rig clicked to inspect in detail (-1 if none).
-     * @param outToggledRigIndex Returns index of rig whose power button was toggled (-1 if none).
+     * @brief Draws an overview grid of all rigs in the facility with smooth scrolling.
      */
     void DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, const Core::ThermalModel& thermalModel,
                                    const Rectangle& bounds, double animTime, Vector2 mousePos,
+                                   float scrollOffsetY, float& outMaxScrollY,
                                    int& outSelectedRigIndex, int& outToggledRigIndex) const;
+
+    /**
+     * @brief Draws a horizontal quick-jump selector bar for all rigs.
+     */
+    void DrawQuickRigSelector(const Core::Warehouse& warehouse, const Rectangle& bounds,
+                              Vector2 mousePos, int& outSelectedRigIndex) const;
 
 private:
     /**

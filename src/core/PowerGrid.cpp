@@ -74,4 +74,40 @@ void PowerGrid::ResetBreaker() {
     m_breakerTripped = false;
 }
 
+void PowerGrid::Update(double dt) {
+    if (m_spikeActive) {
+        m_spikeDurationTimer -= dt;
+        if (m_spikeDurationTimer <= 0.0) {
+            m_spikeActive = false;
+            m_spikeCooldownTimer = 45.0; // 45 saniye cooldown
+        }
+    } else {
+        m_spikeCooldownTimer -= dt;
+        if (m_spikeCooldownTimer <= 0.0) {
+            m_spikeActive = true;
+            m_spikeDurationTimer = 8.0; // 8 saniyelik küresel ağ güç ve kazım zirvesi
+        }
+    }
+}
+
+bool PowerGrid::IsNetworkSpikeActive() const {
+    return m_spikeActive;
+}
+
+double PowerGrid::GetNetworkSpikeRemainingSeconds() const {
+    return m_spikeDurationTimer;
+}
+
+double PowerGrid::GetPowerSurgeMultiplier() const {
+    return m_spikeActive ? 1.25 : 1.0; // Ağ yarışmasında +25% ekstra watt çekişi
+}
+
+double PowerGrid::GetHashrateSurgeMultiplier() const {
+    return m_spikeActive ? 1.40 : 1.0; // Ağ yarışmasında +40% ekstra kazım ödülü
+}
+
+bool PowerGrid::IsGridStrained() const {
+    return (m_currentConsumerWatts >= m_maxCapacityWatts * 0.85);
+}
+
 } // namespace Core

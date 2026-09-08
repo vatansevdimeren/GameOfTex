@@ -51,6 +51,14 @@ public:
      */
     void ResetBreaker();
 
+    // Dynamic Network Spikes & Grid Events
+    void Update(double dt);
+    [[nodiscard]] bool IsNetworkSpikeActive() const;
+    [[nodiscard]] double GetNetworkSpikeRemainingSeconds() const;
+    [[nodiscard]] double GetPowerSurgeMultiplier() const;
+    [[nodiscard]] double GetHashrateSurgeMultiplier() const;
+    [[nodiscard]] bool IsGridStrained() const;
+
 private:
     double m_maxCapacityWatts;
     double m_gridPricePerKwh;
@@ -58,6 +66,11 @@ private:
     double m_currentConsumerWatts;
     double m_currentProducerWatts;
     bool m_breakerTripped;
+
+    // Network Power Spike simulation
+    double m_spikeCooldownTimer{35.0};
+    double m_spikeDurationTimer{0.0};
+    bool m_spikeActive{false};
 };
 
 } // namespace Core

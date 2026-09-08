@@ -61,6 +61,8 @@ int main() {
         OVERVIEW_GRID
     };
     WarehouseViewMode currentViewMode = WarehouseViewMode::RIG_DETAIL;
+    float overviewScrollY = 0.0f;
+    float maxOverviewScrollY = 0.0f;
 
     // 3. Profil, Giriş ve Modal Pencereleri
     Core::UserProfile userProfile;
@@ -271,9 +273,22 @@ int main() {
         btnTabRigDetail.SetBounds(Rectangle{pad + 16.0f, contentY + 10.0f, 130.0f, 32.0f});
         btnTabOverview.SetBounds(Rectangle{pad + 152.0f, contentY + 10.0f, 160.0f, 32.0f});
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen()) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen()) {
             if (btnTabRigDetail.UpdateAndCheckClick()) currentViewMode = WarehouseViewMode::RIG_DETAIL;
             if (btnTabOverview.UpdateAndCheckClick()) currentViewMode = WarehouseViewMode::OVERVIEW_GRID;
+
+            // Depo Genel Bakış Ekranında Fare Tekerleği ile Akıcı Aşağı/Yukarı Kaydırma
+            if (currentViewMode == WarehouseViewMode::OVERVIEW_GRID) {
+                Vector2 mouse = GetMousePosition();
+                Rectangle overviewArea{pad, contentY, leftW, contentH};
+                if (CheckCollisionPointRec(mouse, overviewArea)) {
+                    float wheel = GetMouseWheelMove();
+                    if (wheel != 0.0f) {
+                        overviewScrollY -= wheel * 60.0f;
+                        overviewScrollY = std::clamp(overviewScrollY, 0.0f, maxOverviewScrollY);
+                    }
+                }
+            }
         }
 
         // Rig Gezinme ve Yönetim Butonları (Sol Panel Üstü)
@@ -445,16 +460,26 @@ int main() {
         }
 
         // --- SİMÜLASYON MOTORU HESAPLAMALARI VE YANMA/HASAR KONTROLÜ ---
+        powerGrid.Update(dt);
         powerGrid.ResetStep();
 
+        // Her rig'in demeraj kalkış akımı zamanlayıcısını güncelle
+        for (const auto& r : warehouse.GetAllRigs()) {
+            if (r) r->Update(dt);
+        }
+
         if (!powerGrid.IsBreakerTripped()) {
-            const double warehousePower = warehouse.CalculateTotalPowerWatts();
+            const double rawPower = warehouse.CalculateTotalPowerWatts();
+            // Küresel blok yarışmasında +25% ekstra watt çekişi!
+            const double warehousePower = rawPower * powerGrid.GetPowerSurgeMultiplier();
             powerGrid.AddConsumerWatts(warehousePower);
 
             const double electricityCost = powerGrid.CalculateCostForDuration(dt);
             economy.DeductFiat(electricityCost);
 
-            thermalModel.Update(warehousePower, dt);
+            // Şebeke %85 üzerine çıkınca voltaj düşümü (voltage sag) kaynaklı +15% ekstra ısı!
+            const double thermalLoad = warehousePower * (powerGrid.IsGridStrained() ? 1.15 : 1.0);
+            thermalModel.Update(thermalLoad, dt);
 
             double maxCardTemp = 0.0;
             for (const auto& r : warehouse.GetAllRigs()) {
@@ -494,7 +519,9 @@ int main() {
             float normTemp = static_cast<float>((maxCardTemp - 20.0) / 70.0);
             shaderManager.SetThermalState(shaderManager.IsThermalActive(), normTemp);
 
-            economy.MineCoins(warehouse.CalculateTotalHashrate(), dt);
+            // Küresel blok yarışmasında +40% ekstra kazım hashrate'i!
+            const double minedHashrate = warehouse.CalculateTotalHashrate() * powerGrid.GetHashrateSurgeMultiplier();
+            economy.MineCoins(minedHashrate, dt);
         }
 
         economy.UpdateMarket(dt);
@@ -531,6 +558,16 @@ int main() {
 
         btnOpenSettings.Draw();
 
+        // Küresel Ağ Zorluk ve Güç Sıçraması (Mining Spike) Canlı Uyarısı
+        if (powerGrid.IsNetworkSpikeActive()) {
+            std::string spikeText = isTR ? "⚡ [KURESEL AG GUC ZIRVESI! +25% ANLIK WATT CEKISI & +40% KAZIM ODULU!] "
+                                         : "⚡ [GLOBAL NETWORK MINING SPIKE! +25% POWER DRAW & +40% HASH REWARD!] ";
+            spikeText += std::to_string(static_cast<int>(powerGrid.GetNetworkSpikeRemainingSeconds()) + 1) + "s";
+            DrawRectangle(0, static_cast<int>(headerH - 2), static_cast<int>(screenW), 20, Color{235, 145, 20, 240});
+            float tW = Render::UIFrame::MeasureTextCustom(spikeText, 12.0f, true);
+            Render::UIFrame::DrawTextCustom(spikeText, (screenW - tW) * 0.5f, headerH + 1.0f, 12.0f, WHITE, true);
+        }
+
         // 2. SOL PANEL: VIEWPORT ÇERÇEVESİ (SEÇİLİ RİG DETAYI VEYA DEPO KUŞBAKIŞI)
         const Rectangle viewportRect{pad, contentY, leftW, contentH};
         std::string viewportTitle = (currentViewMode == WarehouseViewMode::RIG_DETAIL)
@@ -566,25 +603,39 @@ int main() {
 
             Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 28.0f}, powerRatio, powerColor, powerText);
 
-            // Termal veya Sigorta Bildirim Kutusu
+            // Termal, Demeraj veya Sigorta Bildirim Kutusu
             if (powerGrid.IsBreakerTripped()) {
                 DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{190, 20, 20, 240});
                 Render::UIFrame::DrawTextCustom("! SEBEKE ASIRI YUKLENDI - SIGORTA ATTI ! SAG PANELDEN SALTERI ACIN",
                                                barX + 24.0f, barY + 48.0f, 16.0f, WHITE, true);
+            } else if (activeRig && activeRig->IsInStartupSurge()) {
+                DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{180, 110, 15, 230});
+                Render::UIFrame::DrawTextCustom("⚡ [DEMERAJ KALKIS AKIMI AKTIF: +30% GUC CEKISI - FANLAR VE KAPASITORLER]",
+                                               barX + 24.0f, barY + 48.0f, 15.0f, WHITE, true);
             } else if (shaderManager.IsThermalActive()) {
                 DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{32, 16, 52, 230});
                 DrawRectangleRoundedLines(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, 1.4f, Color{220, 0, 255, 255});
                 Render::UIFrame::DrawTextCustom("[CANLI TERMAL FLIR VIZYONU AKTIF] - Isi dagilimi fragment shader ile renklendiriliyor",
                                                barX + 24.0f, barY + 48.0f, 15.0f, Color{230, 130, 255, 255}, true);
             }
+
+            // Hızlı Rig Seçici Şeridi (Quick Rig Selector)
+            Vector2 mouse = GetMousePosition();
+            int quickRigIdx = -1;
+            Rectangle selectorBounds{pad + 20.0f, contentY + contentH - 44.0f, leftW - 40.0f, 32.0f};
+            rigRenderer.DrawQuickRigSelector(warehouse, selectorBounds, mouse, quickRigIdx);
+            if (quickRigIdx >= 0) {
+                warehouse.SetActiveRigIndex(static_cast<size_t>(quickRigIdx));
+            }
         } else {
-            // Kuşbakışı Genel Bakış Görünümü
+            // Kuşbakışı Genel Bakış Görünümü (Akıcı Fare Tekerleği Kaydırması)
             Vector2 mouse = GetMousePosition();
             int selectedRigIdx = -1;
             int toggledRigIdx = -1;
             rigRenderer.DrawWarehouseOverviewGrid(warehouse, thermalModel,
                                                  Rectangle{pad + 10.0f, contentY + 50.0f, leftW - 20.0f, contentH - 60.0f},
-                                                 animTime, mouse, selectedRigIdx, toggledRigIdx);
+                                                 animTime, mouse, overviewScrollY, maxOverviewScrollY,
+                                                 selectedRigIdx, toggledRigIdx);
             if (toggledRigIdx >= 0) {
                 if (auto* r = warehouse.GetRig(static_cast<size_t>(toggledRigIdx))) {
                     r->TogglePower();
