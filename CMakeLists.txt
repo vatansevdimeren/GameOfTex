@@ -1,0 +1,71 @@
+cmake_minimum_required(VERSION 3.20)
+project(GameOfTex VERSION 1.3.0 LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+include(FetchContent)
+
+# Raylib kütüphanesini otomatik çek ve bağla
+FetchContent_Declare(
+    raylib
+    GIT_REPOSITORY https://github.com/raysan5/raylib.git
+    GIT_TAG 5.0
+    GIT_SHALLOW TRUE
+)
+
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_GAMES OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(raylib)
+
+# Oyun yürütülebilir dosyası (Clean Code & SRP Modülleri)
+add_executable(GameOfTex
+    src/main.cpp
+    src/core/GPU.hpp
+    src/core/GPU.cpp
+    src/core/MiningRig.hpp
+    src/core/MiningRig.cpp
+    src/core/Warehouse.hpp
+    src/core/Warehouse.cpp
+    src/core/ThermalModel.hpp
+    src/core/ThermalModel.cpp
+    src/core/PowerGrid.hpp
+    src/core/PowerGrid.cpp
+    src/core/EconomyManager.hpp
+    src/core/EconomyManager.cpp
+    src/core/UserProfile.hpp
+    src/core/UserProfile.cpp
+    src/render/ShaderManager.hpp
+    src/render/ShaderManager.cpp
+    src/render/TextureManager.hpp
+    src/render/TextureManager.cpp
+    src/render/RigRenderer.hpp
+    src/render/RigRenderer.cpp
+    src/render/UIButton.hpp
+    src/render/UIButton.cpp
+    src/render/UIFrame.hpp
+    src/render/UIFrame.cpp
+    src/render/LoginScreen.hpp
+    src/render/LoginScreen.cpp
+    src/render/SettingsModal.hpp
+    src/render/SettingsModal.cpp
+)
+
+target_include_directories(GameOfTex PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(GameOfTex PRIVATE
+    raylib
+)
+
+# Shader ve Asset klasörlerini derleme çıktısının yanına kopyala
+add_custom_command(TARGET GameOfTex POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders
+        $<TARGET_FILE_DIR:GameOfTex>/src/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:GameOfTex>/assets
+)

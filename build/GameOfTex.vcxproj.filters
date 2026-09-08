@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\GPU.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\MiningRig.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\Warehouse.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\ThermalModel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\PowerGrid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\EconomyManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\UserProfile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\ShaderManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\TextureManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\RigRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\UIButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\UIFrame.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\LoginScreen.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\SettingsModal.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\GPU.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\MiningRig.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\Warehouse.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\ThermalModel.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\PowerGrid.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\EconomyManager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\core\UserProfile.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\ShaderManager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\TextureManager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\RigRenderer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\UIButton.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\UIFrame.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\LoginScreen.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\src\render\SettingsModal.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ErenV\OneDrive\Desktop\GameOfTex\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{E5FECA93-35C8-3785-B75B-57B134B6D94E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{51297E78-F7AB-3667-8FDA-FAD5E563E94E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

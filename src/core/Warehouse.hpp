@@ -1,0 +1,63 @@
+#pragma once
+
+#include "MiningRig.hpp"
+#include <vector>
+#include <memory>
+#include <string>
+
+namespace Core {
+
+/**
+ * @class Warehouse
+ * @brief Manages multiple mining rigs inside a single physical warehouse facility.
+ * 
+ * SRP: This class is solely responsible for managing the collection of rigs,
+ * handling rig expansions/purchases, and providing aggregated metrics.
+ */
+class Warehouse {
+public:
+    explicit Warehouse(std::string facilityName = "Ana Madencilik Deposu");
+
+    [[nodiscard]] const std::string& GetFacilityName() const;
+    void SetFacilityName(std::string name);
+
+    [[nodiscard]] size_t GetRigCount() const;
+    [[nodiscard]] size_t GetActiveRigIndex() const;
+    void SetActiveRigIndex(size_t index);
+
+    void NextRig();
+    void PreviousRig();
+
+    /**
+     * @brief Gets pointer to the currently inspected rig in the UI viewport.
+     */
+    [[nodiscard]] MiningRig* GetActiveRig();
+    [[nodiscard]] const MiningRig* GetActiveRig() const;
+
+    /**
+     * @brief Gets pointer to a specific rig by index.
+     */
+    [[nodiscard]] MiningRig* GetRig(size_t index);
+    [[nodiscard]] const MiningRig* GetRig(size_t index) const;
+
+    /**
+     * @brief Purchases and builds a new mining rig inside the warehouse.
+     * @param rigName Name for the new rig.
+     * @param gpuCapacity Slot capacity (default 6).
+     * @return True if added successfully.
+     */
+    bool AddNewRig(const std::string& rigName, size_t gpuCapacity = 6);
+
+    // Facility-wide aggregated calculations
+    [[nodiscard]] double CalculateTotalHashrate() const;
+    [[nodiscard]] double CalculateTotalPowerWatts() const;
+
+    [[nodiscard]] const std::vector<std::unique_ptr<MiningRig>>& GetAllRigs() const;
+
+private:
+    std::string m_facilityName;
+    std::vector<std::unique_ptr<MiningRig>> m_rigs;
+    size_t m_activeRigIndex;
+};
+
+} // namespace Core
