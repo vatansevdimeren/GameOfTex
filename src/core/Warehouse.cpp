@@ -78,6 +78,17 @@ bool Warehouse::AddNewRig(const std::string& rigName, size_t gpuCapacity) {
     return true;
 }
 
+bool Warehouse::RemoveRig(size_t index) {
+    if (index >= m_rigs.size() || m_rigs.size() <= 1) {
+        return false;
+    }
+    m_rigs.erase(m_rigs.begin() + index);
+    if (m_activeRigIndex >= m_rigs.size()) {
+        m_activeRigIndex = m_rigs.size() - 1;
+    }
+    return true;
+}
+
 double Warehouse::CalculateTotalHashrate() const {
     double total = 0.0;
     for (const auto& rig : m_rigs) {

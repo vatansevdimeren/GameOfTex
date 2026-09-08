@@ -35,6 +35,7 @@ int main() {
     InitWindow(initialWidth, initialHeight, "GameOfTex - Crypto Mining & Energy Tycoon (Warehouse Edition)");
     SetWindowMinSize(1100, 650);
     SetTargetFPS(60);
+    SetExitKey(KEY_NULL); // ESC tuşunun oyunu aniden kapatmasını engelle
 
     // 2. Yüksek Çözünürlüklü Vektör Fontlarını Yükle (Segoe UI / Arial)
     Font fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 36, nullptr, 0);
@@ -52,6 +53,11 @@ int main() {
     }
 
     GameState currentState = GameState::LOGIN;
+    enum class WarehouseViewMode {
+        RIG_DETAIL,
+        OVERVIEW_GRID
+    };
+    WarehouseViewMode currentViewMode = WarehouseViewMode::RIG_DETAIL;
 
     // 3. Profil, Giriş ve Modal Pencereleri
     Core::UserProfile userProfile;
@@ -92,6 +98,11 @@ int main() {
 
     Render::UIButton btnPrevRig(Rectangle{}, "< ONCEKI", "", Color{30, 35, 45, 255}, Color{0, 200, 255, 255});
     Render::UIButton btnNextRig(Rectangle{}, "SONRAKI >", "", Color{30, 35, 45, 255}, Color{0, 200, 255, 255});
+    Render::UIButton btnToggleRigPower(Rectangle{}, "RIG'I KAPAT", "", Color{60, 25, 25, 255}, Color{255, 70, 70, 255});
+    Render::UIButton btnSellRig(Rectangle{}, "RIG'I SAT", "+$1,200", Color{50, 40, 20, 255}, Color{255, 160, 0, 255});
+
+    Render::UIButton btnTabRigDetail(Rectangle{}, "DETAYLI RIG", "", Color{30, 50, 75, 255}, Color{0, 220, 255, 255});
+    Render::UIButton btnTabOverview(Rectangle{}, "DEPO GENEL BAKIS", "", Color{25, 30, 42, 255}, Color{0, 220, 255, 255});
 
     Render::UIButton btnSellCrypto(Rectangle{}, "KRIPTO PARALARI SAT", "Anlik Deger: $0.00",
                                   Color{45, 40, 20, 255}, Color{255, 200, 0, 255});
@@ -123,6 +134,17 @@ int main() {
             ToggleFullscreen();
         }
 
+        // ESC Tuşu: Modal açıksa kapat, değilse tam ekrandan küçük pencereli moda dön!
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            if (gpuInspectionModal.IsOpen()) {
+                gpuInspectionModal.Close();
+            } else if (settingsModal.IsOpen()) {
+                settingsModal.Close();
+            } else if (IsWindowFullscreen()) {
+                ToggleFullscreen();
+            }
+        }
+
         const float screenW = static_cast<float>(GetScreenWidth());
         const float screenH = static_cast<float>(GetScreenHeight());
 
@@ -143,13 +165,22 @@ int main() {
         }
 
         // ==================== OYUN İÇİ (GAMEPLAY) ====================
+        auto* activeRig = warehouse.GetActiveRig();
 
-        // GPU İnceleme Modalı Açıksa Güncelle
+        // GPU İnceleme Modalı Açıksa Güncelle (Tamir ve Hurdaya Satma)
         if (gpuInspectionModal.IsOpen()) {
             double repairCost = 0.0;
-            gpuInspectionModal.Update(economy.GetFiatBalance(), repairCost);
+            bool scrapRequested = false;
+            gpuInspectionModal.Update(economy.GetFiatBalance(), repairCost, scrapRequested);
             if (repairCost > 0.0) {
                 economy.DeductFiat(repairCost);
+            }
+            if (scrapRequested && activeRig) {
+                size_t slot = gpuInspectionModal.GetSlotIndex();
+                auto removed = activeRig->RemoveGPU(slot);
+                if (removed) {
+                    economy.AddFiat(75.0); // Hurda metal ve parça geri dönüşüm geliri
+                }
             }
         }
 
@@ -186,11 +217,37 @@ int main() {
         const float rightW = (screenW - (pad * 2.0f) - 14.0f) * 0.34f;
         const float rightX = pad + leftW + 14.0f;
 
-        // Rig Gezinme Butonları (Sol Panel Üstü)
+        // Sekme Butonları (Rig Detayı vs Depo Kuşbakışı Genel Bakış)
+        btnTabRigDetail.SetBounds(Rectangle{pad + 16.0f, contentY + 10.0f, 130.0f, 32.0f});
+        btnTabOverview.SetBounds(Rectangle{pad + 152.0f, contentY + 10.0f, 160.0f, 32.0f});
+
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen()) {
+            if (btnTabRigDetail.UpdateAndCheckClick()) currentViewMode = WarehouseViewMode::RIG_DETAIL;
+            if (btnTabOverview.UpdateAndCheckClick()) currentViewMode = WarehouseViewMode::OVERVIEW_GRID;
+        }
+
+        // Rig Gezinme ve Yönetim Butonları (Sol Panel Üstü)
+        btnToggleRigPower.SetBounds(Rectangle{pad + leftW - 460.0f, contentY + 10.0f, 110.0f, 32.0f});
+        btnSellRig.SetBounds(Rectangle{pad + leftW - 345.0f, contentY + 10.0f, 110.0f, 32.0f});
         btnPrevRig.SetBounds(Rectangle{pad + leftW - 230.0f, contentY + 10.0f, 105.0f, 32.0f});
         btnNextRig.SetBounds(Rectangle{pad + leftW - 120.0f, contentY + 10.0f, 105.0f, 32.0f});
 
+        if (activeRig) {
+            btnToggleRigPower.SetTitle(activeRig->IsPoweredOn() ? "RIG'I KAPAT" : "RIG'I AC");
+            btnToggleRigPower.SetSubtitle(activeRig->IsPoweredOn() ? "Gucu Kes" : "Calistir");
+        }
+        btnSellRig.SetDisabled(warehouse.GetRigCount() <= 1);
+
         if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen()) {
+            if (activeRig && btnToggleRigPower.UpdateAndCheckClick()) {
+                activeRig->TogglePower();
+            }
+            if (btnSellRig.UpdateAndCheckClick() && warehouse.GetRigCount() > 1) {
+                if (warehouse.RemoveRig(warehouse.GetActiveRigIndex())) {
+                    economy.AddFiat(1200.0);
+                    activeRig = warehouse.GetActiveRig();
+                }
+            }
             if (btnPrevRig.UpdateAndCheckClick()) warehouse.PreviousRig();
             if (btnNextRig.UpdateAndCheckClick()) warehouse.NextRig();
         }
@@ -211,21 +268,18 @@ int main() {
         btnThermalToggle.SetBounds(Rectangle{btnX, startBtnY + (6 * (btnH + btnGap)), btnW, btnH});
         btnResetBreaker.SetBounds(Rectangle{btnX, startBtnY + (7 * (btnH + btnGap)), btnW, btnH});
 
-        // --- BUTON TIKLAMA VE AKSİYON KONTROLLERİ ---
-        auto* activeRig = warehouse.GetActiveRig();
-
         // Kart Tıklama Tespiti (Viewport içerisindeki GPU'ya tıklandı mı?)
         constexpr float rigBaseW = 720.0f;
         const float rigX = pad + (leftW - rigBaseW) / 2.0f;
         const float rigY = contentY + 60.0f;
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && activeRig) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
             Vector2 mouse = GetMousePosition();
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse);
                 if (clickedIndex >= 0 && clickedIndex < static_cast<int>(activeRig->GetGPUCount())) {
                     auto* targetCard = activeRig->GetGPU(static_cast<size_t>(clickedIndex));
-                    double cardTemp = thermalModel.CalculateGPUTemperature(targetCard->GetEffectivePowerWatts(), 0.85);
+                    double cardTemp = activeRig->IsPoweredOn() ? thermalModel.CalculateGPUTemperature(targetCard->GetEffectivePowerWatts(), 0.85) : thermalModel.GetAmbientTemperature();
                     gpuInspectionModal.Open(targetCard, cardTemp, static_cast<size_t>(clickedIndex));
                 }
             }
@@ -347,22 +401,28 @@ int main() {
             double maxCardTemp = 0.0;
             for (const auto& r : warehouse.GetAllRigs()) {
                 if (r) {
+                    bool rPowered = r->IsPoweredOn();
                     for (const auto& gpu : r->GetGPUs()) {
                         if (gpu) {
-                            double cardTemp = thermalModel.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), gpu->GetFanSpeedPercent() / 100.0);
+                            double cardTemp = rPowered ? thermalModel.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), gpu->GetFanSpeedPercent() / 100.0)
+                                                       : thermalModel.GetAmbientTemperature();
                             if (cardTemp > maxCardTemp) maxCardTemp = cardTemp;
 
-                            // 85°C üzeri: Thermal Throttling
-                            gpu->SetThrottled(Core::ThermalModel::IsOverheating(cardTemp));
+                            if (rPowered) {
+                                // 85°C üzeri: Thermal Throttling
+                                gpu->SetThrottled(Core::ThermalModel::IsOverheating(cardTemp));
 
-                            // 105°C üzeri: Kart sağlığı erir (Damage)
-                            if (cardTemp >= 105.0 && !coolingManager.IsImmersionCoolingActive()) {
-                                gpu->TakeDamage(dt * 5.0);
-                            }
+                                // 105°C üzeri: Kart sağlığı erir (Damage)
+                                if (cardTemp >= 105.0 && !coolingManager.IsImmersionCoolingActive()) {
+                                    gpu->TakeDamage(dt * 5.0);
+                                }
 
-                            // 140°C üzeri: KART AŞIRI SICAKLIKTAN YANAR (BURNT)!
-                            if (cardTemp >= 140.0 && !coolingManager.IsImmersionCoolingActive()) {
-                                gpu->SetBurnt(true);
+                                // 140°C üzeri: KART AŞIRI SICAKLIKTAN YANAR (BURNT)!
+                                if (cardTemp >= 140.0 && !coolingManager.IsImmersionCoolingActive()) {
+                                    gpu->SetBurnt(true);
+                                }
+                            } else {
+                                gpu->SetThrottled(false);
                             }
                         }
                     }
@@ -411,42 +471,69 @@ int main() {
 
         btnOpenSettings.Draw();
 
-        // 2. SOL PANEL: VIEWPORT ÇERÇEVESİ (SEÇİLİ RİG VE KARTLAR)
+        // 2. SOL PANEL: VIEWPORT ÇERÇEVESİ (SEÇİLİ RİG DETAYI VEYA DEPO KUŞBAKIŞI)
         const Rectangle viewportRect{pad, contentY, leftW, contentH};
-        std::string viewportTitle = warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " RIG) [KARTA TIKLAYIN: 360 INCELEME]";
+        std::string viewportTitle = (currentViewMode == WarehouseViewMode::RIG_DETAIL)
+            ? (warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " RIG) [KARTA TIKLA: 360 INCELE]")
+            : ("DEPO GENEL BAKIS - " + warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetRigCount()) + " RIG)");
         Render::UIFrame::DrawCard(viewportRect, viewportTitle, Color{0, 220, 255, 255});
 
-        btnPrevRig.Draw();
-        btnNextRig.Draw();
+        // Sekme Butonlarını Çiz
+        btnTabRigDetail.Draw();
+        btnTabOverview.Draw();
 
-        if (activeRig) {
-            shaderManager.BeginShader();
-            rigRenderer.DrawRig(*activeRig, thermalModel, static_cast<int>(rigX), static_cast<int>(rigY), animTime, &textureManager);
-            shaderManager.EndShader();
-        }
+        if (currentViewMode == WarehouseViewMode::RIG_DETAIL) {
+            btnToggleRigPower.Draw();
+            btnSellRig.Draw();
+            btnPrevRig.Draw();
+            btnNextRig.Draw();
 
-        // Güç Gösterge Barı
-        const float powerRatio = static_cast<float>(powerGrid.GetTotalConsumptionWatts() / powerGrid.GetMaxCapacityWatts());
-        const Color powerColor = (powerRatio > 0.85f) ? Color{255, 50, 50, 255} : ((powerRatio > 0.60f) ? Color{255, 180, 0, 255} : Color{0, 230, 130, 255});
-        const std::string powerText = "DEPO SEBEKE YUKU: " + std::to_string(static_cast<int>(powerGrid.GetTotalConsumptionWatts())) +
-                                      "W / " + std::to_string(static_cast<int>(powerGrid.GetMaxCapacityWatts())) + "W";
+            if (activeRig) {
+                shaderManager.BeginShader();
+                rigRenderer.DrawRig(*activeRig, thermalModel, static_cast<int>(rigX), static_cast<int>(rigY), animTime, &textureManager);
+                shaderManager.EndShader();
+            }
 
-        const float barW = std::min(rigBaseW, leftW - 40.0f);
-        const float barX = pad + (leftW - barW) / 2.0f;
-        const float barY = rigY + 340.0f;
+            // Güç Gösterge Barı
+            const float powerRatio = static_cast<float>(powerGrid.GetTotalConsumptionWatts() / powerGrid.GetMaxCapacityWatts());
+            const Color powerColor = (powerRatio > 0.85f) ? Color{255, 50, 50, 255} : ((powerRatio > 0.60f) ? Color{255, 180, 0, 255} : Color{0, 230, 130, 255});
+            const std::string powerText = "DEPO SEBEKE YUKU: " + std::to_string(static_cast<int>(powerGrid.GetTotalConsumptionWatts())) +
+                                          "W / " + std::to_string(static_cast<int>(powerGrid.GetMaxCapacityWatts())) + "W";
 
-        Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 28.0f}, powerRatio, powerColor, powerText);
+            const float barW = std::min(rigBaseW, leftW - 40.0f);
+            const float barX = pad + (leftW - barW) / 2.0f;
+            const float barY = rigY + 340.0f;
 
-        // Termal veya Sigorta Bildirim Kutusu
-        if (powerGrid.IsBreakerTripped()) {
-            DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{190, 20, 20, 240});
-            Render::UIFrame::DrawTextCustom("! SEBEKE ASIRI YUKLENDI - SIGORTA ATTI ! SAG PANELDEN SALTERI ACIN",
-                                           barX + 24.0f, barY + 48.0f, 16.0f, WHITE, true);
-        } else if (shaderManager.IsThermalActive()) {
-            DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{32, 16, 52, 230});
-            DrawRectangleRoundedLines(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, 1.4f, Color{220, 0, 255, 255});
-            Render::UIFrame::DrawTextCustom("[CANLI TERMAL FLIR VIZYONU AKTIF] - Isi dagilimi fragment shader ile renklendiriliyor",
-                                           barX + 24.0f, barY + 48.0f, 15.0f, Color{230, 130, 255, 255}, true);
+            Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 28.0f}, powerRatio, powerColor, powerText);
+
+            // Termal veya Sigorta Bildirim Kutusu
+            if (powerGrid.IsBreakerTripped()) {
+                DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{190, 20, 20, 240});
+                Render::UIFrame::DrawTextCustom("! SEBEKE ASIRI YUKLENDI - SIGORTA ATTI ! SAG PANELDEN SALTERI ACIN",
+                                               barX + 24.0f, barY + 48.0f, 16.0f, WHITE, true);
+            } else if (shaderManager.IsThermalActive()) {
+                DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{32, 16, 52, 230});
+                DrawRectangleRoundedLines(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, 1.4f, Color{220, 0, 255, 255});
+                Render::UIFrame::DrawTextCustom("[CANLI TERMAL FLIR VIZYONU AKTIF] - Isi dagilimi fragment shader ile renklendiriliyor",
+                                               barX + 24.0f, barY + 48.0f, 15.0f, Color{230, 130, 255, 255}, true);
+            }
+        } else {
+            // Kuşbakışı Genel Bakış Görünümü
+            Vector2 mouse = GetMousePosition();
+            int selectedRigIdx = -1;
+            int toggledRigIdx = -1;
+            rigRenderer.DrawWarehouseOverviewGrid(warehouse, thermalModel,
+                                                 Rectangle{pad + 10.0f, contentY + 50.0f, leftW - 20.0f, contentH - 60.0f},
+                                                 animTime, mouse, selectedRigIdx, toggledRigIdx);
+            if (toggledRigIdx >= 0) {
+                if (auto* r = warehouse.GetRig(static_cast<size_t>(toggledRigIdx))) {
+                    r->TogglePower();
+                }
+            }
+            if (selectedRigIdx >= 0) {
+                warehouse.SetActiveRigIndex(static_cast<size_t>(selectedRigIdx));
+                currentViewMode = WarehouseViewMode::RIG_DETAIL;
+            }
         }
 
         // 3. SAĞ PANEL: KONTROL VE YÜKSELTME MERKEZİ
@@ -469,7 +556,7 @@ int main() {
         Render::UIFrame::DrawTextCustom("[IPUCU] Kasadaki herhangi bir ekran kartina tiklayarak 360 derece dondurulebilir inceleme ve OC panelini acabilirsiniz!",
                                        pad + 10.0f, screenH - footerH + 12.0f, 14.0f, Color{150, 165, 190, 255}, false);
 
-        std::string verTag = "GameOfTex v1.4 [Interactive 360 Inspection]";
+        std::string verTag = "GameOfTex v1.5 [Warehouse Overview & Power Controls]";
         float verW = Render::UIFrame::MeasureTextCustom(verTag, 14.0f, false);
         Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, screenH - footerH + 12.0f, 14.0f, Color{100, 120, 150, 255}, false);
 

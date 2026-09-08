@@ -23,14 +23,15 @@ public:
     void Open(Core::GPU* gpu, double tempCelsius, size_t slotIndex);
     void Close();
     [[nodiscard]] bool IsOpen() const;
-    [[nodiscard]] Core::GPU* GetTargetGPU() const;
+    [[nodiscard]] size_t GetSlotIndex() const;
 
     /**
-     * @brief Updates rotation dragging, slider buttons, and repair actions.
+     * @brief Updates rotation dragging, slider buttons, repair and scrap actions.
      * @param economyFiat Player's available cash to pay for repairs.
      * @param outRepairCost Outputs repair cost deducted if repaired this frame.
+     * @param outScrapRequested Outputs true if player clicked to scrap/remove card.
      */
-    void Update(double economyFiat, double& outRepairCost);
+    void Update(double economyFiat, double& outRepairCost, bool& outScrapRequested);
 
     /**
      * @brief Renders the 360-degree card, status gauges, and OC controls.
@@ -66,6 +67,7 @@ private:
 
     // Actions
     UIButton m_btnRepair;
+    UIButton m_btnScrap;
     UIButton m_btnClose;
 };
 

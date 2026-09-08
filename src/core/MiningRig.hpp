@@ -54,6 +54,11 @@ public:
      */
     [[nodiscard]] GPU* GetGPU(size_t slotIndex);
 
+    // Rig Power Control
+    [[nodiscard]] bool IsPoweredOn() const;
+    void SetPoweredOn(bool on);
+    void TogglePower();
+
     // Aggregate performance metrics
     [[nodiscard]] double CalculateTotalHashrate() const;
     [[nodiscard]] double CalculateTotalPowerWatts() const;
@@ -62,6 +67,7 @@ private:
     std::string m_name;
     size_t m_maxCapacity;
     double m_motherboardBaseWatts;
+    bool m_isPoweredOn{true};
     std::vector<std::unique_ptr<GPU>> m_gpus;
 };
 

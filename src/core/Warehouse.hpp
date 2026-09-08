@@ -48,6 +48,13 @@ public:
      */
     bool AddNewRig(const std::string& rigName, size_t gpuCapacity = 6);
 
+    /**
+     * @brief Decommissions and sells an existing rig, removing it from warehouse.
+     * @param index Rig index to remove.
+     * @return True if removed successfully, false if only 1 rig remains or index invalid.
+     */
+    bool RemoveRig(size_t index);
+
     // Facility-wide aggregated calculations
     [[nodiscard]] double CalculateTotalHashrate() const;
     [[nodiscard]] double CalculateTotalPowerWatts() const;

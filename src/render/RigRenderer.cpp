@@ -2,6 +2,9 @@
 #include "UIFrame.hpp"
 #include <cmath>
 #include <string>
+#include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 namespace Render {
 
@@ -26,18 +29,63 @@ void RigRenderer::DrawSpinningFan(int centerX, int centerY, float radius, float 
     }
 }
 
+void RigRenderer::DrawBraidedPCIeCable(int startX, int startY, int endX, int endY) const {
+    // 2 örgülü kablo hattı (sarı ve siyah yüksek akım PCIe kabloları)
+    for (int offset = -3; offset <= 3; offset += 3) {
+        int sx = startX + offset;
+        int ex = endX + offset;
+        DrawLine(sx, startY, ex, endY, Color{25, 25, 30, 255});
+        for (int y = startY; y < endY; y += 6) {
+            Color hatchColor = ((y / 6) % 2 == 0) ? Color{255, 210, 0, 255} : Color{45, 45, 55, 255};
+            DrawLine(sx - 1, y, sx + 1, y + 2, hatchColor);
+        }
+    }
+    // 8-pin konektör kafası
+    DrawRectangle(endX - 8, endY - 4, 16, 6, Color{20, 20, 20, 255});
+    DrawRectangleLines(endX - 8, endY - 4, 16, 6, Color{80, 80, 80, 255});
+}
+
+void RigRenderer::DrawSmokeAndSparks(int centerX, int centerY, double animTime) const {
+    // Yükselen duman halkaları
+    for (int i = 0; i < 4; ++i) {
+        float phase = std::fmod(static_cast<float>(animTime * 0.9 + i * 0.25), 1.0f);
+        float py = centerY - (phase * 65.0f);
+        float px = centerX + std::sin(phase * 6.28f + i * 1.5f) * 12.0f;
+        float radius = 7.0f + phase * 18.0f;
+        unsigned char alpha = static_cast<unsigned char>((1.0f - phase) * 150.0f);
+        DrawCircle(static_cast<int>(px), static_cast<int>(py), radius, Color{35, 35, 40, alpha});
+    }
+
+    // Kızgın kor kıvılcımları (Sparks)
+    for (int i = 0; i < 3; ++i) {
+        float sparkPhase = std::fmod(static_cast<float>(animTime * 2.8 + i * 0.35), 1.0f);
+        float sy = centerY - (sparkPhase * 80.0f);
+        float sx = centerX + std::sin(sparkPhase * 14.0f + i * 2.5f) * 16.0f;
+        unsigned char sparkAlpha = static_cast<unsigned char>((1.0f - sparkPhase) * 255.0f);
+        Color sparkColor = (i % 2 == 0) ? Color{255, 140, 0, sparkAlpha} : Color{255, 60, 20, sparkAlpha};
+        DrawCircle(static_cast<int>(sx), static_cast<int>(sy), 2.5f, sparkColor);
+    }
+}
+
 void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x, int y, double animTime,
-                                const TextureManager* textureManager) const {
+                                bool rigPoweredOn, const TextureManager* textureManager) const {
     constexpr int gpuWidth = 90;
     constexpr int gpuHeight = 220;
 
-    // Fan spinning speed scales with temperature
-    float speedMultiplier = static_cast<float>(tempCelsius * 8.0);
+    bool isBurnt = gpu && gpu->IsBurnt();
+
+    // Üst PCIe örgü güç kablosu
+    DrawBraidedPCIeCable(x + gpuWidth / 2, y - 24, x + gpuWidth / 2, y + 4);
+
+    // Fan hızı (kapalıysa veya yandıysa durur)
+    float speedMultiplier = (rigPoweredOn && !isBurnt) ? static_cast<float>(tempCelsius * 8.0) : 0.0f;
     float currentAngle = std::fmod(static_cast<float>(animTime * speedMultiplier), 360.0f);
 
-    // RGB Fan Color based on temperature
+    // RGB Fan Rengi
     Color fanRgb;
-    if (tempCelsius < 55.0) {
+    if (!rigPoweredOn) {
+        fanRgb = Color{60, 70, 80, 255};
+    } else if (tempCelsius < 55.0) {
         fanRgb = Color{0, 210, 255, 255}; // Cool Cyan
     } else if (tempCelsius < 75.0) {
         fanRgb = Color{0, 255, 120, 255}; // Warm Green
@@ -47,12 +95,10 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         fanRgb = Color{255, 30, 30, 255}; // Dangerous Red
     }
 
-    bool isBurnt = gpu && gpu->IsBurnt();
-
-    // 1. Ekran Kartı Gövdesi (Yanmışsa kömürleşmiş, değilse ultra-res veya prosedürel)
+    // 1. Ekran Kartı Gövdesi
     if (isBurnt) {
         DrawRectangle(x, y, gpuWidth, gpuHeight, Color{18, 14, 14, 255});
-        DrawRectangleLines(x, y, gpuWidth, gpuHeight, Color{120, 20, 20, 255});
+        DrawRectangleLines(x, y, gpuWidth, gpuHeight, Color{140, 25, 25, 255});
     } else if (textureManager && textureManager->HasGPUTexture()) {
         textureManager->DrawGPUTexture(Rectangle{static_cast<float>(x), static_cast<float>(y),
                                                  static_cast<float>(gpuWidth), static_cast<float>(gpuHeight)});
@@ -65,8 +111,8 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         }
     }
 
-    // 2. Dönen Fanlar (Yanmış kartın fanı dönmez)
-    if (!isBurnt) {
+    // 2. Dönen Fanlar
+    if (!isBurnt && rigPoweredOn) {
         if (textureManager && textureManager->HasFanTexture()) {
             textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 60.0f, 32.0f, currentAngle, fanRgb);
             textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 145.0f, 32.0f, -currentAngle, fanRgb);
@@ -74,14 +120,20 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
             DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, currentAngle, fanRgb);
             DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, -currentAngle, fanRgb);
         }
-    } else {
+    } else if (isBurnt) {
         // Yanmış kartın üstüne alev/arıza etiketi
         DrawRectangle(x + 6, y + 90, gpuWidth - 12, 40, Color{180, 20, 20, 230});
         UIFrame::DrawTextCustom("YANDI!", static_cast<float>(x + 18), static_cast<float>(y + 100), 16.0f, WHITE, true);
+        // Duman ve kor kıvılcım efektleri
+        DrawSmokeAndSparks(x + gpuWidth / 2, y + 30, animTime);
+    } else {
+        // Rig kapalıyken durağan fanlar
+        DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, 0.0f, Color{60, 65, 75, 255});
+        DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, 0.0f, Color{60, 65, 75, 255});
     }
 
     // Status LED
-    Color ledColor = isBurnt ? RED : ((tempCelsius >= 85.0) ? RED : ((tempCelsius >= 70.0) ? ORANGE : GREEN));
+    Color ledColor = !rigPoweredOn ? Color{50, 55, 65, 255} : (isBurnt ? RED : ((tempCelsius >= 85.0) ? RED : ((tempCelsius >= 70.0) ? ORANGE : GREEN)));
     DrawCircle(x + gpuWidth - 12, y + 12, 4.0f, ledColor);
 
     // Fare kartın üzerindeyse inceleme çerçevesi
@@ -92,12 +144,12 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         UIFrame::DrawTextCustom("INCELE", static_cast<float>(x + 20), static_cast<float>(y + 5), 11.0f, BLACK, true);
     }
 
-    // Readout metinleri (Net ve okunaklı)
+    // Readout metinleri
     if (gpu) {
-        std::string tempText = std::to_string(static_cast<int>(tempCelsius)) + "C";
-        UIFrame::DrawTextCustom(tempText, static_cast<float>(x + 10), static_cast<float>(y + gpuHeight - 20), 14.0f, WHITE, true);
+        std::string tempText = rigPoweredOn ? (std::to_string(static_cast<int>(tempCelsius)) + "C") : "OFF";
+        UIFrame::DrawTextCustom(tempText, static_cast<float>(x + 10), static_cast<float>(y + gpuHeight - 20), 14.0f, rigPoweredOn ? WHITE : GRAY, true);
 
-        std::string hrText = isBurnt ? "0 MH" : (std::to_string(static_cast<int>(gpu->GetEffectiveHashrate())) + "M");
+        std::string hrText = (!rigPoweredOn || isBurnt) ? "0 MH" : (std::to_string(static_cast<int>(gpu->GetEffectiveHashrate())) + "M");
         UIFrame::DrawTextCustom(hrText, static_cast<float>(x + gpuWidth - 44), static_cast<float>(y + gpuHeight - 20), 14.0f, isBurnt ? RED : fanRgb, true);
     }
 }
@@ -107,20 +159,27 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
     constexpr int rigWidth = 720;
     constexpr int rigHeight = 320;
 
+    bool isPowered = rig.IsPoweredOn();
+
     // Aluminum frame (metallic open-air rig)
+    Color frameBg = isPowered ? Color{20, 22, 26, 240} : Color{14, 15, 18, 240};
+    Color frameBorder = isPowered ? Color{100, 110, 130, 255} : Color{60, 65, 75, 255};
+
     DrawRectangleRounded(Rectangle{static_cast<float>(posX), static_cast<float>(posY),
                                    static_cast<float>(rigWidth), static_cast<float>(rigHeight)},
-                         0.04f, 6, Color{20, 22, 26, 240});
+                         0.04f, 6, frameBg);
     DrawRectangleRoundedLines(Rectangle{static_cast<float>(posX), static_cast<float>(posY),
                                         static_cast<float>(rigWidth), static_cast<float>(rigHeight)},
-                              0.04f, 6, 2.0f, Color{100, 110, 130, 255});
+                              0.04f, 6, 2.0f, frameBorder);
 
     // Top and bottom aluminum support bars
     DrawRectangle(posX + 10, posY + 15, rigWidth - 20, 8, Color{80, 85, 95, 255});
     DrawRectangle(posX + 10, posY + rigHeight - 25, rigWidth - 20, 8, Color{80, 85, 95, 255});
 
-    // Rig header label
-    UIFrame::DrawTextCustom(rig.GetName(), static_cast<float>(posX + 24), static_cast<float>(posY + 26), 18.0f, RAYWHITE, true);
+    // Rig header label & status badge
+    std::string title = rig.GetName() + (isPowered ? "  [⚡ AKTIF / CALISIYOR]" : "  [⏸️ KAPALI / DEVRE DISI]");
+    Color titleColor = isPowered ? Color{0, 240, 160, 255} : Color{200, 70, 70, 255};
+    UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 17.0f, titleColor, true);
 
     // Draw installed GPUs
     const auto& gpus = rig.GetGPUs();
@@ -132,8 +191,8 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
         int cardX = startX + static_cast<int>(i * slotSpacing);
 
         if (i < gpus.size() && gpus[i]) {
-            double temp = thermalModel.CalculateGPUTemperature(gpus[i]->GetEffectivePowerWatts(), 0.85);
-            DrawSingleGPU(gpus[i].get(), temp, cardX, gpuY, animTime, textureManager);
+            double temp = isPowered ? thermalModel.CalculateGPUTemperature(gpus[i]->GetEffectivePowerWatts(), 0.85) : thermalModel.GetAmbientTemperature();
+            DrawSingleGPU(gpus[i].get(), temp, cardX, gpuY, animTime, isPowered, textureManager);
         } else {
             // Empty PCIe slot placeholder
             DrawRectangleLines(cardX, gpuY, 90, 220, Color{45, 50, 60, 180});
@@ -156,6 +215,138 @@ int RigRenderer::GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2
         }
     }
     return -1;
+}
+
+void RigRenderer::DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, const Core::ThermalModel& thermalModel,
+                                           const Rectangle& bounds, double animTime, Vector2 mousePos,
+                                           int& outSelectedRigIndex, int& outToggledRigIndex) const {
+    outSelectedRigIndex = -1;
+    outToggledRigIndex = -1;
+
+    const auto& rigs = warehouse.GetAllRigs();
+    if (rigs.empty()) return;
+
+    // Her bir rig için kart yüksekliği ve aralığı
+    const float cardH = 92.0f;
+    const float cardGap = 10.0f;
+    const float startY = bounds.y + 10.0f;
+    const float cardW = bounds.width - 24.0f;
+    const float cardX = bounds.x + 12.0f;
+
+    for (size_t i = 0; i < rigs.size(); ++i) {
+        const auto* rig = rigs[i].get();
+        if (!rig) continue;
+
+        float cy = startY + i * (cardH + cardGap);
+        if (cy + cardH > bounds.y + bounds.height) break; // Viewport sınırını aşma
+
+        Rectangle rigCardRect{cardX, cy, cardW, cardH};
+        bool isHovered = CheckCollisionPointRec(mousePos, rigCardRect);
+        bool isCurrentActive = (i == warehouse.GetActiveRigIndex());
+        bool isPowered = rig->IsPoweredOn();
+
+        // Kart arka planı
+        Color bg = isCurrentActive ? Color{28, 38, 54, 245} : (isHovered ? Color{24, 30, 42, 240} : Color{18, 22, 30, 230});
+        Color border = isCurrentActive ? Color{0, 220, 255, 255} : (isHovered ? Color{100, 140, 180, 255} : Color{45, 55, 75, 255});
+
+        DrawRectangleRounded(rigCardRect, 0.12f, 4, bg);
+        DrawRectangleRoundedLines(rigCardRect, 0.12f, 4, isCurrentActive ? 2.0f : 1.0f, border);
+
+        // Sol: Rig Adı ve Güç Durumu
+        std::string rigTitle = "#" + std::to_string(i + 1) + " " + rig->GetName();
+        UIFrame::DrawTextCustom(rigTitle, cardX + 16.0f, cy + 14.0f, 17.0f, WHITE, true);
+
+        // Durum Rozeti
+        if (isPowered) {
+            DrawRectangleRounded(Rectangle{cardX + 16.0f, cy + 42.0f, 95.0f, 24.0f}, 0.3f, 4, Color{15, 60, 35, 230});
+            DrawRectangleRoundedLines(Rectangle{cardX + 16.0f, cy + 42.0f, 95.0f, 24.0f}, 0.3f, 4, 1.0f, Color{0, 240, 140, 255});
+            UIFrame::DrawTextCustom("⚡ CALISIYOR", cardX + 22.0f, cy + 47.0f, 12.0f, Color{0, 240, 140, 255}, true);
+        } else {
+            DrawRectangleRounded(Rectangle{cardX + 16.0f, cy + 42.0f, 85.0f, 24.0f}, 0.3f, 4, Color{60, 20, 20, 230});
+            DrawRectangleRoundedLines(Rectangle{cardX + 16.0f, cy + 42.0f, 85.0f, 24.0f}, 0.3f, 4, 1.0f, Color{255, 70, 70, 255});
+            UIFrame::DrawTextCustom("⏸️ KAPALI", cardX + 22.0f, cy + 47.0f, 12.0f, Color{255, 100, 100, 255}, true);
+        }
+
+        // Orta: 6 Adet Mini GPU Yuvası
+        const float slotStartX = cardX + 125.0f;
+        const float slotY = cy + 40.0f;
+        const float slotBoxW = 28.0f;
+        const float slotBoxH = 34.0f;
+        const float slotGap = 6.0f;
+
+        const auto& gpus = rig->GetGPUs();
+        double maxTemp = 0.0;
+
+        for (size_t s = 0; s < rig->GetMaxCapacity(); ++s) {
+            Rectangle sRect{slotStartX + s * (slotBoxW + slotGap), slotY, slotBoxW, slotBoxH};
+            if (s < gpus.size() && gpus[s]) {
+                const auto* gpu = gpus[s].get();
+                double temp = isPowered ? thermalModel.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), 0.85) : 22.0;
+                if (temp > maxTemp) maxTemp = temp;
+
+                Color slotBg = Color{25, 30, 40, 255};
+                Color slotBorder = Color{0, 220, 255, 255};
+                const char* icon = "GPU";
+
+                if (gpu->IsBurnt()) {
+                    slotBg = Color{80, 15, 15, 255};
+                    slotBorder = RED;
+                    icon = "YAN";
+                } else if (temp >= 85.0) {
+                    slotBg = Color{70, 45, 10, 255};
+                    slotBorder = ORANGE;
+                } else if (!isPowered) {
+                    slotBorder = GRAY;
+                }
+
+                DrawRectangleRounded(sRect, 0.2f, 3, slotBg);
+                DrawRectangleRoundedLines(sRect, 0.2f, 3, 1.2f, slotBorder);
+                UIFrame::DrawTextCustom(icon, sRect.x + 3.0f, sRect.y + 10.0f, 11.0f, slotBorder, true);
+            } else {
+                // Boş slot
+                DrawRectangleRounded(sRect, 0.2f, 3, Color{15, 18, 24, 255});
+                DrawRectangleRoundedLines(sRect, 0.2f, 3, 1.0f, Color{40, 45, 55, 255});
+                UIFrame::DrawTextCustom("-", sRect.x + 11.0f, sRect.y + 10.0f, 12.0f, Color{70, 75, 85, 255}, false);
+            }
+        }
+
+        // Sağ Orta: Metrikler (Hashrate, Watt, En Yüksek Isı)
+        const float metricsX = cardX + 350.0f;
+        std::ostringstream ssM;
+        ssM << "Kazim: " << std::fixed << std::setprecision(1) << rig->CalculateTotalHashrate() << " MH/s   |   "
+            << "Guc: " << static_cast<int>(rig->CalculateTotalPowerWatts()) << "W   |   "
+            << "Max Isi: " << static_cast<int>(maxTemp) << " C";
+        UIFrame::DrawTextCustom(ssM.str(), metricsX, cy + 16.0f, 14.0f, Color{180, 210, 240, 255}, false);
+
+        // Sağ Taraf Butonları: [AÇ / KAPAT] ve [İNCELE]
+        Rectangle btnPowerRect{cardW - 190.0f + cardX, cy + 24.0f, 85.0f, 44.0f};
+        Rectangle btnInspectRect{cardW - 95.0f + cardX, cy + 24.0f, 85.0f, 44.0f};
+
+        bool hoverPower = CheckCollisionPointRec(mousePos, btnPowerRect);
+        bool hoverInspect = CheckCollisionPointRec(mousePos, btnInspectRect);
+
+        // Güç Butonu
+        Color pBtnBg = isPowered ? (hoverPower ? Color{100, 30, 30, 255} : Color{70, 25, 25, 255})
+                                 : (hoverPower ? Color{25, 90, 50, 255} : Color{20, 65, 35, 255});
+        DrawRectangleRounded(btnPowerRect, 0.2f, 4, pBtnBg);
+        DrawRectangleRoundedLines(btnPowerRect, 0.2f, 4, 1.2f, isPowered ? RED : GREEN);
+        UIFrame::DrawTextCustom(isPowered ? "KAPAT" : "AC", btnPowerRect.x + 22.0f, btnPowerRect.y + 14.0f, 13.0f, WHITE, true);
+
+        // İncele / Seç Butonu
+        Color iBtnBg = hoverInspect ? Color{35, 55, 85, 255} : Color{25, 40, 65, 255};
+        DrawRectangleRounded(btnInspectRect, 0.2f, 4, iBtnBg);
+        DrawRectangleRoundedLines(btnInspectRect, 0.2f, 4, 1.2f, Color{0, 220, 255, 255});
+        UIFrame::DrawTextCustom("INCELE", btnInspectRect.x + 18.0f, btnInspectRect.y + 14.0f, 13.0f, Color{0, 220, 255, 255}, true);
+
+        // Tıklama Kontrolleri
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            if (hoverPower) {
+                outToggledRigIndex = static_cast<int>(i);
+            } else if (hoverInspect || (isHovered && !hoverPower && !hoverInspect)) {
+                outSelectedRigIndex = static_cast<int>(i);
+            }
+        }
+    }
 }
 
 } // namespace Render

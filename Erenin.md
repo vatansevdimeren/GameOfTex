@@ -176,3 +176,48 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * **Sıfır Güvenlik Riski:** Kod tabanında API Key, token, veritabanı parolası veya özel kimlik bilgisi bulunmaz.
 * **.gitignore Mimarisi:** `build/`, `.vs/`, derleme ara dosyaları (`*.obj`, `*.tlog`), `.exe` çıktıları ve kullanıcı yolu içeren CMake önbellek dosyaları git takibinden çıkarılmıştır.
 * **GitHub Repository:** Proje başarıyla `https://github.com/vatansevdimeren/GameOfTex` adresindeki `main` branch'ine pushlanmıştır.
+
+---
+
+## ⚡ 5. Sürüm 1.5 Yenilikleri: Hurdaya Satma, Rig Kapatma, ESC ve Depo Kuşbakışı
+
+### A. Yanan / İstenmeyen Kartları Çöpe Atma & Hurdaya Satma (`GPUInspectionModal`)
+* **`m_btnScrap` (`[ 🗑️ KARTI HURDAYA SAT / CIKAR (+$75) ]`):**
+  * **İşlevi:** Yanan veya elden çıkarılmak istenen kart incelenirken tek tıkla anakart slotundan sökülür.
+  * **Ekonomi Entegrasyonu:** Oyuncunun bakiyesine **+\$75 hurda metal ve yedek parça geri dönüşüm bedeli** eklenir.
+  * **Slot Serbest Bırakma:** Slot anında boşalır (`EMPTY`), yerine yeni kart takılabilir.
+
+### B. Rig Güç Açma / Kapatma (Power Toggle) Mekaniği (`MiningRig`)
+* **`IsPoweredOn()`, `SetPoweredOn(bool)`, `TogglePower()`:**
+  * **İşlevi:** Rig aşırı ısındığında veya sigorta yükünü azaltmak istendiğinde rig tamamen kapatılabilir.
+  * **Sıfır Enerji & Isı:** Rig kapalıyken elektrik çekişi neredeyse 0W'a düşer (standby 2W), hashrate sıfırlanır ve kartlar güvenle oda sıcaklığına (22°C) soğur. Yangın riski anında bertaraf edilir.
+  * **Görsel Durum:** Kapalı rig'de fanlar durur, LED'ler kararır ve arayüzde `[⏸️ KAPALI / DEVRE DIŞI]` rozeti görüntülenir.
+
+### C. Boş / İhtiyaç Fazlası Rig'leri Satma (`Warehouse::RemoveRig`)
+* **`RemoveRig(size_t index)`:**
+  * **İşlevi:** Oyuncunun artık kullanmak istemediği veya nakde dönüştürmek istediği rig kasasını depodan söker.
+  * **İade Değeri:** Kasayı hurdaya satarak **+\$1,200** nakit geri kazanımı sağlar (minimum 1 rig kalacak şekilde güvenlik kontrolü yapılmıştır).
+
+### D. ESC Tuşu ve Akıllı Pencere Yönetimi
+* **`SetExitKey(KEY_NULL)`:** Raylib'in oyunu anında sonlandırmasını engeller.
+* **Katmanlı ESC Davranışı:**
+  1. GPU 360° İnceleme penceresi açıksa -> Modalı kapatır.
+  2. Ayarlar menüsü açıksa -> Menüyü kapatır.
+  3. Oyun tam ekrandaysa (`F11`) -> Oyunu kapatmadan **küçük pencere (Windowed) moduna** döner!
+
+### E. Depo Kuşbakışı Genel Bakış Matrisi (`WarehouseViewMode::OVERVIEW_GRID`)
+* **`DrawWarehouseOverviewGrid(...)`:**
+  * Sol paneldeki `[ 🏭 DEPO GENEL BAKIS ]` sekmesiyle açılır.
+  * Hangar içerisindeki tüm rig'leri yan yana server-blade raf kartları halinde listeler.
+  * Her rig kartında:
+    * Rig adı ve çalışma durumu (`⚡ ÇALIŞIYOR` / `⏸️ KAPALI`),
+    * 6 adet mini GPU slot durumu (Yeşil: Normal, Turuncu: Sıcak, Kırmızı: Yandı, Gri: Boş),
+    * Anlık hashrate, güç çekişi ve en sıcak kart derecesi,
+    * Tek tıkla rig'i kapatıp açabileceğin `[AC / KAPAT]` butonu,
+    * İncelemek ve kart takmak için tek tıkla rig'e geçiş yapan `[INCELE]` butonu.
+
+### F. Gelişmiş Görsel Efektler (`RigRenderer`)
+* **Duman ve Kor Parçacıkları (`DrawSmokeAndSparks`):** Yanan kartlardan yukarı doğru yükselen yarı saydam duman halkaları ve havada uçuşan kırmızı/turuncu kor kıvılcımları.
+* **Örgülü PCIe Güç Kabloları (`DrawBraidedPCIeCable`):** Üst alüminyum destek kanalından her ekran kartının 8-pin besleme soketine inen sarı-siyah örgülü yüksek akım kablo demeti.
+* **Akıllı LED Göstergeleri:** Kart durumuna göre renk değiştiren durum LED'i (Yeşil: Kazımda, Turuncu: Termal Kısılma, Kırmızı Flaş: Yandı, Sönük Gri: Rig Kapalı).
+

@@ -51,7 +51,22 @@ GPU* MiningRig::GetGPU(size_t slotIndex) {
     return m_gpus[slotIndex].get();
 }
 
+bool MiningRig::IsPoweredOn() const {
+    return m_isPoweredOn;
+}
+
+void MiningRig::SetPoweredOn(bool on) {
+    m_isPoweredOn = on;
+}
+
+void MiningRig::TogglePower() {
+    m_isPoweredOn = !m_isPoweredOn;
+}
+
 double MiningRig::CalculateTotalHashrate() const {
+    if (!m_isPoweredOn) {
+        return 0.0;
+    }
     double total = 0.0;
     for (const auto& gpu : m_gpus) {
         if (gpu) {
@@ -62,6 +77,9 @@ double MiningRig::CalculateTotalHashrate() const {
 }
 
 double MiningRig::CalculateTotalPowerWatts() const {
+    if (!m_isPoweredOn) {
+        return 2.0; // Bekleme modu (Standby / LEDs)
+    }
     // Anakart ve sistemin taban tüketimi
     double total = m_motherboardBaseWatts;
     for (const auto& gpu : m_gpus) {

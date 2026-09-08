@@ -24,6 +24,7 @@ GPUInspectionModal::GPUInspectionModal()
     , m_btnRotateLeft(Rectangle{}, "< SOLA DONDUR", "", Color{25, 30, 42, 255}, Color{0, 220, 255, 255})
     , m_btnRotateRight(Rectangle{}, "SAGA DONDUR >", "", Color{25, 30, 42, 255}, Color{0, 220, 255, 255})
     , m_btnRepair(Rectangle{}, "KARTI TAMIR ET", "Maliyet: $400", Color{140, 30, 30, 255}, Color{255, 50, 50, 255})
+    , m_btnScrap(Rectangle{}, "KARTI HURDAYA SAT / CIKAR", "+$75 Hurda Parasi", Color{60, 40, 20, 255}, Color{255, 140, 0, 255})
     , m_btnClose(Rectangle{}, "INCELEMEYI KAPAT", "", Color{35, 45, 60, 255}, Color{0, 220, 255, 255})
 {
 }
@@ -45,12 +46,13 @@ bool GPUInspectionModal::IsOpen() const {
     return m_isOpen;
 }
 
-Core::GPU* GPUInspectionModal::GetTargetGPU() const {
-    return m_targetGPU;
+size_t GPUInspectionModal::GetSlotIndex() const {
+    return m_slotIndex;
 }
 
-void GPUInspectionModal::Update(double economyFiat, double& outRepairCost) {
+void GPUInspectionModal::Update(double economyFiat, double& outRepairCost, bool& outScrapRequested) {
     outRepairCost = 0.0;
+    outScrapRequested = false;
     if (!m_isOpen || !m_targetGPU) return;
 
     const float screenW = static_cast<float>(GetScreenWidth());
@@ -107,9 +109,10 @@ void GPUInspectionModal::Update(double economyFiat, double& outRepairCost) {
     m_btnFanDown.SetBounds(Rectangle{rightPanelX + rightPanelW - 260.0f, modalY + 360.0f, ctrlW, ctrlH});
     m_btnFanUp.SetBounds(Rectangle{rightPanelX + rightPanelW - 130.0f, modalY + 360.0f, ctrlW, ctrlH});
 
-    // Tamir ve Kapat butonları
-    m_btnRepair.SetBounds(Rectangle{rightPanelX, modalY + modalH - 120.0f, rightPanelW - 30.0f, 48.0f});
-    m_btnClose.SetBounds(Rectangle{rightPanelX, modalY + modalH - 65.0f, rightPanelW - 30.0f, 48.0f});
+    // Tamir, Hurdaya Sat/Çıkar ve Kapat butonları
+    m_btnRepair.SetBounds(Rectangle{rightPanelX, modalY + modalH - 160.0f, rightPanelW - 30.0f, 42.0f});
+    m_btnScrap.SetBounds(Rectangle{rightPanelX, modalY + modalH - 110.0f, rightPanelW - 30.0f, 42.0f});
+    m_btnClose.SetBounds(Rectangle{rightPanelX, modalY + modalH - 60.0f, rightPanelW - 30.0f, 42.0f});
 
     // Değer artırıp azaltmalar
     if (m_btnClockDown.UpdateAndCheckClick()) m_targetGPU->SetCoreClockOffset(m_targetGPU->GetCoreClockOffset() - 25.0);
@@ -129,6 +132,13 @@ void GPUInspectionModal::Update(double economyFiat, double& outRepairCost) {
             m_targetGPU->Repair();
             outRepairCost = 400.0;
         }
+    }
+
+    // Hurdaya Sat / Çöpe At butonu
+    if (m_btnScrap.UpdateAndCheckClick()) {
+        outScrapRequested = true;
+        Close();
+        return;
     }
 
     if (m_btnClose.UpdateAndCheckClick() || IsKeyPressed(KEY_ESCAPE)) {
@@ -327,8 +337,9 @@ void GPUInspectionModal::Draw(double animTime, const TextureManager* textureMana
     m_btnFanDown.Draw();
     m_btnFanUp.Draw();
 
-    // Tamir Butonu ve Kapat
+    // Tamir, Hurda ve Kapat Butonları
     m_btnRepair.Draw();
+    m_btnScrap.Draw();
     m_btnClose.Draw();
 }
 
