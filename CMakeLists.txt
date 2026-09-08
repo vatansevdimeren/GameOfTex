@@ -68,6 +68,10 @@ add_executable(GameOfTex
     src/core/FacilityManager.cpp
     src/render/WorldMapModal.hpp
     src/render/WorldMapModal.cpp
+    src/core/SaveManager.hpp
+    src/core/SaveManager.cpp
+    src/render/MainMenuScreen.hpp
+    src/render/MainMenuScreen.cpp
 )
 
 target_include_directories(GameOfTex PRIVATE

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <string>
 #include <vector>
@@ -69,6 +69,8 @@ public:
 
     bool PurchasePowerUpgrade(size_t index);
     bool PurchaseFacilityUpgrade(size_t index);
+    void SetPowerUpgradeInstalled(size_t index, bool installed);
+    void SetFacilityUpgradeInstalled(size_t index, bool installed);
 
     [[nodiscard]] bool HasAutoFireSuppression() const;
     [[nodiscard]] double GetTotalGreenWatts() const;

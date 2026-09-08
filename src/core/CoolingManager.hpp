@@ -33,6 +33,7 @@ public:
      * @return Cost of upgrade if successful, 0.0 if already installed or invalid.
      */
     double UpgradeTier(size_t tierIndex);
+    void SetTierInstalled(size_t tierIndex, bool installed);
 
     [[nodiscard]] bool IsImmersionCoolingActive() const;
 

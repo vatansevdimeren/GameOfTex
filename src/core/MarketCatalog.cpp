@@ -1,4 +1,4 @@
-﻿#include "MarketCatalog.hpp"
+#include "MarketCatalog.hpp"
 
 namespace Core {
 
@@ -118,6 +118,18 @@ bool MarketCatalog::PurchaseFacilityUpgrade(size_t index) {
         return true;
     }
     return false;
+}
+
+void MarketCatalog::SetPowerUpgradeInstalled(size_t index, bool installed) {
+    if (index < m_powerUpgrades.size()) {
+        m_powerUpgrades[index].isInstalled = installed;
+    }
+}
+
+void MarketCatalog::SetFacilityUpgradeInstalled(size_t index, bool installed) {
+    if (index < m_facilityUpgrades.size()) {
+        m_facilityUpgrades[index].isInstalled = installed;
+    }
 }
 
 bool MarketCatalog::HasAutoFireSuppression() const {

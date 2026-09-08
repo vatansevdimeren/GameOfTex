@@ -10,6 +10,8 @@ LoginScreen::LoginScreen()
     , m_inputActive(false)
     , m_submitButton(Rectangle{0, 0, 100, 50}, "HESAP AC & MADENCILIGE BASLA", "+$1,000 HOS GELDIN HEDIYESI!",
                      Color{0, 140, 90, 255}, Color{0, 255, 150, 255})
+    , m_btnCancel(Rectangle{0, 0, 100, 50}, "GERI DON", "Ana Menu",
+                  Color{45, 25, 30, 255}, Color{255, 80, 80, 255})
     , m_inputBoxRect{0, 0, 100, 50}
     , m_avatar1Rect{0, 0, 100, 50}
     , m_avatar2Rect{0, 0, 100, 50}
@@ -17,7 +19,7 @@ LoginScreen::LoginScreen()
 {
 }
 
-bool LoginScreen::Update(Core::UserProfile& profile) {
+LoginAction LoginScreen::Update(Core::UserProfile& profile) {
     const float screenW = static_cast<float>(GetScreenWidth());
     const float screenH = static_cast<float>(GetScreenHeight());
 
@@ -40,7 +42,10 @@ bool LoginScreen::Update(Core::UserProfile& profile) {
     m_avatar2Rect = Rectangle{innerX + avatarW + 12.0f, avatarY, avatarW, avatarH};
     m_avatar3Rect = Rectangle{innerX + (avatarW * 2.0f) + 24.0f, avatarY, avatarW, avatarH};
 
-    m_submitButton.SetBounds(Rectangle{innerX, cardY + cardH - 85.0f, innerW, 60.0f});
+    const float cancelW = 120.0f;
+    const float submitW = innerW - cancelW - 12.0f;
+    m_submitButton.SetBounds(Rectangle{innerX, cardY + cardH - 85.0f, submitW, 60.0f});
+    m_btnCancel.SetBounds(Rectangle{innerX + submitW + 12.0f, cardY + cardH - 85.0f, cancelW, 60.0f});
 
     Vector2 mouse = GetMousePosition();
 
@@ -68,6 +73,10 @@ bool LoginScreen::Update(Core::UserProfile& profile) {
         }
     }
 
+    if (m_btnCancel.UpdateAndCheckClick() || IsKeyPressed(KEY_ESCAPE)) {
+        return LoginAction::CANCEL;
+    }
+
     // Başla butonu veya Enter
     if (m_submitButton.UpdateAndCheckClick() || (m_inputActive && IsKeyPressed(KEY_ENTER))) {
         if (m_inputText.empty()) {
@@ -75,10 +84,10 @@ bool LoginScreen::Update(Core::UserProfile& profile) {
         }
         profile.SetCompanyName(m_inputText);
         profile.SetAvatarIndex(m_selectedAvatar);
-        return true;
+        return LoginAction::SUBMIT;
     }
 
-    return false;
+    return LoginAction::NONE;
 }
 
 void LoginScreen::Draw() const {
@@ -139,8 +148,9 @@ void LoginScreen::Draw() const {
     drawAvatarOption(m_avatar2Rect, 1, "[SANAYI]", "Endustriyel");
     drawAvatarOption(m_avatar3Rect, 2, "[UZAY]", "Mega Santral");
 
-    // Başla Butonu (Büyük)
+    // Başla ve Geri Butonları
     m_submitButton.Draw();
+    m_btnCancel.Draw();
 }
 
 } // namespace Render

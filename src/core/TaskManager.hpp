@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <string>
 #include <vector>
@@ -58,6 +58,7 @@ public:
      * @return True if claimed successfully, false if already claimed or incomplete.
      */
     bool ClaimReward(const std::string& taskId, EconomyManager& economy);
+    void SetTaskState(const std::string& taskId, bool completed, bool claimed, double progress);
 
 private:
     std::vector<GameTask> m_tasks;

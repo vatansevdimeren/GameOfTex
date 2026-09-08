@@ -70,6 +70,14 @@ double GPU::GetHealthPercent() const {
     return m_healthPercent;
 }
 
+void GPU::SetHealthPercent(double health) {
+    m_healthPercent = std::clamp(health, 0.0, 100.0);
+}
+
+void GPU::SetSiliconQuality(double quality) {
+    m_siliconQuality = std::clamp(quality, 0.5, 2.0);
+}
+
 void GPU::TakeDamage(double damage) {
     if (m_isBurnt) return;
 

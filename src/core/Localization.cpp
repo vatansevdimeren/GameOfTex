@@ -204,7 +204,9 @@ void LocalizationManager::InitTranslations() {
         
         {"BTN_UPGRADE_PSU", "PSU'YU YUKSELT"},
         {"PSU_MAX_REACHED", "PSU MAKSIMUMDA"},
-        {"BADGE_ROOM_TEMP", "ODA ISISI"}
+        {"BADGE_ROOM_TEMP", "ODA ISISI"},
+        {"BTN_SAVE", "KAYDET"},
+        {"BTN_SAVE_SUB", "F5 / Hizli Kayit"}
     };
 
     // ==================== ENGLISH DICTIONARY ====================
@@ -366,7 +368,9 @@ void LocalizationManager::InitTranslations() {
         
         {"BTN_UPGRADE_PSU", "UPGRADE PSU"},
         {"PSU_MAX_REACHED", "MAX PSU REACHED"},
-        {"BADGE_ROOM_TEMP", "ROOM TEMP"}
+        {"BADGE_ROOM_TEMP", "ROOM TEMP"},
+        {"BTN_SAVE", "SAVE"},
+        {"BTN_SAVE_SUB", "F5 / Quick Save"}
     };
 }
 

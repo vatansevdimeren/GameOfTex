@@ -53,6 +53,7 @@ public:
      * @brief Mutable access to a specific GPU for overclocking.
      */
     [[nodiscard]] GPU* GetGPU(size_t slotIndex);
+    [[nodiscard]] const GPU* GetGPU(size_t slotIndex) const;
 
     // Rig Power Control
     [[nodiscard]] bool IsPoweredOn() const;
@@ -73,6 +74,7 @@ public:
     [[nodiscard]] std::string GetNextPSUName() const;
     [[nodiscard]] bool CanUpgradePSU() const;
     bool UpgradePSU();
+    void SetPSUTier(size_t tier);
     [[nodiscard]] bool IsPSUOverloaded() const;
 
     // Temperature metrics

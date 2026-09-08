@@ -74,6 +74,10 @@ void PowerGrid::ResetBreaker() {
     m_breakerTripped = false;
 }
 
+void PowerGrid::SetBreakerTripped(bool tripped) {
+    m_breakerTripped = tripped;
+}
+
 void PowerGrid::Update(double dt) {
     if (m_spikeActive) {
         m_spikeDurationTimer -= dt;

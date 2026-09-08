@@ -7,6 +7,12 @@
 
 namespace Render {
 
+enum class LoginAction {
+    NONE,
+    SUBMIT,
+    CANCEL
+};
+
 /**
  * @class LoginScreen
  * @brief Manages the minimalist profile creation / login card screen.
@@ -21,9 +27,9 @@ public:
     /**
      * @brief Handles mouse and keyboard input for profile creation.
      * @param profile Reference to the user profile to populate.
-     * @return True if account creation is submitted and game should transition to gameplay.
+     * @return Selected login action (NONE, SUBMIT, CANCEL).
      */
-    bool Update(Core::UserProfile& profile);
+    LoginAction Update(Core::UserProfile& profile);
 
     /**
      * @brief Renders the login card, avatars, text input, and start button.
@@ -35,6 +41,7 @@ private:
     int m_selectedAvatar;
     bool m_inputActive;
     UIButton m_submitButton;
+    UIButton m_btnCancel;
     Rectangle m_inputBoxRect;
     Rectangle m_avatar1Rect;
     Rectangle m_avatar2Rect;

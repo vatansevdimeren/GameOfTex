@@ -8,9 +8,15 @@
 
 namespace Render {
 
+enum class SettingsAction {
+    NONE,
+    SAVE_GAME,
+    RETURN_TO_MAIN_MENU
+};
+
 /**
  * @class SettingsModal
- * @brief Modal dialog for adjusting UI text scaling, language, currency, and fullscreen.
+ * @brief Modal dialog for adjusting UI text scaling, language, currency, save game, and fullscreen.
  * 
  * SRP: This class is solely responsible for rendering the settings popup and handling user preferences.
  */
@@ -23,9 +29,9 @@ public:
     [[nodiscard]] bool IsOpen() const;
 
     /**
-     * @brief Updates hover/clicks for scale, language, currency, and close buttons.
+     * @brief Updates hover/clicks for scale, language, currency, save, and close buttons.
      */
-    void Update(Core::EconomyManager& economy);
+    SettingsAction Update(Core::EconomyManager& economy);
 
     /**
      * @brief Draws the modal dialog over the current screen.
@@ -43,6 +49,8 @@ private:
     UIButton m_btnToggleFullscreen;
     UIButton m_btnToggleLanguage;
     UIButton m_btnToggleCurrency;
+    UIButton m_btnSaveGame;
+    UIButton m_btnMainMenu;
 };
 
 } // namespace Render

@@ -52,6 +52,13 @@ GPU* MiningRig::GetGPU(size_t slotIndex) {
     return m_gpus[slotIndex].get();
 }
 
+const GPU* MiningRig::GetGPU(size_t slotIndex) const {
+    if (slotIndex >= m_gpus.size()) {
+        return nullptr;
+    }
+    return m_gpus[slotIndex].get();
+}
+
 bool MiningRig::IsPoweredOn() const {
     return m_isPoweredOn;
 }
@@ -155,6 +162,10 @@ bool MiningRig::UpgradePSU() {
         return true;
     }
     return false;
+}
+
+void MiningRig::SetPSUTier(size_t tier) {
+    m_psuTier = std::min(tier, size_t{3});
 }
 
 bool MiningRig::IsPSUOverloaded() const {

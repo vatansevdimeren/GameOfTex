@@ -81,6 +81,17 @@ bool Warehouse::AddNewRig(const std::string& rigName, size_t gpuCapacity) {
     return true;
 }
 
+void Warehouse::AddRig(std::unique_ptr<MiningRig> rig) {
+    if (rig) {
+        m_rigs.push_back(std::move(rig));
+    }
+}
+
+void Warehouse::ClearRigs() {
+    m_rigs.clear();
+    m_activeRigIndex = 0;
+}
+
 size_t Warehouse::GetMaxRigCapacity() const {
     return m_maxRigCapacity;
 }

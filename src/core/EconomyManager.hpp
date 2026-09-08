@@ -46,6 +46,9 @@ public:
     // Direct balance modifiers
     void AddFiat(double amount);
     bool DeductFiat(double amount);
+    void SetFiatBalance(double balance);
+    void SetCryptoBalance(double balance);
+    void SetCryptoPrice(double price);
 
     // Market simulation
     [[nodiscard]] double GetCryptoPrice() const;

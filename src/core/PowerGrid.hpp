@@ -50,6 +50,7 @@ public:
      * @brief Manually reset the breaker switch.
      */
     void ResetBreaker();
+    void SetBreakerTripped(bool tripped);
 
     // Dynamic Network Spikes & Grid Events
     void Update(double dt);

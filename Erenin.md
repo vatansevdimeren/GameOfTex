@@ -569,6 +569,47 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   * Tamamen `UIFrame::DrawTextCustom` ve `UIFrame::MeasureTextCustom` fonksiyonlarına geçirildi.
   * Artık tüm modal ve pencereler çift filtreli, gölgeli ve pürüzsüz `Rajdhani` vektör font motorundan beslenmektedir.
 
+---
+
+## 💾 15. Siber Giriş Ekranı (Title Screen), Kalıcı Kayıt/Yükleme (Save & Load) ve Çoklu Tesis Simülasyonu
+
+### 15.1. Profesyonel Ana Menü / Giriş Ekranı (`MainMenuScreen`)
+* **Görevi:** Oyun doğrudan hesap açma veya oyuna atmak yerine, oyuncuyu animasyonlu cyberpunk bir karşılama ekranıyla karşılar.
+* **Tasarım ve Özellikleri:**
+  * **Matrix Cyber Grid & Yükselen Parçacıklar:** Arka planda yumuşak akan neon veri ızgarası ve rastgele yükselen siber parçacıklar yer alır.
+  * **Pulsing Neon Başlık:** `GAMEOFTEX` neon ışıma efektleri ve `CRYPTO MINING & ENERGY TYCOON` altlığı.
+  * **Dinamik Butonlar:**
+    1. `[ DEVAM ET (KAYITTAN YÜKLE) ]`: Diskte kayıtlı oyun varsa yeşil neon ile parlar; şirket adı, bakiye ve aktif tesisi altlıkta gösterir. Kayıt yoksa pasif kalır.
+    2. `[ YENİ OYUNA BAŞLA ]`: Kayıt varsa oyuncuya ilerlemesinin silineceğini bildiren onay penceresi açar; onaylanırsa `LoginScreen` üzerinden yeni profil ve tesis başlatır.
+    3. `[ AYARLAR ]`: Oyuna girmeden önce bile dil, ölçek ve para birimini değiştirebilmeyi sağlar.
+    4. `[ ÇIKIŞ ]`: Oyunu güvenle kapatır.
+
+---
+
+### 15.2. Bağımsız ve Çökmelere Dayanıklı Kayıt & Yükleme Sistemi (`SaveManager`)
+* **Görevi (SRP):** Oyun durumunun diske (`savegame.dat`) kaydedilmesi, okunması, doğrulanması ve silinmesinden tek başına sorumludur.
+* **Kaydedilen Veriler:**
+  1. **Profil:** Şirket adı, seçili avatar, başlangıç bonusu durumu.
+  2. **Ekonomi:** Nakit bakiye ($), kripto cüzdanı, piyasa coin fiyatı, aktif para birimi (USD, USDT, TRY, EUR).
+  3. **Tesisler:** Tüm dünya tesislerinin satın alınma durumları, aktif tesis indeksi.
+  4. **Rig ve Donanım Detayları:** Her hangardaki rig'lerin adları, PSU seviyeleri, güç durumları, içlerindeki GPU'ların model adları, baz hashrate, baz watt, silikon kaliteleri, hız aşırtma/voltaj düşürme katsayıları, çekirdek saat farkları, güç limitleri, fan hızları, sağlık durumları ve yanmışlık/bozulmuşluk bayrakları.
+  5. **Altyapı ve Soğutma:** Her tesisin trafo kapasitesi, sigorta atma durumu, kurulu soğutma katmanları ve oda sıcaklıkları.
+  6. **Pazar & Görevler:** Satın alınmış kalıcı trafo/güneş enerjisi yükseltmeleri ve tamamlanan/ödülü alınan görev ilerlemeleri.
+* **Otomatik Kayıt (Auto-Save):** Oyuncu her 45 saniyede bir, ayarlar menüsünden ana menüye dönerken veya oyunu kapatırken oyun arka planda otomatik kaydedilir.
+* **Save Toast Bildirimi:** Kayıt yapıldığında ekranın üst kısmında 2.5 saniye beliren neon yeşil `[✓ OYUN BASARIYLA KAYDEDILDI]` rozeti gösterilir.
+* **Hızlı Kayıt (F5 / Ctrl+S):** Üst HUD paneline `[S] KAYDET` butonu eklendi, F5 veya Ctrl+S ile anında kayıt yapılabilir.
+
+---
+
+### 15.3. Eşzamanlı Çoklu Tesis Simülasyonu (Multi-Facility Simulation)
+* **Düzeltilen Mantık Hatası:** Eskiden oyuncu İzlanda, Norveç veya Sibirya tesislerini satın alsa bile yalnızca ekranda seçili aktif tesis elektrik yakıyor ve coin kazıyordu.
+* **Çözüm:** Simülasyon motoru artık oyuncunun satın aldığı TÜM tesisleri arka planda eşzamanlı işletir:
+  * Her tesis kendi yerel elektrik tarifesiyle (örneğin İzlanda $0.05 vs Teksas $0.14) enerji tüketir.
+  * Her tesis kendi yerel kutup/jeotermal iklimine göre kartlarını soğutur.
+  * Tüm tesislerdeki çalışan rig'lerin hashrate'leri toplanarak küresel şirketin madencilik cüzdanına coin kazandırır.
+  * Böylece dünya haritasından farklı kıtalarda tesis satın almak gerçek bir küresel madencilik imparatorluğu tycoon deneyimine dönüşür.
+
+
 
 
 

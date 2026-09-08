@@ -40,6 +40,8 @@ public:
 
     // Health and Destruction (Burn) mechanics
     [[nodiscard]] double GetHealthPercent() const;
+    void SetHealthPercent(double health);
+    void SetSiliconQuality(double quality);
     void TakeDamage(double damage);
     void Repair();
 

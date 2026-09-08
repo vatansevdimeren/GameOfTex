@@ -31,6 +31,12 @@ double CoolingManager::UpgradeTier(size_t tierIndex) {
     return 0.0;
 }
 
+void CoolingManager::SetTierInstalled(size_t tierIndex, bool installed) {
+    if (tierIndex < m_tiers.size()) {
+        m_tiers[tierIndex].isInstalled = installed;
+    }
+}
+
 bool CoolingManager::IsImmersionCoolingActive() const {
     // 3. indeks Daldırma Sıvı Soğutmadır
     return (m_tiers.size() > 3 && m_tiers[3].isInstalled);

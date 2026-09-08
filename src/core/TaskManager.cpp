@@ -1,4 +1,4 @@
-﻿#include "TaskManager.hpp"
+#include "TaskManager.hpp"
 #include "Warehouse.hpp"
 #include "EconomyManager.hpp"
 #include "CoolingManager.hpp"
@@ -144,6 +144,17 @@ bool TaskManager::ClaimReward(const std::string& taskId, EconomyManager& economy
         }
     }
     return false;
+}
+
+void TaskManager::SetTaskState(const std::string& taskId, bool completed, bool claimed, double progress) {
+    for (auto& task : m_tasks) {
+        if (task.id == taskId) {
+            task.isCompleted = completed;
+            task.isClaimed = claimed;
+            task.currentProgress = progress;
+            return;
+        }
+    }
 }
 
 } // namespace Core

@@ -133,6 +133,20 @@ bool EconomyManager::DeductFiat(double amount) {
     return true;
 }
 
+void EconomyManager::SetFiatBalance(double balance) {
+    m_fiatBalance = std::max(0.0, balance);
+}
+
+void EconomyManager::SetCryptoBalance(double balance) {
+    m_cryptoBalance = std::max(0.0, balance);
+}
+
+void EconomyManager::SetCryptoPrice(double price) {
+    if (price > 0.0) {
+        m_cryptoPrice = price;
+    }
+}
+
 double EconomyManager::GetCryptoPrice() const {
     return m_cryptoPrice;
 }

@@ -47,6 +47,8 @@ public:
      * @return True if added successfully.
      */
     bool AddNewRig(const std::string& rigName, size_t gpuCapacity = 6);
+    void AddRig(std::unique_ptr<MiningRig> rig);
+    void ClearRigs();
 
     /**
      * @brief Decommissions and sells an existing rig, removing it from warehouse.

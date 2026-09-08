@@ -22,6 +22,8 @@
 #include "render/TaskModal.hpp"
 #include "core/FacilityManager.hpp"
 #include "render/WorldMapModal.hpp"
+#include "core/SaveManager.hpp"
+#include "render/MainMenuScreen.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -30,6 +32,7 @@
 #include <algorithm>
 
 enum class GameState {
+    MAIN_MENU,
     LOGIN,
     GAMEPLAY
 };
@@ -75,7 +78,7 @@ int main() {
         Render::UIFrame::InitTheme(fontRegular, fontBold);
     }
 
-    GameState currentState = GameState::LOGIN;
+    GameState currentState = GameState::MAIN_MENU;
     enum class WarehouseViewMode {
         RIG_DETAIL,
         OVERVIEW_GRID
@@ -84,8 +87,9 @@ int main() {
     float overviewScrollY = 0.0f;
     float maxOverviewScrollY = 0.0f;
 
-    // 3. Profil, Giriş ve Modal Pencereleri
+    // 3. Profil, Giriş, Ana Menü ve Modal Pencereleri
     Core::UserProfile userProfile;
+    Render::MainMenuScreen mainMenuScreen;
     Render::LoginScreen loginScreen;
     Render::SettingsModal settingsModal;
     Render::GPUInspectionModal gpuInspectionModal;
@@ -98,6 +102,27 @@ int main() {
 
     // 4. Çekirdek Simülasyon Nesneleri (Clean Code / SRP)
     Core::EconomyManager economy(1500.0, 2400.0, "TEX");
+
+    // Kayıt Bildirimi ve Otomatik Kayıt Durumu
+    float saveToastTimer = 0.0f;
+    std::string saveToastMessage = "";
+    float autoSaveTimer = 0.0f;
+    constexpr float AUTO_SAVE_INTERVAL = 45.0f;
+
+    auto triggerSave = [&](const std::string& customMsg = "") {
+        bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
+        if (Core::SaveManager::SaveGame(Core::SaveManager::DEFAULT_SAVE_PATH,
+                                        userProfile, economy, facilityManager, taskManager, marketCatalog)) {
+            saveToastMessage = customMsg.empty() ? (isTR ? "[OK] OYUN BASARIYLA KAYDEDILDI" : "[OK] GAME SAVED SUCCESSFULLY") : customMsg;
+            saveToastTimer = 2.5f;
+            mainMenuScreen.RefreshSaveState();
+        }
+    };
+
+    auto triggerSaveToast = [&](const std::string& msg) {
+        saveToastMessage = msg;
+        saveToastTimer = 2.5f;
+    };
 
     // 5. Render, Texture ve Shader Sistemi
     Render::ShaderManager shaderManager;
@@ -143,6 +168,7 @@ int main() {
                                     Color{45, 20, 25, 255}, Color{255, 50, 50, 255});
 
     Render::UIButton btnOpenSettings(Rectangle{}, "AYARLAR", "", Color{35, 42, 56, 255}, Color{0, 220, 255, 255});
+    Render::UIButton btnQuickSave(Rectangle{}, "KAYDET", "F5", Color{20, 50, 36, 255}, Color{0, 255, 140, 255});
     Render::UIButton btnOpenTasks(Rectangle{}, "GOREVLER", "", Color{30, 40, 58, 255}, Color{255, 200, 40, 255});
     Render::UIButton btnOpenWorldMap(Rectangle{}, "HARITA", "", Color{25, 45, 65, 255}, Color{0, 220, 255, 255});
     Render::UIButton btnUpgradePSU(Rectangle{}, "PSU YUKSELT", "", Color{40, 32, 58, 255}, Color{200, 100, 255, 255});
@@ -183,14 +209,56 @@ int main() {
         const float screenW = static_cast<float>(GetScreenWidth());
         const float screenH = static_cast<float>(GetScreenHeight());
 
-        // --- GİRİŞ EKRANI DURUMU ---
+        // --- 1. ANA MENÜ / GİRİŞ EKRANI DURUMU ---
+        if (currentState == GameState::MAIN_MENU) {
+            if (settingsModal.IsOpen()) {
+                auto sAct = settingsModal.Update(economy);
+                if (sAct == Render::SettingsAction::SAVE_GAME) {
+                    triggerSave();
+                }
+            } else {
+                auto action = mainMenuScreen.Update(dt);
+                if (action == Render::MainMenuAction::CONTINUE_GAME) {
+                    bool ok = Core::SaveManager::LoadGame(Core::SaveManager::DEFAULT_SAVE_PATH,
+                                                          userProfile, economy, facilityManager, taskManager, marketCatalog);
+                    if (ok) {
+                        bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
+                        triggerSaveToast(isTR ? "[OK] OYUN BASARIYLA YUKLENDI" : "[OK] GAME LOADED SUCCESSFULLY");
+                        currentState = GameState::GAMEPLAY;
+                    }
+                } else if (action == Render::MainMenuAction::START_NEW_GAME) {
+                    currentState = GameState::LOGIN;
+                } else if (action == Render::MainMenuAction::OPEN_SETTINGS) {
+                    settingsModal.Open();
+                } else if (action == Render::MainMenuAction::QUIT_GAME) {
+                    break;
+                }
+            }
+
+            BeginDrawing();
+            mainMenuScreen.Draw();
+            if (settingsModal.IsOpen()) {
+                settingsModal.Draw(economy);
+            }
+            EndDrawing();
+            continue;
+        }
+
+        // --- 2. PROFİL VE HESAP OLUŞTURMA EKRANI DURUMU ---
         if (currentState == GameState::LOGIN) {
-            if (loginScreen.Update(userProfile)) {
+            auto lAct = loginScreen.Update(userProfile);
+            if (lAct == Render::LoginAction::SUBMIT) {
                 if (!userProfile.HasClaimedBonus()) {
                     economy.AddFiat(1000.0);
                     userProfile.SetClaimedBonus(true);
                 }
+                triggerSave();
+                bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
+                triggerSaveToast(isTR ? "[OK] YENI SIRKET BASLATILDI" : "[OK] NEW COMPANY INITIALIZED");
                 currentState = GameState::GAMEPLAY;
+            } else if (lAct == Render::LoginAction::CANCEL) {
+                currentState = GameState::MAIN_MENU;
+                mainMenuScreen.RefreshSaveState();
             }
 
             BeginDrawing();
@@ -271,7 +339,15 @@ int main() {
 
         // Ayarlar Modalı Açıksa Güncelle
         if (settingsModal.IsOpen()) {
-            settingsModal.Update(economy);
+            auto sAct = settingsModal.Update(economy);
+            if (sAct == Render::SettingsAction::SAVE_GAME) {
+                triggerSave();
+            } else if (sAct == Render::SettingsAction::RETURN_TO_MAIN_MENU) {
+                bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
+                triggerSave(isTR ? "[OK] OYUN KAYDEDILDI - MENÜYE DONULDU" : "[OK] GAME SAVED - RETURNED TO MENU");
+                currentState = GameState::MAIN_MENU;
+                mainMenuScreen.RefreshSaveState();
+            }
         }
 
         // --- DİNAMİK RESPONSIVE DÜZEN HESAPLAMALARI ---
@@ -283,18 +359,22 @@ int main() {
         const float totalBadgesW = screenW - (pad * 2.0f);
         const float badgeGap = 8.0f;
         const float settingsBtnW = 95.0f;
+        const float saveBtnW = 88.0f;
         const float taskBtnW = 135.0f;
         const float worldMapBtnW = 120.0f;
-        const float totalBtnsW = settingsBtnW + taskBtnW + worldMapBtnW + (badgeGap * 2.0f);
+        const float totalBtnsW = settingsBtnW + saveBtnW + taskBtnW + worldMapBtnW + (badgeGap * 3.0f);
         const float remainingW = totalBadgesW - totalBtnsW - (badgeGap * 5.0f);
         const float badgeW = remainingW / 5.0f;
         const float badgeH = 54.0f;
         const float badgeY = (headerH - badgeH) / 2.0f;
 
         btnOpenSettings.SetBounds(Rectangle{screenW - pad - settingsBtnW, badgeY, settingsBtnW, badgeH});
-        btnOpenTasks.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - taskBtnW, badgeY, taskBtnW, badgeH});
-        btnOpenWorldMap.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - taskBtnW - badgeGap - worldMapBtnW, badgeY, worldMapBtnW, badgeH});
+        btnQuickSave.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - saveBtnW, badgeY, saveBtnW, badgeH});
+        btnOpenTasks.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - saveBtnW - badgeGap - taskBtnW, badgeY, taskBtnW, badgeH});
+        btnOpenWorldMap.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - saveBtnW - badgeGap - taskBtnW - badgeGap - worldMapBtnW, badgeY, worldMapBtnW, badgeH});
         btnOpenWorldMap.SetTitle(std::string("[M] ") + Core::LocalizationManager::Tr("BTN_WORLD_MAP"));
+        btnQuickSave.SetTitle(std::string("[S] ") + Core::LocalizationManager::Tr("BTN_SAVE"));
+        btnQuickSave.SetSubtitle("F5");
 
         size_t unclaimedCount = taskManager.GetUnclaimedCompletedCount();
         if (unclaimedCount > 0) {
@@ -308,6 +388,9 @@ int main() {
         if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
             if (btnOpenSettings.UpdateAndCheckClick()) {
                 settingsModal.Open();
+            }
+            if (btnQuickSave.UpdateAndCheckClick() || IsKeyPressed(KEY_F5) || ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_S))) {
+                triggerSave();
             }
             if (btnOpenTasks.UpdateAndCheckClick()) {
                 taskModal.Open();
@@ -554,73 +637,97 @@ int main() {
             }
         }
 
-        // --- SİMÜLASYON MOTORU HESAPLAMALARI VE YANMA/HASAR KONTROLÜ ---
-        powerGrid.Update(dt);
-        powerGrid.ResetStep();
+        // --- SİMÜLASYON MOTORU: TÜM SATIN ALINAN TESİSLER EŞZAMANLI ÇALIŞIR ---
+        double activeMaxCardTemp = 0.0;
+        double companyTotalMinedHashrate = 0.0;
 
-        // Her rig'in demeraj kalkış akımı zamanlayıcısını güncelle
-        for (const auto& r : warehouse.GetAllRigs()) {
-            if (r) r->Update(dt);
-        }
+        for (size_t fIdx = 0; fIdx < facilityManager.GetFacilityCount(); ++fIdx) {
+            auto* fac = facilityManager.GetFacility(fIdx);
+            if (!fac || !fac->isPurchased || !fac->warehouse || !fac->powerGrid || !fac->thermalModel || !fac->coolingManager) continue;
 
-        if (!powerGrid.IsBreakerTripped()) {
-            const double rawPower = warehouse.CalculateTotalPowerWatts();
-            // Küresel blok yarışmasında +25% ekstra watt çekişi!
-            const double warehousePower = rawPower * powerGrid.GetPowerSurgeMultiplier();
-            powerGrid.AddConsumerWatts(warehousePower);
+            auto& fWarehouse = *fac->warehouse;
+            auto& fPowerGrid = *fac->powerGrid;
+            auto& fThermal = *fac->thermalModel;
+            auto& fCooling = *fac->coolingManager;
+            bool isActiveFacility = (fIdx == facilityManager.GetActiveFacilityIndex());
 
-            const double electricityCost = powerGrid.CalculateCostForDuration(dt);
-            economy.DeductFiat(electricityCost);
+            fPowerGrid.Update(dt);
+            fPowerGrid.ResetStep();
 
-            // Şebeke %85 üzerine çıkınca voltaj düşümü (voltage sag) kaynaklı +15% ekstra ısı!
-            const double thermalLoad = warehousePower * (powerGrid.IsGridStrained() ? 1.15 : 1.0);
-            thermalModel.Update(thermalLoad, dt);
+            for (const auto& r : fWarehouse.GetAllRigs()) {
+                if (r) r->Update(dt);
+            }
 
-            double maxCardTemp = 0.0;
-            for (const auto& r : warehouse.GetAllRigs()) {
-                if (r) {
-                    bool rPowered = r->IsPoweredOn();
-                    for (const auto& gpu : r->GetGPUs()) {
-                        if (gpu) {
-                            double cardTemp = rPowered ? thermalModel.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), gpu->GetFanSpeedPercent() / 100.0)
-                                                       : thermalModel.GetAmbientTemperature();
-                            if (cardTemp > maxCardTemp) maxCardTemp = cardTemp;
+            if (!fPowerGrid.IsBreakerTripped()) {
+                const double rawPower = fWarehouse.CalculateTotalPowerWatts();
+                const double warehousePower = rawPower * fPowerGrid.GetPowerSurgeMultiplier();
+                fPowerGrid.AddConsumerWatts(warehousePower);
 
-                            if (rPowered) {
-                                // 85°C üzeri: Thermal Throttling
-                                gpu->SetThrottled(Core::ThermalModel::IsOverheating(cardTemp));
+                const double electricityCost = fPowerGrid.CalculateCostForDuration(dt);
+                economy.DeductFiat(electricityCost);
 
-                                // 105°C üzeri: Kart sağlığı erir (Damage)
-                                if (cardTemp >= 105.0 && !coolingManager.IsImmersionCoolingActive()) {
-                                    gpu->TakeDamage(dt * 5.0);
+                const double thermalLoad = warehousePower * (fPowerGrid.IsGridStrained() ? 1.15 : 1.0);
+                fThermal.Update(thermalLoad, dt);
+
+                for (const auto& r : fWarehouse.GetAllRigs()) {
+                    if (r) {
+                        bool rPowered = r->IsPoweredOn();
+                        for (const auto& gpu : r->GetGPUs()) {
+                            if (gpu) {
+                                double cardTemp = rPowered ? fThermal.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), gpu->GetFanSpeedPercent() / 100.0)
+                                                           : fThermal.GetAmbientTemperature();
+                                if (isActiveFacility && cardTemp > activeMaxCardTemp) {
+                                    activeMaxCardTemp = cardTemp;
                                 }
 
-                                // 140°C üzeri: KART AŞIRI SICAKLIKTAN YANAR (BURNT)!
-                                if (cardTemp >= 140.0 && !coolingManager.IsImmersionCoolingActive()) {
-                                    if (marketCatalog.HasAutoFireSuppression()) {
-                                        r->SetPoweredOn(false); // Otomatik yangın söndürücü sistemi rig'i güvenle kapatır
-                                    } else {
-                                        gpu->SetBurnt(true);
+                                if (rPowered) {
+                                    gpu->SetThrottled(Core::ThermalModel::IsOverheating(cardTemp));
+
+                                    if (cardTemp >= 105.0 && !fCooling.IsImmersionCoolingActive()) {
+                                        gpu->TakeDamage(dt * 5.0);
                                     }
+
+                                    if (cardTemp >= 140.0 && !fCooling.IsImmersionCoolingActive()) {
+                                        if (marketCatalog.HasAutoFireSuppression()) {
+                                            r->SetPoweredOn(false);
+                                        } else {
+                                            gpu->SetBurnt(true);
+                                        }
+                                    }
+                                } else {
+                                    gpu->SetThrottled(false);
                                 }
-                            } else {
-                                gpu->SetThrottled(false);
                             }
                         }
                     }
                 }
+
+                companyTotalMinedHashrate += fWarehouse.CalculateTotalHashrate() * fPowerGrid.GetHashrateSurgeMultiplier();
             }
+        }
 
-            float normTemp = static_cast<float>((maxCardTemp - 20.0) / 70.0);
-            shaderManager.SetThermalState(shaderManager.IsThermalActive(), normTemp);
+        // Aktif tesis için termal FLIR gölgelendirici durumunu güncelle
+        float normTemp = static_cast<float>((activeMaxCardTemp - 20.0) / 70.0);
+        shaderManager.SetThermalState(shaderManager.IsThermalActive(), normTemp);
 
-            // Küresel blok yarışmasında +40% ekstra kazım hashrate'i!
-            const double minedHashrate = warehouse.CalculateTotalHashrate() * powerGrid.GetHashrateSurgeMultiplier();
-            economy.MineCoins(minedHashrate, dt);
+        // Tüm aktif tesislerden toplanan net kazım gücü ile coin madenciliği
+        if (companyTotalMinedHashrate > 0.0) {
+            economy.MineCoins(companyTotalMinedHashrate, dt);
         }
 
         economy.UpdateMarket(dt);
         taskManager.UpdateProgress(warehouse, economy, coolingManager, powerGrid);
+
+        // Otomatik Kayıt Zamanlayıcısı (Her 45 saniyede bir kaydet)
+        autoSaveTimer += dt;
+        if (autoSaveTimer >= AUTO_SAVE_INTERVAL) {
+            autoSaveTimer = 0.0f;
+            triggerSave(isTR ? "[OK] OTOMATIK KAYIT TAMAMLANDI" : "[OK] AUTO-SAVED");
+        }
+
+        if (saveToastTimer > 0.0f) {
+            saveToastTimer -= dt;
+        }
 
         // --- ÇİZİM AŞAMASI ---
         BeginDrawing();
@@ -653,8 +760,25 @@ int main() {
         Render::UIFrame::DrawStatBadge(pad + (4 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[SPEED]", Core::LocalizationManager::Tr("BADGE_SPEED"), ssHash.str(), Color{100, 230, 255, 255});
 
         btnOpenSettings.Draw();
+        btnQuickSave.Draw();
         btnOpenTasks.Draw();
         btnOpenWorldMap.Draw();
+
+        // Kaydedildi / Yüklendi Bildirim Rozeti (Save Toast)
+        if (saveToastTimer > 0.0f) {
+            float toastW = Render::UIFrame::MeasureTextCustom(saveToastMessage, 15.0f, true) + 36.0f;
+            float toastX = (screenW - toastW) * 0.5f;
+            float toastY = headerH + 16.0f;
+            float toastAlpha = std::clamp(saveToastTimer / 0.5f, 0.0f, 1.0f);
+            Color bgColor{16, 42, 28, static_cast<unsigned char>(toastAlpha * 240.0f)};
+            Color borderCol{0, 255, 140, static_cast<unsigned char>(toastAlpha * 255.0f)};
+            Color textCol{220, 255, 235, static_cast<unsigned char>(toastAlpha * 255.0f)};
+
+            Rectangle toastRec{toastX, toastY, toastW, 36.0f};
+            DrawRectangleRounded(toastRec, 0.3f, 4, bgColor);
+            DrawRectangleRoundedLines(toastRec, 0.3f, 4, 1.5f, borderCol);
+            Render::UIFrame::DrawTextCustom(saveToastMessage, toastX + 18.0f, toastY + 9.0f, 15.0f, textCol, true);
+        }
 
         // Küresel Ağ Zorluk ve Güç Sıçraması (Mining Spike) Canlı Uyarısı
         if (powerGrid.IsNetworkSpikeActive()) {
@@ -800,7 +924,8 @@ int main() {
         EndDrawing();
     }
 
-    // 8. Temizlik
+    // 8. Cikista Otomatik Kayit ve Temizlik
+    Core::SaveManager::SaveGame(Core::SaveManager::DEFAULT_SAVE_PATH, userProfile, economy, facilityManager, taskManager, marketCatalog);
     textureManager.Unload();
     if (fontRegular.texture.id > 0) {
         UnloadFont(fontRegular);
