@@ -38,16 +38,19 @@ void ThermalModel::Update(double totalHeatGeneratedWatts, double deltaTimeSecond
     const double deltaT = (netHeatWatts * deltaTimeSeconds) / roomThermalCapacity;
     m_currentAmbientCelsius += deltaT;
 
-    // Oda sıcaklığı dış ortam baz sıcaklığının altına inemez (termodinamik denge)
-    if (m_currentAmbientCelsius < m_baseAmbientTempCelsius) {
-        m_currentAmbientCelsius = m_baseAmbientTempCelsius;
+    // Endüstriyel HVAC ve aktif soğutma ortam sıcaklığını 14°C'ye kadar soğutabilir
+    const double minAmbient = std::max(14.0, m_baseAmbientTempCelsius - (m_coolingPowerWatts / 600.0));
+    if (m_currentAmbientCelsius < minAmbient) {
+        m_currentAmbientCelsius = minAmbient;
     }
 }
 
 double ThermalModel::CalculateGPUTemperature(double gpuPowerWatts, double fanSpeedPercent) const {
     const double clampedFan = std::clamp(fanSpeedPercent, 0.1, 1.0);
-    // Fan devri arttıkça termal direnç düşer (daha iyi soğutur)
-    const double effectiveResistance = m_thermalResistance / clampedFan;
+    // Tesis geneli endüstriyel soğutma (HVAC, Duvar Fanları, Daldırma Sıvı)
+    // Depodaki tüm ekran kartlarının termal direncini global olarak düşürür
+    const double facilityCoolingBonus = 1.0 / (1.0 + (m_coolingPowerWatts / 2500.0));
+    const double effectiveResistance = (m_thermalResistance / clampedFan) * facilityCoolingBonus;
     
     // Çekirdek Sıcaklığı = Ortam Sıcaklığı + (Güç * Etkin Direnç)
     return m_currentAmbientCelsius + (gpuPowerWatts * effectiveResistance);

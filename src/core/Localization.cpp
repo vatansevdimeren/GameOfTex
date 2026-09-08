@@ -141,7 +141,34 @@ void LocalizationManager::InitTranslations() {
         {"FACILITY_SOLAR_2", "Gunes Paneli Paketi-2"},
         {"FACILITY_SOLAR_2_DESC", "+2,500W Sanayi Gunes Tarlasi"},
         {"FACILITY_FIRE_EXT", "Otomatik Yangin Sondurucu"},
-        {"FACILITY_FIRE_EXT_DESC", "140C uzerinde kartlarin yanmasini onler"}
+        {"FACILITY_FIRE_EXT_DESC", "140C uzerinde kartlarin yanmasini onler"},
+        
+        {"BTN_TASKS", "GOREVLER"},
+        {"TASK_MODAL_TITLE", "GOREV & HEDEF MERKEZI"},
+        {"TASK_READY_BADGE", "ODUL HAZIR"},
+        {"TASK_REWARD_PREFIX", "Odul:"},
+        {"TASK_BTN_CLAIM", "ODULU AL"},
+        {"TASK_BTN_CLAIMED", "ALINDI"},
+        {"TASK_BTN_IN_PROGRESS", "SURUYOR"},
+        
+        {"TASK_TITLE_INSPECT", "Donanim Uzmani"},
+        {"TASK_DESC_INSPECT", "Bir karta tiklayarak 360 Inceleme panelini ac"},
+        {"TASK_TITLE_OVERCLOCK", "Hiz Asirtma"},
+        {"TASK_DESC_OVERCLOCK", "Herhangi bir karta Overclock uygula"},
+        {"TASK_TITLE_BUY_GPU", "Pazar Alisverisi"},
+        {"TASK_DESC_BUY_GPU", "Marketten en az 1 GPU satin al"},
+        {"TASK_TITLE_HASHRATE", "Madenci Gucu"},
+        {"TASK_DESC_HASHRATE", "Toplam kazim hizini 150 MH/s uzerine cikar"},
+        {"TASK_TITLE_SELL_CRYPTO", "Kripto Tuccari"},
+        {"TASK_DESC_SELL_CRYPTO", "Borsada en az $500 degerinde kripto sat"},
+        {"TASK_TITLE_MULTI_RIG", "Buyuk Tesis"},
+        {"TASK_DESC_MULTI_RIG", "Depodaki rig kasasi sayisini 2 veya uzerine cikar"},
+        {"TASK_TITLE_COOLING", "Termal Kontrol"},
+        {"TASK_DESC_COOLING", "Tesis sogutma gucunu 3,000W uzerine cikar"},
+        {"TASK_TITLE_POWER", "Sanayi Trafosu"},
+        {"TASK_DESC_POWER", "Sebeke panosunu 7,500W veya uzerine yukselt"},
+        {"TASK_TITLE_SOLAR", "Yesil Enerji"},
+        {"TASK_DESC_SOLAR", "Tesisine en az 1,000W gunes paneli paketi kur"}
     };
 
     // ==================== ENGLISH DICTIONARY ====================
@@ -240,7 +267,34 @@ void LocalizationManager::InitTranslations() {
         {"FACILITY_SOLAR_2", "Solar Array Package 2"},
         {"FACILITY_SOLAR_2_DESC", "+2,500W Industrial Solar Farm"},
         {"FACILITY_FIRE_EXT", "Automated Fire Extinguisher"},
-        {"FACILITY_FIRE_EXT_DESC", "Safeguards cards against 140C burnout"}
+        {"FACILITY_FIRE_EXT_DESC", "Safeguards cards against 140C burnout"},
+        
+        {"BTN_TASKS", "MISSIONS"},
+        {"TASK_MODAL_TITLE", "MISSION & TASK HUB"},
+        {"TASK_READY_BADGE", "REWARDS READY"},
+        {"TASK_REWARD_PREFIX", "Reward:"},
+        {"TASK_BTN_CLAIM", "CLAIM"},
+        {"TASK_BTN_CLAIMED", "CLAIMED"},
+        {"TASK_BTN_IN_PROGRESS", "IN PROGRESS"},
+        
+        {"TASK_TITLE_INSPECT", "Hardware Specialist"},
+        {"TASK_DESC_INSPECT", "Click any GPU to open 360 Inspection panel"},
+        {"TASK_TITLE_OVERCLOCK", "Overclocking"},
+        {"TASK_DESC_OVERCLOCK", "Apply Overclock to any graphics card"},
+        {"TASK_TITLE_BUY_GPU", "Hardware Shopping"},
+        {"TASK_DESC_BUY_GPU", "Purchase at least 1 GPU from the market"},
+        {"TASK_TITLE_HASHRATE", "Mining Power"},
+        {"TASK_DESC_HASHRATE", "Reach total hashrate above 150 MH/s"},
+        {"TASK_TITLE_SELL_CRYPTO", "Crypto Trader"},
+        {"TASK_DESC_SELL_CRYPTO", "Sell at least $500 worth of crypto on the exchange"},
+        {"TASK_TITLE_MULTI_RIG", "Warehouse Expansion"},
+        {"TASK_DESC_MULTI_RIG", "Expand warehouse to have 2 or more mining rigs"},
+        {"TASK_TITLE_COOLING", "Thermal Control"},
+        {"TASK_DESC_COOLING", "Upgrade facility cooling capacity to 3,000W or higher"},
+        {"TASK_TITLE_POWER", "Industrial Power"},
+        {"TASK_DESC_POWER", "Upgrade power panel capacity to 7,500W or higher"},
+        {"TASK_TITLE_SOLAR", "Green Energy"},
+        {"TASK_DESC_SOLAR", "Install at least 1,000W solar panel array"}
     };
 }
 

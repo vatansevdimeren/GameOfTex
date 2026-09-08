@@ -68,22 +68,25 @@ void RigRenderer::DrawSmokeAndSparks(int centerX, int centerY, double animTime) 
 }
 
 void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x, int y, double animTime,
-                                bool rigPoweredOn, const TextureManager* textureManager) const {
+                                bool rigPoweredOn, bool isBreakerTripped, const TextureManager* textureManager) const {
     constexpr int gpuWidth = 90;
     constexpr int gpuHeight = 220;
 
     bool isBurnt = gpu && gpu->IsBurnt();
+    bool hasActivePower = rigPoweredOn && !isBreakerTripped && !isBurnt;
 
     // Üst PCIe örgü güç kablosu
     DrawBraidedPCIeCable(x + gpuWidth / 2, y - 24, x + gpuWidth / 2, y + 4);
 
-    // Fan hızı (kapalıysa veya yandıysa durur)
-    float speedMultiplier = (rigPoweredOn && !isBurnt) ? static_cast<float>(tempCelsius * 8.0) : 0.0f;
+    // Dinamik Fan Hızı: Fan devri (%20 - %100) arttıkça fan kanatları belirgin şekilde hızlanır!
+    // Sigorta attıysa (isBreakerTripped) elektrik kesildiği için fan devri anında 0'a düşer ve durur!
+    float fanDuty = (gpu ? static_cast<float>(gpu->GetFanSpeedPercent() / 100.0) : 0.7f);
+    float speedMultiplier = hasActivePower ? (fanDuty * 2200.0f) : 0.0f;
     float currentAngle = std::fmod(static_cast<float>(animTime * speedMultiplier), 360.0f);
 
     // RGB Fan Rengi
     Color fanRgb;
-    if (!rigPoweredOn) {
+    if (!hasActivePower) {
         fanRgb = Color{60, 70, 80, 255};
     } else if (tempCelsius < 55.0) {
         fanRgb = Color{0, 210, 255, 255}; // Cool Cyan
@@ -111,8 +114,8 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         }
     }
 
-    // 2. Dönen Fanlar
-    if (!isBurnt && rigPoweredOn) {
+    // 2. Dönen Fanlar (Elektrik varsa ve yanmadıysa döner)
+    if (hasActivePower) {
         if (textureManager && textureManager->HasFanTexture()) {
             textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 60.0f, 32.0f, currentAngle, fanRgb);
             textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 145.0f, 32.0f, -currentAngle, fanRgb);
@@ -127,13 +130,13 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         // Duman ve kor kıvılcım efektleri
         DrawSmokeAndSparks(x + gpuWidth / 2, y + 30, animTime);
     } else {
-        // Rig kapalıyken durağan fanlar
+        // Rig kapalıyken veya sigorta attığında durağan duran fanlar
         DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, 0.0f, Color{60, 65, 75, 255});
         DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, 0.0f, Color{60, 65, 75, 255});
     }
 
     // Status LED
-    Color ledColor = !rigPoweredOn ? Color{50, 55, 65, 255} : (isBurnt ? RED : ((tempCelsius >= 85.0) ? RED : ((tempCelsius >= 70.0) ? ORANGE : GREEN)));
+    Color ledColor = !hasActivePower ? Color{50, 55, 65, 255} : (isBurnt ? RED : ((tempCelsius >= 85.0) ? RED : ((tempCelsius >= 70.0) ? ORANGE : GREEN)));
     DrawCircle(x + gpuWidth - 12, y + 12, 4.0f, ledColor);
 
     // Fare kartın üzerindeyse inceleme çerçevesi
@@ -143,27 +146,19 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         DrawRectangle(x + 10, y + 4, gpuWidth - 20, 18, Color{0, 200, 255, 220});
         UIFrame::DrawTextCustom("INCELE", static_cast<float>(x + 20), static_cast<float>(y + 5), 11.0f, BLACK, true);
     }
-
-    // Readout metinleri
-    if (gpu) {
-        std::string tempText = rigPoweredOn ? (std::to_string(static_cast<int>(tempCelsius)) + "C") : "OFF";
-        UIFrame::DrawTextCustom(tempText, static_cast<float>(x + 10), static_cast<float>(y + gpuHeight - 20), 14.0f, rigPoweredOn ? WHITE : GRAY, true);
-
-        std::string hrText = (!rigPoweredOn || isBurnt) ? "0 MH" : (std::to_string(static_cast<int>(gpu->GetEffectiveHashrate())) + "M");
-        UIFrame::DrawTextCustom(hrText, static_cast<float>(x + gpuWidth - 44), static_cast<float>(y + gpuHeight - 20), 14.0f, isBurnt ? RED : fanRgb, true);
-    }
 }
 
 void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& thermalModel,
-                         int posX, int posY, double animTime, const TextureManager* textureManager) const {
+                         int posX, int posY, double animTime, const TextureManager* textureManager,
+                         bool isBreakerTripped) const {
     constexpr int rigWidth = 720;
     constexpr int rigHeight = 320;
 
-    bool isPowered = rig.IsPoweredOn();
+    bool isPowered = rig.IsPoweredOn() && !isBreakerTripped;
 
     // Aluminum frame (metallic open-air rig)
     Color frameBg = isPowered ? Color{20, 22, 26, 240} : Color{14, 15, 18, 240};
-    Color frameBorder = isPowered ? Color{100, 110, 130, 255} : Color{60, 65, 75, 255};
+    Color frameBorder = isPowered ? Color{100, 110, 130, 255} : (isBreakerTripped ? Color{140, 30, 30, 255} : Color{60, 65, 75, 255});
 
     DrawRectangleRounded(Rectangle{static_cast<float>(posX), static_cast<float>(posY),
                                    static_cast<float>(rigWidth), static_cast<float>(rigHeight)},
@@ -177,8 +172,18 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
     DrawRectangle(posX + 10, posY + rigHeight - 25, rigWidth - 20, 8, Color{80, 85, 95, 255});
 
     // Rig header label & status badge
-    std::string title = rig.GetName() + (isPowered ? "  [⚡ AKTIF / CALISIYOR]" : "  [⏸️ KAPALI / DEVRE DISI]");
-    Color titleColor = isPowered ? Color{0, 240, 160, 255} : Color{200, 70, 70, 255};
+    std::string title = rig.GetName();
+    Color titleColor;
+    if (isBreakerTripped) {
+        title += "  [! SEBEKE KESILDI - SALTER ATTI !]";
+        titleColor = Color{255, 60, 60, 255};
+    } else if (isPowered) {
+        title += "  [⚡ AKTIF / CALISIYOR]";
+        titleColor = Color{0, 240, 160, 255};
+    } else {
+        title += "  [⏸️ KAPALI / DEVRE DISI]";
+        titleColor = Color{200, 70, 70, 255};
+    }
     UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 17.0f, titleColor, true);
 
     // Draw installed GPUs
@@ -191,8 +196,8 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
         int cardX = startX + static_cast<int>(i * slotSpacing);
 
         if (i < gpus.size() && gpus[i]) {
-            double temp = isPowered ? thermalModel.CalculateGPUTemperature(gpus[i]->GetEffectivePowerWatts(), 0.85) : thermalModel.GetAmbientTemperature();
-            DrawSingleGPU(gpus[i].get(), temp, cardX, gpuY, animTime, isPowered, textureManager);
+            double temp = isPowered ? thermalModel.CalculateGPUTemperature(gpus[i]->GetEffectivePowerWatts(), gpus[i]->GetFanSpeedPercent() / 100.0) : thermalModel.GetAmbientTemperature();
+            DrawSingleGPU(gpus[i].get(), temp, cardX, gpuY, animTime, rig.IsPoweredOn(), isBreakerTripped, textureManager);
         } else {
             // Empty PCIe slot placeholder
             DrawRectangleLines(cardX, gpuY, 90, 220, Color{45, 50, 60, 180});

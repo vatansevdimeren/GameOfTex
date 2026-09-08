@@ -198,18 +198,36 @@ void GPUInspectionModal::Draw3DCardPreview(float centerX, float centerY, float h
         if (!burnt) {
             float fanRadius = std::min(halfW * 0.75f, 45.0f);
             if (fanRadius > 10.0f) {
-                float fanSpeed = static_cast<float>(m_targetGPU ? m_targetGPU->GetFanSpeedPercent() * 8.0 : 400.0);
-                float angle = std::fmod(static_cast<float>(animTime * fanSpeed), 360.0f);
+                // Fan devri ile orantılı dönüş hızı (20% - 100% devir -> 300 - 1800 deg/s)
+                float fanDuty = m_targetGPU ? static_cast<float>(m_targetGPU->GetFanSpeedPercent()) / 100.0f : 0.5f;
+                float fanSpeed = fanDuty * 1600.0f;
+                float angleRad = static_cast<float>(animTime * fanSpeed * (3.14159265f / 180.0f));
 
                 Color rgbColor = (m_currentTemp > 85.0) ? Color{255, 80, 0, 255} : Color{0, 220, 255, 255};
 
+                auto drawFanWithBlades = [&](float fCenterX, float fCenterY) {
+                    DrawCircle(static_cast<int>(fCenterX), static_cast<int>(fCenterY), fanRadius, Color{20, 22, 28, 255});
+                    DrawCircleLines(static_cast<int>(fCenterX), static_cast<int>(fCenterY), fanRadius, rgbColor);
+
+                    // 7 Kanatlı Dönen Pervane Bıçakları
+                    const int bladeCount = 7;
+                    for (int b = 0; b < bladeCount; ++b) {
+                        float bladeAngle = angleRad + (b * 2.0f * 3.14159265f / bladeCount);
+                        float bx = fCenterX + std::cos(bladeAngle) * (fanRadius * 0.85f);
+                        float by = fCenterY + std::sin(bladeAngle) * (fanRadius * 0.85f);
+                        DrawLineEx(Vector2{fCenterX, fCenterY}, Vector2{bx, by}, 3.0f, Color{100, 115, 135, 230});
+                    }
+
+                    // Göbek (Hub)
+                    DrawCircle(static_cast<int>(fCenterX), static_cast<int>(fCenterY), fanRadius * 0.28f, Color{45, 52, 65, 255});
+                    DrawCircleLines(static_cast<int>(fCenterX), static_cast<int>(fCenterY), fanRadius * 0.28f, rgbColor);
+                };
+
                 // Üst Fan
-                DrawCircle(static_cast<int>(centerX), static_cast<int>(centerY - halfH * 0.45f), fanRadius, Color{20, 22, 28, 255});
-                DrawCircleLines(static_cast<int>(centerX), static_cast<int>(centerY - halfH * 0.45f), fanRadius, rgbColor);
+                drawFanWithBlades(centerX, centerY - halfH * 0.45f);
 
                 // Alt Fan
-                DrawCircle(static_cast<int>(centerX), static_cast<int>(centerY + halfH * 0.45f), fanRadius, Color{20, 22, 28, 255});
-                DrawCircleLines(static_cast<int>(centerX), static_cast<int>(centerY + halfH * 0.45f), fanRadius, rgbColor);
+                drawFanWithBlades(centerX, centerY + halfH * 0.45f);
             }
         }
     }

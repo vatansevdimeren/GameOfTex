@@ -18,6 +18,8 @@
 #include "render/GPUInspectionModal.hpp"
 #include "core/MarketCatalog.hpp"
 #include "render/MarketModal.hpp"
+#include "core/TaskManager.hpp"
+#include "render/TaskModal.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -71,6 +73,8 @@ int main() {
     Render::GPUInspectionModal gpuInspectionModal;
     Core::MarketCatalog marketCatalog;
     Render::MarketModal marketModal;
+    Core::TaskManager taskManager;
+    Render::TaskModal taskModal;
 
     // 4. Çekirdek Simülasyon Nesneleri (Clean Code / SRP)
     Core::EconomyManager economy(1000.0, 3100.0, "TEX");
@@ -130,6 +134,7 @@ int main() {
                                     Color{45, 20, 25, 255}, Color{255, 50, 50, 255});
 
     Render::UIButton btnOpenSettings(Rectangle{}, "AYARLAR", "", Color{35, 42, 56, 255}, Color{0, 220, 255, 255});
+    Render::UIButton btnOpenTasks(Rectangle{}, "GOREVLER", "", Color{30, 40, 58, 255}, Color{255, 200, 40, 255});
 
     // 7. Ana Oyun Döngüsü
     while (!WindowShouldClose()) {
@@ -143,7 +148,9 @@ int main() {
 
         // ESC Tuşu: Modal açıksa kapat, değilse tam ekrandan küçük pencereli moda dön!
         if (IsKeyPressed(KEY_ESCAPE)) {
-            if (marketModal.IsOpen()) {
+            if (taskModal.IsOpen()) {
+                taskModal.Close();
+            } else if (marketModal.IsOpen()) {
                 marketModal.Close();
             } else if (gpuInspectionModal.IsOpen()) {
                 gpuInspectionModal.Close();
@@ -201,6 +208,7 @@ int main() {
                 if (model && activeRig && activeRig->GetGPUCount() < activeRig->GetMaxCapacity()) {
                     if (economy.DeductFiat(model->priceUSD)) {
                         activeRig->InstallGPU(std::make_unique<Core::GPU>(model->name, model->hashrate, model->powerWatts, 1.0));
+                        taskManager.NotifyGpuPurchased();
                     }
                 }
             } else if (action.type == Render::MarketPurchaseAction::ActionType::BUY_POWER) {
@@ -232,6 +240,11 @@ int main() {
             }
         }
 
+        // Görevler Modalı Açıksa Güncelle
+        if (taskModal.IsOpen()) {
+            taskModal.Update(taskManager, economy);
+        }
+
         // Ayarlar Modalı Açıksa Güncelle
         if (settingsModal.IsOpen()) {
             settingsModal.Update(economy);
@@ -245,15 +258,32 @@ int main() {
         // Üst Rozetlerin Dinamik Genişliği
         const float totalBadgesW = screenW - (pad * 2.0f);
         const float badgeGap = 10.0f;
-        const float settingsBtnW = 120.0f;
-        const float remainingW = totalBadgesW - settingsBtnW - (badgeGap * 5.0f);
+        const float settingsBtnW = 110.0f;
+        const float taskBtnW = 145.0f;
+        const float remainingW = totalBadgesW - settingsBtnW - taskBtnW - (badgeGap * 6.0f);
         const float badgeW = remainingW / 5.0f;
         const float badgeH = 54.0f;
         const float badgeY = (headerH - badgeH) / 2.0f;
 
         btnOpenSettings.SetBounds(Rectangle{screenW - pad - settingsBtnW, badgeY, settingsBtnW, badgeH});
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && btnOpenSettings.UpdateAndCheckClick()) {
-            settingsModal.Open();
+        btnOpenTasks.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - taskBtnW, badgeY, taskBtnW, badgeH});
+
+        size_t unclaimedCount = taskManager.GetUnclaimedCompletedCount();
+        if (unclaimedCount > 0) {
+            btnOpenTasks.SetTitle(std::string("[*] ") + Core::LocalizationManager::Tr("BTN_TASKS") + " (" + std::to_string(unclaimedCount) + ")");
+            btnOpenTasks.SetAccentColor(Color{255, 215, 0, 255});
+        } else {
+            btnOpenTasks.SetTitle(std::string("[+] ") + Core::LocalizationManager::Tr("BTN_TASKS"));
+            btnOpenTasks.SetAccentColor(Color{60, 160, 240, 255});
+        }
+
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen()) {
+            if (btnOpenSettings.UpdateAndCheckClick()) {
+                settingsModal.Open();
+            }
+            if (btnOpenTasks.UpdateAndCheckClick()) {
+                taskModal.Open();
+            }
         }
 
         // Ana İçerik Alanı
@@ -343,7 +373,7 @@ int main() {
         const float rigX = pad + (leftW - rigBaseW) / 2.0f;
         const float rigY = contentY + 60.0f;
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
             Vector2 mouse = GetMousePosition();
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse);
@@ -351,11 +381,12 @@ int main() {
                     auto* targetCard = activeRig->GetGPU(static_cast<size_t>(clickedIndex));
                     double cardTemp = activeRig->IsPoweredOn() ? thermalModel.CalculateGPUTemperature(targetCard->GetEffectivePowerWatts(), 0.85) : thermalModel.GetAmbientTemperature();
                     gpuInspectionModal.Open(targetCard, cardTemp, static_cast<size_t>(clickedIndex));
+                    taskManager.NotifyCardInspected();
                 }
             }
         }
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen()) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen()) {
             // 1. Donanım ve Tesis Marketi
             btnBuyGPU.SetTitle(isTR ? "🛒 DONANIM MARKETI" : "🛒 HARDWARE STORE");
             std::string gpuSub = isTR ? "Farkli Modeller, Trafo ve Tesis" : "Different Models, Power & Facilities";
@@ -385,7 +416,9 @@ int main() {
             btnSellCrypto.SetSubtitle(cryptoSub);
             btnSellCrypto.SetDisabled(economy.GetCryptoBalance() <= 0.0001);
             if (btnSellCrypto.UpdateAndCheckClick()) {
+                double soldAmountUsd = economy.GetCryptoBalance() * economy.GetCryptoPrice();
                 economy.SellCrypto(economy.GetCryptoBalance());
+                taskManager.NotifyCryptoSold(soldAmountUsd);
             }
 
             // 4. Soğutmayı Kademeli Yükselt
@@ -428,6 +461,7 @@ int main() {
                         }
                     }
                 }
+                taskManager.NotifyCardOverclocked();
             }
 
             // 6. Undervolt
@@ -525,6 +559,7 @@ int main() {
         }
 
         economy.UpdateMarket(dt);
+        taskManager.UpdateProgress(warehouse, economy, coolingManager, powerGrid);
 
         // --- ÇİZİM AŞAMASI ---
         BeginDrawing();
@@ -557,6 +592,7 @@ int main() {
         Render::UIFrame::DrawStatBadge(pad + (4 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[SPEED]", Core::LocalizationManager::Tr("BADGE_SPEED"), ssHash.str(), Color{100, 230, 255, 255});
 
         btnOpenSettings.Draw();
+        btnOpenTasks.Draw();
 
         // Küresel Ağ Zorluk ve Güç Sıçraması (Mining Spike) Canlı Uyarısı
         if (powerGrid.IsNetworkSpikeActive()) {
@@ -587,7 +623,7 @@ int main() {
 
             if (activeRig) {
                 shaderManager.BeginShader();
-                rigRenderer.DrawRig(*activeRig, thermalModel, static_cast<int>(rigX), static_cast<int>(rigY), animTime, &textureManager);
+                rigRenderer.DrawRig(*activeRig, thermalModel, static_cast<int>(rigX), static_cast<int>(rigY), animTime, &textureManager, powerGrid.IsBreakerTripped());
                 shaderManager.EndShader();
             }
 
@@ -684,6 +720,11 @@ int main() {
         // 7. DONANIM VE TESİS MARKETİ MODAL PENCERESİ
         if (marketModal.IsOpen()) {
             marketModal.Draw(economy, warehouse, coolingManager, marketCatalog, powerGrid);
+        }
+
+        // 8. GOREV & HEDEF MERKEZI MODAL PENCERESI
+        if (taskModal.IsOpen()) {
+            taskModal.Draw(taskManager, economy);
         }
 
         EndDrawing();

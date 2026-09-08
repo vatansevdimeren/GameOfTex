@@ -355,6 +355,66 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   * **İşlevi:** Detaylı rig görünümünde alt tarafa tüm rig'lerin mini durum butonlarını (`[Rig 1: 180M] [Rig 2: 65M]...`) yan yana yerleştirir.
   * Oyuncu onlarca rig arasından tek bir tıkla istediği kasanın detayına sıçrayabilir.
 
+---
+
+## 📋 11. Görev & Hedef Merkezi, Dinamik Fan Hızı ve Tesis Geneli Soğutma
+
+### 11.1. `TaskManager.hpp` & `TaskManager.cpp` (Görev & Başarım Motoru)
+* **Görevi:** Oyuncunun madencilik imparatorluğu kurma sürecinde tamamlayabileceği aşamalı hedefleri, görev ilerlemelerini ve nakit/kripto ödüllerini takip eder.
+* **SRP Gerekçesi:** Görev tamamlama şartlarını ve ödül tahsisini yönetir; arayüz çizimi veya dosya kaydı yapmaz.
+
+#### Başlangıç Görevleri ve Şartları:
+1. `TASK_INSPECT`: Donanım Uzmanı - Bir GPU'ya tıklayarak 360° İnceleme panelini aç ($200 ödül).
+2. `TASK_OVERCLOCK`: Hız Aşırtma - Herhangi bir karta Overclock uygula ($350 ödül).
+3. `TASK_BUY_GPU`: Pazar Alışverişi - Donanım marketinden en az 1 GPU satın al ($500 ödül).
+4. `TASK_HASHRATE`: Madenci Gücü - Toplam kazım hızını 150 MH/s üzerine çıkar ($600 ödül).
+5. `TASK_SELL_CRYPTO`: Kripto Tüccarı - Borsada en az $500 değerinde kripto sat ($450 ödül).
+6. `TASK_MULTI_RIG`: Büyük Tesis - Depodaki rig kasası sayısını 2 veya üzerine çıkar ($1,200 ödül).
+7. `TASK_COOLING`: Termal Kontrol - Tesis soğutma gücünü 3,000W üzerine çıkar ($800 ödül).
+8. `TASK_POWER`: Sanayi Trafosu - Şebeke panosunu 7,500W veya üzerine yükselt ($1,000 ödül).
+9. `TASK_SOLAR`: Yeşil Enerji - Tesisine en az 1,000W güneş paneli paketi kur ($1,500 ödül).
+
+#### Fonksiyonlar ve Görevleri:
+* `UpdateProgress(warehouse, economy, cooling, powerGrid)`: Tüm hedefleri aktif oyun dünyası verileriyle otomatik karşılaştırır ve eşik aşıldığında görevi tamamlandı (`isCompleted = true`) olarak işaretler.
+* `NotifyCardInspected()`, `NotifyCardOverclocked()`, `NotifyCryptoSold()`, `NotifyGpuPurchased()`: Anlık etkileşim olaylarını görev motoruna bildirir.
+* `ClaimReward(taskId, economy)`: Tamamlanmış ancak alınmamış bir görevin ödülünü oyuncunun cüzdanına ekler ve görevi `isClaimed = true` yapar.
+* `GetUnclaimedCompletedCount()`: Toplanmaya hazır ödül sayısını döner; üst HUD butonunun altın sarısı parlamasını sağlar.
+
+---
+
+### 11.2. `TaskModal.hpp` & `TaskModal.cpp` (Görev Merkezi Arayüzü)
+* **Görevi:** Görev listesini, ilerleme barlarını ve parlayan ödül butonlarını içeren Glassmorphic penceredir.
+* **Özellikleri:**
+  * Fare tekerleğiyle akıcı kaydırma (`m_scrollOffset`).
+  * Görev durumuna göre renk değişimi (Tamamlandıysa altın sarısı, alındıysa koyu yeşil, devam ediyorsa çelik mavisi).
+  * Parlayan animasyonlu `[ 🎁 ÖDÜLÜ AL ]` butonu (`sin(GetTime() * 6.0f)` nabız efekti).
+
+---
+
+### 11.3. Sigorta Attığında Fanların Durması (Breaker Fan Stop Bugfix)
+* **Düzeltilen Sorun:** Şebeke sigortası attığında rig'deki fanlar dönmeye devam ediyordu.
+* **Çözüm:** 
+  * `RigRenderer::DrawRig` ve `DrawSingleGPU` fonksiyonlarına `isBreakerTripped` kontrolü eklendi.
+  * `bool hasActivePower = isPowered && !isBreakerTripped;`
+  * Elektrik kesildiğinde fan dönüş açı hızı anında sıfırlanır (`0.0f`), LED'ler kararır ve başlıkta kırmızı `[! SEBEKE KESILDI - SALTER ATTI !]` uyarısı çıkar.
+
+---
+
+### 11.4. Dinamik Fan Hızı & 360° GPU Pervane Bıçakları
+* **Düzeltilen Sorun:** Fan hızı artırıldığında fan dönüş hızı görsel olarak değişmiyordu ve 360° ekranda sadece düz daire çiziliyordu.
+* **Çözüm:**
+  * Fan dönüş hızı doğrudan `gpu->GetFanSpeedPercent()` ile orantılı hale getirildi (`fanDuty * 1600.0 deg/sec`).
+  * `GPUInspectionModal::DrawCardPreview`: 3D önizleme fan dairelerinin içine 7 kanatlı dönen gerçek pervane bıçakları ve merkez göbek (hub) çizildi. Fan devri artırıldıkça pervaneler gözle görülür şekilde hızlanır.
+
+---
+
+### 11.5. Tesis Geneli Soğutma Dağıtımı (Facility-wide Cooling Integration)
+* **Düzeltilen Sorun:** Soğutma sistemleri (Duvar Fanı, Endüstriyel HVAC, Daldırma Sıvı Soğutma) alındığında yalnızca ilk karta etki ediyor gibi görünüyordu.
+* **Çözüm:**
+  * `ThermalModel::CalculateGPUTemperature` metoduna `facilityCoolingBonus = 1.0 / (1.0 + (m_coolingPowerWatts / 2500.0))` global ısı transfer çarpanı entegre edildi.
+  * Soğutma yükseltmesi yapıldığında depodaki istisnasız TÜM rig ve kartların termal direnci anında düşer; HVAC veya Sıvı soğutma kurulduğunda oda sıcaklığı ve tüm kartlar 15-25°C birden serinler.
+
+
 
 
 

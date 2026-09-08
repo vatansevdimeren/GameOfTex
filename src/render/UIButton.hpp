@@ -24,6 +24,8 @@ public:
     void SetSubtitle(std::string subtitle);
     void SetDisabled(bool disabled);
     [[nodiscard]] bool IsDisabled() const;
+    void SetAccentColor(Color color);
+    void SetBaseColor(Color color);
 
     /**
      * @brief Updates hover/press state and checks if the button was clicked this frame.

@@ -53,6 +53,14 @@ bool UIButton::IsDisabled() const {
     return m_isDisabled;
 }
 
+void UIButton::SetAccentColor(Color color) {
+    m_accentColor = color;
+}
+
+void UIButton::SetBaseColor(Color color) {
+    m_baseColor = color;
+}
+
 bool UIButton::UpdateAndCheckClick() {
     if (m_isDisabled) {
         m_isHovered = false;

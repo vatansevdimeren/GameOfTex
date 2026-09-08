@@ -60,6 +60,10 @@ add_executable(GameOfTex
     src/core/MarketCatalog.cpp
     src/render/MarketModal.hpp
     src/render/MarketModal.cpp
+    src/core/TaskManager.hpp
+    src/core/TaskManager.cpp
+    src/render/TaskModal.hpp
+    src/render/TaskModal.cpp
 )
 
 target_include_directories(GameOfTex PRIVATE

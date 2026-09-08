@@ -29,7 +29,8 @@ public:
      * @param animTime Accumulated time for fan rotations.
      */
     void DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& thermalModel,
-                 int posX, int posY, double animTime, const TextureManager* textureManager = nullptr) const;
+                 int posX, int posY, double animTime, const TextureManager* textureManager = nullptr,
+                 bool isBreakerTripped = false) const;
 
     /**
      * @brief Detects if mouse clicked on an installed GPU card slot.
@@ -56,7 +57,8 @@ private:
      * @brief Draws a single GPU card at given coordinates.
      */
     void DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x, int y, double animTime,
-                       bool rigPoweredOn, const TextureManager* textureManager = nullptr) const;
+                       bool rigPoweredOn, bool isBreakerTripped = false,
+                       const TextureManager* textureManager = nullptr) const;
 
     /**
      * @brief Draws animated smoke and ember sparks rising from a burnt card.
