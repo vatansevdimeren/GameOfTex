@@ -6,24 +6,20 @@ namespace Core {
 
 /**
  * @class GPU
- * @brief Represents a single physical graphics processing unit.
+ * @brief Represents a single physical graphics processing unit with overclocking,
+ * thermal health tracking, and hardware destruction (burn) mechanics.
  * 
  * SRP: This class is solely responsible for holding hardware specifications,
- * tracking overclock parameters, and computing power/hashrate values based
- * on silicon quality. It does NOT compute temperatures or money.
+ * tracking clock/voltage/fan parameters, health, and burnt status.
  */
 class GPU {
 public:
     /**
      * @brief Constructs a new GPU with hardware specs and silicon lottery quality.
-     * @param name Name of the GPU model (e.g. "RTX 3080").
-     * @param baseHashrate Factory standard hashrate in MH/s.
-     * @param basePowerWatts Factory standard power draw in Watts.
-     * @param siliconQuality Silicon lottery multiplier (typically 0.90 to 1.15).
      */
     GPU(const std::string& name, double baseHashrate, double basePowerWatts, double siliconQuality = 1.0);
 
-    // Getters for immutable hardware specs
+    // Hardware specifications
     [[nodiscard]] const std::string& GetName() const;
     [[nodiscard]] double GetBaseHashrate() const;
     [[nodiscard]] double GetBasePowerWatts() const;
@@ -33,21 +29,44 @@ public:
     [[nodiscard]] double GetOverclockMultiplier() const;
     void SetOverclockMultiplier(double multiplier);
 
+    [[nodiscard]] double GetCoreClockOffset() const;
+    void SetCoreClockOffset(double offsetMHz);
+
+    [[nodiscard]] double GetPowerLimitPercent() const;
+    void SetPowerLimitPercent(double percent);
+
+    [[nodiscard]] double GetFanSpeedPercent() const;
+    void SetFanSpeedPercent(double percent);
+
+    // Health and Destruction (Burn) mechanics
+    [[nodiscard]] double GetHealthPercent() const;
+    void TakeDamage(double damage);
+    void Repair();
+
+    [[nodiscard]] bool IsBurnt() const;
+    void SetBurnt(bool burnt);
+
+    [[nodiscard]] bool IsThrottled() const;
+    void SetThrottled(bool throttled);
+
     // Performance calculations
     [[nodiscard]] double GetEffectiveHashrate() const;
     [[nodiscard]] double GetEffectivePowerWatts() const;
 
-    // Thermal throttle state
-    [[nodiscard]] bool IsThrottled() const;
-    void SetThrottled(bool throttled);
-
 private:
     std::string m_name;
-    double m_baseHashrate;       // Base hashrate in MH/s
-    double m_basePowerWatts;      // Base power draw in Watts
-    double m_siliconQuality;      // Silicon quality multiplier
-    double m_overclockMultiplier; // Multiplier (1.0 = stock, 1.2 = 20% OC)
-    bool m_isThrottled;           // Flagged true when overheating
+    double m_baseHashrate;          // Factory standard MH/s
+    double m_basePowerWatts;         // Factory standard Watts
+    double m_siliconQuality;         // Silicon lottery factor (0.85 - 1.25)
+    double m_overclockMultiplier;    // Simple multiplier
+
+    double m_coreClockOffsetMHz;     // Core clock offset (-200 to +400 MHz)
+    double m_powerLimitPercent;      // Power target (70% to 150%)
+    double m_fanSpeedPercent;        // Fan duty cycle (30% to 100%)
+
+    double m_healthPercent;          // 0.0% to 100.0%
+    bool m_isBurnt;                  // True if burnt from exceeding 140°C
+    bool m_isThrottled;              // True if thermal throttling
 };
 
 } // namespace Core

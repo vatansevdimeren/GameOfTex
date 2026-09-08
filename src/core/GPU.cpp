@@ -9,6 +9,11 @@ GPU::GPU(const std::string& name, double baseHashrate, double basePowerWatts, do
     , m_basePowerWatts(basePowerWatts)
     , m_siliconQuality(std::clamp(siliconQuality, 0.85, 1.25))
     , m_overclockMultiplier(1.0)
+    , m_coreClockOffsetMHz(0.0)
+    , m_powerLimitPercent(100.0)
+    , m_fanSpeedPercent(80.0)
+    , m_healthPercent(100.0)
+    , m_isBurnt(false)
     , m_isThrottled(false)
 {
 }
@@ -34,22 +39,61 @@ double GPU::GetOverclockMultiplier() const {
 }
 
 void GPU::SetOverclockMultiplier(double multiplier) {
-    // Güvenlik sınırları: 0.5 (undervolt/underclock) ile 1.50 (%50 ekstrem OC) arası
-    m_overclockMultiplier = std::clamp(multiplier, 0.5, 1.50);
+    m_overclockMultiplier = std::clamp(multiplier, 0.5, 1.60);
 }
 
-double GPU::GetEffectiveHashrate() const {
-    // Throttled durumundaysa hashrate yarıya düşer
-    const double throttlePenalty = m_isThrottled ? 0.5 : 1.0;
-    return m_baseHashrate * m_overclockMultiplier * m_siliconQuality * throttlePenalty;
+double GPU::GetCoreClockOffset() const {
+    return m_coreClockOffsetMHz;
 }
 
-double GPU::GetEffectivePowerWatts() const {
-    // Fizik kuralı: Güç tüketimi hız aşırtma/voltaj ile karesel artar (P ~ V^2 * f)
-    const double powerScaling = m_overclockMultiplier * m_overclockMultiplier;
-    // Kaliteli silikon daha az elektrik çeker (verimlilik avantajı)
-    const double efficiencyBonus = 1.0 / m_siliconQuality;
-    return m_basePowerWatts * powerScaling * efficiencyBonus;
+void GPU::SetCoreClockOffset(double offsetMHz) {
+    m_coreClockOffsetMHz = std::clamp(offsetMHz, -300.0, 500.0);
+}
+
+double GPU::GetPowerLimitPercent() const {
+    return m_powerLimitPercent;
+}
+
+void GPU::SetPowerLimitPercent(double percent) {
+    m_powerLimitPercent = std::clamp(percent, 60.0, 160.0);
+}
+
+double GPU::GetFanSpeedPercent() const {
+    return m_fanSpeedPercent;
+}
+
+void GPU::SetFanSpeedPercent(double percent) {
+    m_fanSpeedPercent = std::clamp(percent, 20.0, 100.0);
+}
+
+double GPU::GetHealthPercent() const {
+    return m_healthPercent;
+}
+
+void GPU::TakeDamage(double damage) {
+    if (m_isBurnt) return;
+
+    m_healthPercent = std::max(0.0, m_healthPercent - damage);
+    if (m_healthPercent <= 0.0) {
+        m_isBurnt = true;
+    }
+}
+
+void GPU::Repair() {
+    m_healthPercent = 100.0;
+    m_isBurnt = false;
+    m_isThrottled = false;
+}
+
+bool GPU::IsBurnt() const {
+    return m_isBurnt;
+}
+
+void GPU::SetBurnt(bool burnt) {
+    m_isBurnt = burnt;
+    if (burnt) {
+        m_healthPercent = 0.0;
+    }
 }
 
 bool GPU::IsThrottled() const {
@@ -58,6 +102,32 @@ bool GPU::IsThrottled() const {
 
 void GPU::SetThrottled(bool throttled) {
     m_isThrottled = throttled;
+}
+
+double GPU::GetEffectiveHashrate() const {
+    // Yanmış veya iflas etmiş kart kazamaz!
+    if (m_isBurnt || m_healthPercent <= 0.0) {
+        return 0.0;
+    }
+
+    const double throttlePenalty = m_isThrottled ? 0.45 : 1.0;
+    const double clockFactor = 1.0 + (m_coreClockOffsetMHz / 1500.0); // 1500MHz baz saat üzerinden ölçekleme
+    const double healthFactor = 0.5 + (m_healthPercent / 200.0); // Hasarlı kart daha az kazar
+
+    return m_baseHashrate * m_overclockMultiplier * clockFactor * m_siliconQuality * throttlePenalty * healthFactor;
+}
+
+double GPU::GetEffectivePowerWatts() const {
+    // Yanmış kart sadece kısa devre/arıza tüketimi çeker
+    if (m_isBurnt) {
+        return 10.0;
+    }
+
+    const double powerTarget = m_powerLimitPercent / 100.0;
+    const double powerScaling = m_overclockMultiplier * m_overclockMultiplier;
+    const double efficiencyBonus = 1.0 / m_siliconQuality;
+
+    return m_basePowerWatts * powerScaling * powerTarget * efficiencyBonus;
 }
 
 } // namespace Core
