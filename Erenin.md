@@ -663,8 +663,29 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 ---
 
 ### 16.4. Bağımsız Çalıştırılabilir Paket ve Windows Sürümü (v1.9 Dağıtımı)
-* **Güncellenen Sürüm:** `GameOfTex v1.9 [Segoe UI Vector Typography & F11 Responsive]`
+* **Güncellenen Sürüm:** `GameOfTex v1.9.2 [Segoe UI Native F11]`
 * **Paketleme:** `dist/GameOfTex-Windows.zip` (2.18 MB) içerisine güncel Segoe UI fontları, dokular, shader'lar, harita verileri ve `GameOfTex.exe` dahil edilerek tek tıkla çalışmaya hazır hale getirildi.
+
+---
+
+### 16.5. F11 Basıldığında Yazının Bozulmasının Kök Nedeni ve Native Çözümü (F11 Native Resolution)
+* **Kullanıcı Şikayeti:** "kral bak burada f11 e basınca yazı stili cok ama cok kötü oluyor bunları düzenlemen gerekiyor diyorum bunu düzeltsene"
+* **Kök Neden:**
+  1. Raylib'de `ToggleFullscreen()` doğrudan çağrıldığında ekran kartı 1280x720 piksellik arka tamponu (render buffer) donanımsal olarak 1920x1080 ekrana esnetir (hardware stretching). Bu esnetme sonucunda tüm fontlar, çizgiler ve pencereler bulanıklaşır, piksellenir ve bozulur.
+  2. Windows masaüstü DPI ölçeklemesi (%125 veya %150) aktifken oyun DPI-Aware olarak başlatılmadığı için Windows DWM pencereyi sanallaştırarak bulanıklaştırmakta ve ekranın sağ kenarı (`AYARLAR`) ile alt şeridini (`YÖNETİM`) pencere dışına taşırıp kırpmaktadır.
+* **Uygulanan Çözüm (`src/main.cpp` & `SettingsModal.cpp`):**
+  1. **`SetProcessDPIAware()` Entegrasyonu:** Windows DWM sanal ölçeklemesi tamamen devre dışı bırakıldı; oyun monitörün gerçek fiziksel piksellerine birebir bağlandı.
+  2. **`toggleFullscreenNative` Lambda Fonksiyonu:** F11 tuşuna basıldığında Raylib önce monitörün gerçek çözünürlüğünü (`GetMonitorWidth`, `GetMonitorHeight`) okur, `SetWindowSize(monW, monH)` ile OpenGL arka tamponunu tam 1920x1080 boyutuna getirir ve ardından tam ekrana geçer. Tam ekrandan çıkıldığında ise 1280x720 boyutuna geri dönüp pencereyi ekranda ortalar.
+  3. **Mipmapped Trilinear Doku Filtresi:** Font dokularına `GenTextureMipmaps` ve `TEXTURE_FILTER_TRILINEAR` uygulandı. Artık tam ekranda fontlar en ufak bir bulanıklık veya esneme olmadan tam vektör keskinliğinde işlenir.
+
+---
+
+### 16.6. Tipografi Netliği ve Arayüz Temizliği (Drop-Shadow & Particle Clamping)
+* **Çamurlu Gölgelerin Kaldırılması:** Küçük metinlerde (11px-16px) harfleri kalınlaştırıp bulanık gösteren %85 siyah gölge kaldırıldı. Yalnızca 18px ve üzeri büyük başlıklara zarif %40 gölge bırakıldı; harf aralığı `0.5f` yapılarak okunaklılık en üst düzeye çıkarıldı.
+* **Rozet Dikey Oranlaması:** `UIFrame::DrawStatBadge` içinde başlık %16, değer %50 dikey oranlarına yerleştirildi. Metinlerin rozetin üst kenarına çarpması veya birbirine yapışması önlendi.
+* **GPU Kıvılcım Taşıntısı Düzeltmesi:** Yanmış kartlardan çıkan kıvılcımların rig başlığının (`Rig 01 - Starter Frame`) üstüne uçması engellendi; kıvılcımlar kart çerçevesi içinde sınırlandırıldı.
+* **Üst HUD Sağ Panel Kırpılma Koruması:** Buton genişlikleri optimize edildi (`settingsBtnW = 86px`, `saveBtnW = 82px`, `taskBtnW = 118px`, `worldMapBtnW = 110px`). 1024px gibi dar çözünürlüklerde bile `AYARLAR` butonu sağ kenardan 16px içeride kalır; asla kırpılmaz.
+
 
 
 

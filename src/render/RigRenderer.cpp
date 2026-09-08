@@ -46,24 +46,24 @@ void RigRenderer::DrawBraidedPCIeCable(int startX, int startY, int endX, int end
 }
 
 void RigRenderer::DrawSmokeAndSparks(int centerX, int centerY, double animTime) const {
-    // Yükselen duman halkaları
+    // Yükselen duman halkaları (GPU sınırları içinde kalır)
     for (int i = 0; i < 4; ++i) {
         float phase = std::fmod(static_cast<float>(animTime * 0.9 + i * 0.25), 1.0f);
-        float py = centerY - (phase * 65.0f);
-        float px = centerX + std::sin(phase * 6.28f + i * 1.5f) * 12.0f;
-        float radius = 7.0f + phase * 18.0f;
-        unsigned char alpha = static_cast<unsigned char>((1.0f - phase) * 150.0f);
+        float py = centerY - (phase * 35.0f);
+        float px = centerX + std::sin(phase * 6.28f + i * 1.5f) * 8.0f;
+        float radius = 5.0f + phase * 12.0f;
+        unsigned char alpha = static_cast<unsigned char>((1.0f - phase) * 140.0f);
         DrawCircle(static_cast<int>(px), static_cast<int>(py), radius, Color{35, 35, 40, alpha});
     }
 
-    // Kızgın kor kıvılcımları (Sparks)
+    // Kızgın kor kıvılcımları (Sparks - GPU kartı içinde kalır, üst başlığa taşmaz)
     for (int i = 0; i < 3; ++i) {
         float sparkPhase = std::fmod(static_cast<float>(animTime * 2.8 + i * 0.35), 1.0f);
-        float sy = centerY - (sparkPhase * 80.0f);
-        float sx = centerX + std::sin(sparkPhase * 14.0f + i * 2.5f) * 16.0f;
+        float sy = centerY - (sparkPhase * 36.0f);
+        float sx = centerX + std::sin(sparkPhase * 14.0f + i * 2.5f) * 10.0f;
         unsigned char sparkAlpha = static_cast<unsigned char>((1.0f - sparkPhase) * 255.0f);
         Color sparkColor = (i % 2 == 0) ? Color{255, 140, 0, sparkAlpha} : Color{255, 60, 20, sparkAlpha};
-        DrawCircle(static_cast<int>(sx), static_cast<int>(sy), 2.5f, sparkColor);
+        DrawCircle(static_cast<int>(sx), static_cast<int>(sy), 2.2f, sparkColor);
     }
 }
 

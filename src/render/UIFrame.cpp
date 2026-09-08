@@ -29,15 +29,16 @@ void UIFrame::DrawTextCustom(const std::string& text, float x, float y, float si
     const float scaledSize = size * s_uiScale;
     if (s_hasCustomFonts) {
         Font fontToUse = bold ? s_fontBold : s_fontRegular;
-        // Text drop-shadow (shade effect for depth, readability, and AAA polish)
-        if (color.a > 30) {
-            Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.85f)};
-            DrawTextEx(fontToUse, text.c_str(), Vector2{x + 1.2f, y + 1.2f}, scaledSize, 1.0f, shadowColor);
+        // Text drop-shadow: Yalnızca büyük başlıklar için (>= 18px) hafif gölge.
+        // Küçük metinlerde (11-16px) gölge kaldırıldı; böylece bulanıklık ve çamurluluk tamamen yok edilir.
+        if (scaledSize >= 18.0f && color.a > 50) {
+            Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.40f)};
+            DrawTextEx(fontToUse, text.c_str(), Vector2{x + 1.0f, y + 1.0f}, scaledSize, 0.5f, shadowColor);
         }
-        DrawTextEx(fontToUse, text.c_str(), Vector2{x, y}, scaledSize, 1.0f, color);
+        DrawTextEx(fontToUse, text.c_str(), Vector2{x, y}, scaledSize, 0.5f, color);
     } else {
         if (color.a > 30) {
-            Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.85f)};
+            Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.50f)};
             DrawText(text.c_str(), static_cast<int>(x + 1), static_cast<int>(y + 1), static_cast<int>(scaledSize), shadowColor);
         }
         DrawText(text.c_str(), static_cast<int>(x), static_cast<int>(y), static_cast<int>(scaledSize), color);
@@ -48,7 +49,7 @@ float UIFrame::MeasureTextCustom(const std::string& text, float size, bool bold)
     const float scaledSize = size * s_uiScale;
     if (s_hasCustomFonts) {
         Font fontToUse = bold ? s_fontBold : s_fontRegular;
-        return MeasureTextEx(fontToUse, text.c_str(), scaledSize, 1.0f).x;
+        return MeasureTextEx(fontToUse, text.c_str(), scaledSize, 0.5f).x;
     } else {
         return static_cast<float>(MeasureText(text.c_str(), static_cast<int>(scaledSize)));
     }
@@ -110,22 +111,24 @@ void UIFrame::DrawStatBadge(float x, float y, float width, float height,
     const float padX = 12.0f;
     const float availW = std::max(20.0f, width - (padX * 2.0f));
 
-    // İkon ve Başlık (Taşmayı önlemek için dinamik ölçüm)
+    // İkon ve Başlık
     std::string fullLabel = icon.empty() ? label : (icon + " " + label);
-    float labelSize = 13.0f;
+    float labelSize = 12.0f;
     float labelWidth = MeasureTextCustom(fullLabel, labelSize, false);
     if (labelWidth > availW && labelWidth > 0.0f) {
         labelSize = std::max(9.0f, labelSize * (availW / labelWidth));
     }
-    DrawTextCustom(fullLabel, x + padX, y + 7.0f, labelSize, Color{150, 165, 190, 255}, false);
+    float labelY = y + (height * 0.16f);
+    DrawTextCustom(fullLabel, x + padX, labelY, labelSize, Color{150, 165, 190, 255}, false);
 
-    // Değer Metni (Taşmayı önlemek için dinamik boyutlandırma)
-    float valSize = 19.0f;
+    // Değer Metni (Genişlik ve yüksekliğe göre mükemmel dikey konumlandırma)
+    float valSize = (height < 50.0f) ? 16.0f : 18.0f;
     float valWidth = MeasureTextCustom(value, valSize, true);
     if (valWidth > availW && valWidth > 0.0f) {
         valSize = std::max(11.0f, valSize * (availW / valWidth));
     }
-    DrawTextCustom(value, x + padX, y + 25.0f, valSize, valueColor, true);
+    float valY = y + (height * 0.50f);
+    DrawTextCustom(value, x + padX, valY, valSize, valueColor, true);
 }
 
 void UIFrame::DrawTextInput(Rectangle bounds, const std::string& text, bool isActive, const std::string& placeholder) {

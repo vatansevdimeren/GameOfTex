@@ -1,3 +1,7 @@
+#ifdef _WIN32
+extern "C" __declspec(dllimport) int __stdcall SetProcessDPIAware(void);
+#endif
+
 #include "raylib.h"
 #include "core/GPU.hpp"
 #include "core/MiningRig.hpp"
@@ -38,12 +42,17 @@ enum class GameState {
 };
 
 int main() {
+#ifdef _WIN32
+    // Windows DWM bitmap ölçekleme bulanıklığını tamamen devre dışı bırak
+    SetProcessDPIAware();
+#endif
+
     // 1. Pencere Yapılandırması (Resize ve F11 Tam Ekran desteği)
     constexpr int initialWidth = 1280;
     constexpr int initialHeight = 720;
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI);
     InitWindow(initialWidth, initialHeight, "GameOfTex - Crypto Mining & Energy Tycoon (Warehouse Edition)");
-    SetWindowMinSize(1100, 650);
+    SetWindowMinSize(1024, 600);
     SetTargetFPS(60);
     SetExitKey(KEY_NULL); // ESC tuşunun oyunu aniden kapatmasını engelle
 
@@ -56,37 +65,39 @@ int main() {
     // Latin Extended-A (0x0100 - 0x017F): ğ, Ğ, ı, İ, ş, Ş, vb.
     for (int i = 0x0100; i <= 0x017F; ++i) codepoints.push_back(i);
 
-    // Öncelik 1: Segoe UI (Temiz, pürüzsüz, modern yuvarlak hatlar, sıfır pikselleşme ve kusursuz Türkçe karakter desteği)
-    Font fontRegular = LoadFontEx("assets/fonts/SegoeUI-Regular.ttf", 38, codepoints.data(), static_cast<int>(codepoints.size()));
-    Font fontBold = LoadFontEx("assets/fonts/SegoeUI-Bold.ttf", 42, codepoints.data(), static_cast<int>(codepoints.size()));
+    // Öncelik 1: Segoe UI (Pürüzsüz, modern yuvarlak hatlar, sıfır pikselleşme ve kusursuz Türkçe karakter desteği)
+    Font fontRegular = LoadFontEx("assets/fonts/SegoeUI-Regular.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
+    Font fontBold = LoadFontEx("assets/fonts/SegoeUI-Bold.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
 
     // Yedek 1: Windows Sistem Segoe UI Fontu
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 38, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 42, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 2: Google Inter Fontu
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("assets/fonts/Inter.ttf", 38, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("assets/fonts/Inter.ttf", 42, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("assets/fonts/Inter.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("assets/fonts/Inter.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 3: Windows Arial
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 40, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 4: Rajdhani
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("assets/fonts/Rajdhani-Medium.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("assets/fonts/Rajdhani-Bold.ttf", 40, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("assets/fonts/Rajdhani-Medium.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("assets/fonts/Rajdhani-Bold.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     if (fontRegular.texture.id > 0) {
-        SetTextureFilter(fontRegular.texture, TEXTURE_FILTER_BILINEAR);
-        SetTextureFilter(fontBold.texture, TEXTURE_FILTER_BILINEAR);
+        GenTextureMipmaps(&fontRegular.texture);
+        GenTextureMipmaps(&fontBold.texture);
+        SetTextureFilter(fontRegular.texture, TEXTURE_FILTER_TRILINEAR);
+        SetTextureFilter(fontBold.texture, TEXTURE_FILTER_TRILINEAR);
         Render::UIFrame::InitTheme(fontRegular, fontBold);
     }
 
@@ -196,9 +207,25 @@ int main() {
         auto& powerGrid = *activeFacility->powerGrid;
         auto& coolingManager = *activeFacility->coolingManager;
 
-        // F11: Tam Ekran Geçişi
+        auto toggleFullscreenNative = [&]() {
+            int monitor = GetCurrentMonitor();
+            if (IsWindowFullscreen()) {
+                ToggleFullscreen();
+                SetWindowSize(initialWidth, initialHeight);
+                int monW = GetMonitorWidth(monitor);
+                int monH = GetMonitorHeight(monitor);
+                SetWindowPosition((monW - initialWidth) / 2, (monH - initialHeight) / 2);
+            } else {
+                int monW = GetMonitorWidth(monitor);
+                int monH = GetMonitorHeight(monitor);
+                SetWindowSize(monW, monH);
+                ToggleFullscreen();
+            }
+        };
+
+        // F11: Tam Ekran Geçişi (Native Çözünürlük Geçişi - Sıfır Bulanıklık)
         if (IsKeyPressed(KEY_F11)) {
-            ToggleFullscreen();
+            toggleFullscreenNative();
         }
 
         // ESC Tuşu: Modal açıksa kapat, değilse tam ekrandan küçük pencereli moda dön!
@@ -214,7 +241,7 @@ int main() {
             } else if (settingsModal.IsOpen()) {
                 settingsModal.Close();
             } else if (IsWindowFullscreen()) {
-                ToggleFullscreen();
+                toggleFullscreenNative();
             }
         }
 
@@ -368,16 +395,15 @@ int main() {
         const float footerH = 42.0f;
 
         // Üst Rozetlerin Dinamik Genişliği
-        const float totalBadgesW = screenW - (pad * 2.0f);
-        const float badgeGap = 8.0f;
-        const float settingsBtnW = 95.0f;
-        const float saveBtnW = 88.0f;
-        const float taskBtnW = 135.0f;
-        const float worldMapBtnW = 125.0f;
+        const float badgeGap = 6.0f;
+        const float settingsBtnW = 86.0f;
+        const float saveBtnW = 82.0f;
+        const float taskBtnW = 118.0f;
+        const float worldMapBtnW = 110.0f;
         const float totalBtnsW = settingsBtnW + saveBtnW + taskBtnW + worldMapBtnW + (badgeGap * 3.0f);
-        const float maxAllowedBadgeW = (totalBadgesW - totalBtnsW - (badgeGap * 5.0f)) / 5.0f;
-        const float badgeW = std::clamp(maxAllowedBadgeW, 110.0f, 215.0f);
-        const float badgeH = 54.0f;
+        const float availBadgeSpace = screenW - (pad * 2.0f) - totalBtnsW - (badgeGap * 5.0f);
+        const float badgeW = std::clamp(availBadgeSpace / 5.0f, 80.0f, 215.0f);
+        const float badgeH = 56.0f;
         const float badgeY = (headerH - badgeH) / 2.0f;
 
         btnOpenSettings.SetBounds(Rectangle{screenW - pad - settingsBtnW, badgeY, settingsBtnW, badgeH});
@@ -914,12 +940,13 @@ int main() {
         DrawRectangle(0, static_cast<int>(screenH - footerH), static_cast<int>(screenW), static_cast<int>(footerH), Color{14, 17, 23, 250});
         DrawLine(0, static_cast<int>(screenH - footerH), static_cast<int>(screenW), static_cast<int>(screenH - footerH), Color{35, 42, 56, 255});
 
+        const float footerTextY = screenH - footerH + ((footerH - 14.0f) / 2.0f);
         Render::UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("TIP_FOOTER"),
-                                       pad + 10.0f, screenH - footerH + 12.0f, 14.0f, Color{150, 165, 190, 255}, false);
+                                       pad + 10.0f, footerTextY, 13.0f, Color{150, 165, 190, 255}, false);
 
-        std::string verTag = "GameOfTex v1.9 [Segoe UI Vector Typography & F11 Responsive]";
-        float verW = Render::UIFrame::MeasureTextCustom(verTag, 14.0f, false);
-        Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, screenH - footerH + 12.0f, 14.0f, Color{100, 120, 150, 255}, false);
+        std::string verTag = "GameOfTex v1.9.2 [Segoe UI Native F11]";
+        float verW = Render::UIFrame::MeasureTextCustom(verTag, 13.0f, false);
+        Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, footerTextY, 13.0f, Color{100, 120, 150, 255}, false);
 
         // 5. GPU 360 İNCELEME MODALI (AÇIKSA EN ÜSTTE ÇİZİLİR)
         if (gpuInspectionModal.IsOpen()) {

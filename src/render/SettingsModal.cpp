@@ -89,7 +89,19 @@ SettingsAction SettingsModal::Update(Core::EconomyManager& economy) {
     if (m_btnScale200.UpdateAndCheckClick()) UIFrame::SetUIScale(2.0f);
 
     if (m_btnToggleFullscreen.UpdateAndCheckClick()) {
-        ToggleFullscreen();
+        int monitor = GetCurrentMonitor();
+        if (IsWindowFullscreen()) {
+            ToggleFullscreen();
+            SetWindowSize(1280, 720);
+            int monW = GetMonitorWidth(monitor);
+            int monH = GetMonitorHeight(monitor);
+            SetWindowPosition((monW - 1280) / 2, (monH - 720) / 2);
+        } else {
+            int monW = GetMonitorWidth(monitor);
+            int monH = GetMonitorHeight(monitor);
+            SetWindowSize(monW, monH);
+            ToggleFullscreen();
+        }
     }
 
     if (m_btnToggleLanguage.UpdateAndCheckClick()) {
