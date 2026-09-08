@@ -609,6 +609,64 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   * Tüm tesislerdeki çalışan rig'lerin hashrate'leri toplanarak küresel şirketin madencilik cüzdanına coin kazandırır.
   * Böylece dünya haritasından farklı kıtalarda tesis satın almak gerçek bir küresel madencilik imparatorluğu tycoon deneyimine dönüşür.
 
+---
+
+## 🎨 16. Segoe UI Modern Vektör Tipografisi, F11 Tam Ekran Düzeni ve Sıfır Çakışma (Zero-Overlap Responsive Layout)
+
+### 16.1. Pikselli/Köşeli Fontların Giderilmesi & Segoe UI Entegrasyonu (Vector Typography)
+* **Kullanıcı Şikayeti:** "şu pixel gibi yazı stilini çok iyi bir yazı stili ile değiştir adam akıllı yap şunu artık"
+* **Kök Neden:** Oyunda varsayılan font olarak `Rajdhani` kullanılıyordu. `Rajdhani`, fütüristik ancak köşeli, dar ve segmentli glif yapısına sahip olduğundan düşük/orta çözünürlüklerde veya küçük puntolarda gözü yoruyor ve pikselli/retro atari yazısı hissi veriyordu.
+* **Uygulanan Çözüm (`src/main.cpp` & `assets/fonts/`):**
+  1. Resmi ve ultra pürüzsüz Windows sistem vektör yazı tipi ailesi olan `SegoeUI-Regular.ttf` ve `SegoeUI-Bold.ttf` (ayrıca modern Google `Inter.ttf`) projeye dahil edildi (`assets/fonts/`).
+  2. Font yükleme sırası yenilendi:
+     - **Öncelik 1:** `assets/fonts/SegoeUI-Regular.ttf` (38pt) ve `assets/fonts/SegoeUI-Bold.ttf` (42pt)
+     - **Yedek 1:** `C:/Windows/Fonts/segoeui.ttf` ve `C:/Windows/Fonts/segoeuib.ttf`
+     - **Yedek 2:** `assets/fonts/Inter.ttf` (38/42pt)
+     - **Yedek 3:** `C:/Windows/Fonts/arial.ttf` ve `arialbd.ttf`
+     - **Yedek 4:** `assets/fonts/Rajdhani-Medium.ttf`
+  3. Tüm font dokularına `SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR)` uygulandı.
+  4. Türkçe karakterlerin (`ğ, Ğ, ı, İ, ş, Ş, ç, Ç, ö, Ö, ü, Ü`) yanı sıra tüm Latin Extended-A ve Supplement glifleri tam kapsamlı taranarak belleğe alındı.
+  5. Sonuç: Sıfır pikselleşme, pürüzsüz kavisler, yüksek okunabilirlik ve modern AAA arayüz standardı elde edildi.
+
+---
+
+### 16.2. F11 Tam Ekran ve Responsive Arayüzde Üst Üste Binme Hatalarının Çözümü (Zero-Overlap Layout)
+* **Kullanıcı Şikayeti:** "üst üste binmesin f11 e basınca kral"
+* **Kök Neden 1 (Viewport Başlığı vs Sekmeler/Butonlar):**
+  - Sol ana oyun çerçevesinde (`viewportRect`), `UIFrame::DrawCard(viewportRect, viewportTitle, ...)` başlığı `bounds.y + 14` hizasına yazıyordu.
+  - Aynı anda `btnTabRigDetail`, `btnTabOverview` ve rig yönetim butonları (`btnToggleRigPower`, `btnSellRig`, `btnPrevRig`, `btnNextRig`) de doğrudan `contentY + 10` hizasına çiziliyordu!
+  - Bu durum, özellikle F11 tam ekranda veya tesis adı uzun olduğunda sekmelerin ve butonların doğrudan depo başlık metninin üzerine binmesine yol açıyordu.
+* **Kök Neden 2 (Üst HUD Rozetleri vs Aksiyon Butonları):**
+  - Üst şeritteki 5 rozet (`Şirket`, `Nakit`, `Cüzdan`, `Piyasa`, `Kazım Gücü`), tam ekran modunda genişlediğinde veya arayüz ölçeği (UI Scale) büyütüldüğünde sağ taraftaki `[DÜNYA HARİTASI]`, `[GÖREVLER]`, `[KAYDET]`, `[AYARLAR]` butonlarıyla temas edebiliyor veya rozet yazıları kutu dışına taşıyordu.
+* **Uygulanan Çözüm (`src/main.cpp`):**
+  1. **İki Satırlı Temiz Viewport Başlık Düzeni:**
+     - `DrawCard` çağrısına boş başlık verilerek çakışan çizim kaldırıldı.
+     - **1. Satır (`contentY + 8` - `contentY + 38`):** Sol tarafta neon göstergeli depo adı (`viewportTitle`), sağ tarafta ise `btnTabRigDetail` ve `btnTabOverview` sekmeleri yerleştirildi. Depo adı için dinamik genişlik kontrolü eklendi; isim ne kadar uzun olursa olsun sekmelere asla yaklaşamaz.
+     - **Ayırıcı Çizgi:** `contentY + 40` hizasında zarif bir alt çizgi çekildi.
+     - **2. Satır (`contentY + 45` - `contentY + 77`):** Yalnızca `RIG_DETAIL` modunda sol tarafta `[< ÖNCEKİ]`, `[SONRAKİ >]`, sağ tarafta `[GÜÇ AÇ/KAPAT]`, `[SAT]` butonları bağımsız bir şerit olarak hizalandı.
+     - Rig çizim konumu `contentY + 84`, güç barı `barY + 332` ve hızlı rig seçici `contentY + contentH - 40` olarak güncellenerek tüm dikey öğeler arasında ferah aralıklar sağlandı.
+  2. **Üst HUD Rozet Genişliği Sınırlandırması:**
+     - Rozet genişliği formülü `badgeW = std::clamp(maxAllowedBadgeW, 110.0f, 215.0f)` ile sınırlandırıldı.
+     - Son rozetin sağ kenarı ile `[DÜNYA HARİTASI]` butonunun sol kenarı arasında her koşulda matematiksel olarak garantili boşluk bırakıldı.
+
+---
+
+### 16.3. Dinamik Rozet ve Buton Metin Ölçeklendirme (Auto-Fitting Text Engine)
+* **`UIFrame::DrawStatBadge` İyileştirmesi:**
+  - Rozet içindeki etiket (`fullLabel`) ve değer (`value`) metinleri çizilmeden önce `MeasureTextCustom` ile ölçülür.
+  - Metin genişliği rozetin kullanılabilir genişliğini (`width - 24px`) aşarsa, font boyutu oransal olarak küçültülerek metnin asla rozet dışına taşmaması ve yanındaki rozete binmemesi garanti altına alındı.
+* **`UIButton::Draw` İyileştirmesi:**
+  - Yüksekliği 42px'den küçük olan butonlarda (örneğin 32px'lik rig butonları) altyazı (`m_subtitle`) varsa, eski kodda başlık butonun dışına (üstüne) taşıyordu.
+  - Buton yüksekliğine ve genişliğine göre dinamik `titleSize` ve `subSize` hesaplaması eklendi.
+  - Metin buton sınırlarından uzunsa genişliğe göre otomatik ölçeklenir; buton dışına dikey veya yatay sıfır taşma sağlanır.
+
+---
+
+### 16.4. Bağımsız Çalıştırılabilir Paket ve Windows Sürümü (v1.9 Dağıtımı)
+* **Güncellenen Sürüm:** `GameOfTex v1.9 [Segoe UI Vector Typography & F11 Responsive]`
+* **Paketleme:** `dist/GameOfTex-Windows.zip` (2.18 MB) içerisine güncel Segoe UI fontları, dokular, shader'lar, harita verileri ve `GameOfTex.exe` dahil edilerek tek tıkla çalışmaya hazır hale getirildi.
+
+
 
 
 

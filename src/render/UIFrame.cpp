@@ -107,12 +107,25 @@ void UIFrame::DrawStatBadge(float x, float y, float width, float height,
     DrawRectangleRounded(badgeBounds, 0.2f, 6, Color{20, 24, 34, 240});
     DrawRectangleRoundedLines(badgeBounds, 0.2f, 6, 1.4f, Color{45, 56, 76, 220});
 
-    // İkon ve Başlık
-    std::string fullLabel = icon + " " + label;
-    DrawTextCustom(fullLabel, x + 14, y + 8, 13.0f, Color{150, 165, 190, 255}, false);
+    const float padX = 12.0f;
+    const float availW = std::max(20.0f, width - (padX * 2.0f));
 
-    // Büyük ve okunaklı Değer Metni (20px bold!)
-    DrawTextCustom(value, x + 14, y + 26, 20.0f, valueColor, true);
+    // İkon ve Başlık (Taşmayı önlemek için dinamik ölçüm)
+    std::string fullLabel = icon.empty() ? label : (icon + " " + label);
+    float labelSize = 13.0f;
+    float labelWidth = MeasureTextCustom(fullLabel, labelSize, false);
+    if (labelWidth > availW && labelWidth > 0.0f) {
+        labelSize = std::max(9.0f, labelSize * (availW / labelWidth));
+    }
+    DrawTextCustom(fullLabel, x + padX, y + 7.0f, labelSize, Color{150, 165, 190, 255}, false);
+
+    // Değer Metni (Taşmayı önlemek için dinamik boyutlandırma)
+    float valSize = 19.0f;
+    float valWidth = MeasureTextCustom(value, valSize, true);
+    if (valWidth > availW && valWidth > 0.0f) {
+        valSize = std::max(11.0f, valSize * (availW / valWidth));
+    }
+    DrawTextCustom(value, x + padX, y + 25.0f, valSize, valueColor, true);
 }
 
 void UIFrame::DrawTextInput(Rectangle bounds, const std::string& text, bool isActive, const std::string& placeholder) {

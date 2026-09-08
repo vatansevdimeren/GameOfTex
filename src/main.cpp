@@ -56,20 +56,32 @@ int main() {
     // Latin Extended-A (0x0100 - 0x017F): ğ, Ğ, ı, İ, ş, Ş, vb.
     for (int i = 0x0100; i <= 0x017F; ++i) codepoints.push_back(i);
 
-    // Öncelik: Modern Siber/Endüstriyel Google Fonts (Rajdhani)
-    Font fontRegular = LoadFontEx("assets/fonts/Rajdhani-Medium.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
-    Font fontBold = LoadFontEx("assets/fonts/Rajdhani-Bold.ttf", 40, codepoints.data(), static_cast<int>(codepoints.size()));
+    // Öncelik 1: Segoe UI (Temiz, pürüzsüz, modern yuvarlak hatlar, sıfır pikselleşme ve kusursuz Türkçe karakter desteği)
+    Font fontRegular = LoadFontEx("assets/fonts/SegoeUI-Regular.ttf", 38, codepoints.data(), static_cast<int>(codepoints.size()));
+    Font fontBold = LoadFontEx("assets/fonts/SegoeUI-Bold.ttf", 42, codepoints.data(), static_cast<int>(codepoints.size()));
 
-    // Yedek 1: Windows Segoe UI
+    // Yedek 1: Windows Sistem Segoe UI Fontu
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 40, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 38, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 42, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
-    // Yedek 2: Windows Arial
+    // Yedek 2: Google Inter Fontu
+    if (fontRegular.texture.id == 0) {
+        fontRegular = LoadFontEx("assets/fonts/Inter.ttf", 38, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("assets/fonts/Inter.ttf", 42, codepoints.data(), static_cast<int>(codepoints.size()));
+    }
+
+    // Yedek 3: Windows Arial
     if (fontRegular.texture.id == 0) {
         fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
         fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 40, codepoints.data(), static_cast<int>(codepoints.size()));
+    }
+
+    // Yedek 4: Rajdhani
+    if (fontRegular.texture.id == 0) {
+        fontRegular = LoadFontEx("assets/fonts/Rajdhani-Medium.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("assets/fonts/Rajdhani-Bold.ttf", 40, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     if (fontRegular.texture.id > 0) {
@@ -361,10 +373,10 @@ int main() {
         const float settingsBtnW = 95.0f;
         const float saveBtnW = 88.0f;
         const float taskBtnW = 135.0f;
-        const float worldMapBtnW = 120.0f;
+        const float worldMapBtnW = 125.0f;
         const float totalBtnsW = settingsBtnW + saveBtnW + taskBtnW + worldMapBtnW + (badgeGap * 3.0f);
-        const float remainingW = totalBadgesW - totalBtnsW - (badgeGap * 5.0f);
-        const float badgeW = remainingW / 5.0f;
+        const float maxAllowedBadgeW = (totalBadgesW - totalBtnsW - (badgeGap * 5.0f)) / 5.0f;
+        const float badgeW = std::clamp(maxAllowedBadgeW, 110.0f, 215.0f);
         const float badgeH = 54.0f;
         const float badgeY = (headerH - badgeH) / 2.0f;
 
@@ -411,11 +423,11 @@ int main() {
 
         bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
 
-        // Sekme Butonları (Rig Detayı vs Depo Kuşbakışı Genel Bakış)
+        // Sekme Butonları (Rig Detayı vs Depo Kuşbakışı Genel Bakış - Başlığın sağında yer alır)
         btnTabRigDetail.SetTitle(Core::LocalizationManager::Tr("TAB_RIG_DETAIL"));
         btnTabOverview.SetTitle(Core::LocalizationManager::Tr("TAB_OVERVIEW"));
-        btnTabRigDetail.SetBounds(Rectangle{pad + 16.0f, contentY + 10.0f, 120.0f, 32.0f});
-        btnTabOverview.SetBounds(Rectangle{pad + 142.0f, contentY + 10.0f, 132.0f, 32.0f});
+        btnTabRigDetail.SetBounds(Rectangle{pad + leftW - 246.0f, contentY + 8.0f, 116.0f, 28.0f});
+        btnTabOverview.SetBounds(Rectangle{pad + leftW - 124.0f, contentY + 8.0f, 116.0f, 28.0f});
 
         if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
             if (btnTabRigDetail.UpdateAndCheckClick()) currentViewMode = WarehouseViewMode::RIG_DETAIL;
@@ -424,7 +436,7 @@ int main() {
             // Depo Genel Bakış Ekranında Fare Tekerleği ile Akıcı Aşağı/Yukarı Kaydırma
             if (currentViewMode == WarehouseViewMode::OVERVIEW_GRID) {
                 Vector2 mouse = GetMousePosition();
-                Rectangle overviewArea{pad, contentY, leftW, contentH};
+                Rectangle overviewArea{pad, contentY + 46.0f, leftW, contentH - 54.0f};
                 if (CheckCollisionPointRec(mouse, overviewArea)) {
                     float wheel = GetMouseWheelMove();
                     if (wheel != 0.0f) {
@@ -435,12 +447,12 @@ int main() {
             }
         }
 
-        // Rig Gezinme ve Yönetim Butonları (Yalnızca RIG_DETAIL modunda aktiftir, asla sekmelerle çakışmaz)
+        // Rig Gezinme ve Yönetim Butonları (Yalnızca RIG_DETAIL modunda, 2. satırda konumlandırılır, asla başlık veya sekmelerle çakışmaz)
         if (currentViewMode == WarehouseViewMode::RIG_DETAIL) {
-            btnToggleRigPower.SetBounds(Rectangle{pad + leftW - 390.0f, contentY + 10.0f, 100.0f, 32.0f});
-            btnSellRig.SetBounds(Rectangle{pad + leftW - 282.0f, contentY + 10.0f, 92.0f, 32.0f});
-            btnPrevRig.SetBounds(Rectangle{pad + leftW - 182.0f, contentY + 10.0f, 86.0f, 32.0f});
-            btnNextRig.SetBounds(Rectangle{pad + leftW - 90.0f, contentY + 10.0f, 86.0f, 32.0f});
+            btnPrevRig.SetBounds(Rectangle{pad + 16.0f, contentY + 45.0f, 85.0f, 32.0f});
+            btnNextRig.SetBounds(Rectangle{pad + 107.0f, contentY + 45.0f, 85.0f, 32.0f});
+            btnToggleRigPower.SetBounds(Rectangle{pad + leftW - 224.0f, contentY + 45.0f, 112.0f, 32.0f});
+            btnSellRig.SetBounds(Rectangle{pad + leftW - 106.0f, contentY + 45.0f, 94.0f, 32.0f});
 
             btnPrevRig.SetTitle(Core::LocalizationManager::Tr("RIG_PREV"));
             btnNextRig.SetTitle(Core::LocalizationManager::Tr("RIG_NEXT"));
@@ -488,7 +500,7 @@ int main() {
         // Kart Tıklama Tespiti (Viewport içerisindeki GPU'ya tıklandı mı?)
         constexpr float rigBaseW = 720.0f;
         const float rigX = pad + (leftW - rigBaseW) / 2.0f;
-        const float rigY = contentY + 60.0f;
+        const float rigY = contentY + 84.0f;
 
         if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
             Vector2 mouse = GetMousePosition();
@@ -797,17 +809,30 @@ int main() {
         std::string viewportTitle = (currentViewMode == WarehouseViewMode::RIG_DETAIL)
             ? (warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " RIG | " + tempTag + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)")
             : ("DEPO GENEL BAKIS - " + warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + " RIG | " + tempTag + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)");
-        Render::UIFrame::DrawCard(viewportRect, viewportTitle, Color{0, 220, 255, 255});
+        Render::UIFrame::DrawCard(viewportRect, "", Color{0, 220, 255, 255});
+
+        // Üst Başlık ve Ayrım Çizgisi (Sekmelerle asla üst üste binmez)
+        DrawRectangle(static_cast<int>(viewportRect.x + 16), static_cast<int>(viewportRect.y + 12), 4, 20, Color{0, 220, 255, 255});
+        float maxTitleW = std::max(100.0f, leftW - 275.0f);
+        float titleSize = 16.0f;
+        float vTitleW = Render::UIFrame::MeasureTextCustom(viewportTitle, titleSize, true);
+        if (vTitleW > maxTitleW && vTitleW > 0.0f) {
+            titleSize = std::max(10.5f, titleSize * (maxTitleW / vTitleW));
+        }
+        Render::UIFrame::DrawTextCustom(viewportTitle, viewportRect.x + 26.0f, viewportRect.y + 13.0f, titleSize, RAYWHITE, true);
+        DrawLine(static_cast<int>(viewportRect.x + 16), static_cast<int>(viewportRect.y + 40),
+                 static_cast<int>(viewportRect.x + viewportRect.width - 16), static_cast<int>(viewportRect.y + 40),
+                 Color{38, 46, 62, 255});
 
         // Sekme Butonlarını Çiz
         btnTabRigDetail.Draw();
         btnTabOverview.Draw();
 
         if (currentViewMode == WarehouseViewMode::RIG_DETAIL) {
-            btnToggleRigPower.Draw();
-            btnSellRig.Draw();
             btnPrevRig.Draw();
             btnNextRig.Draw();
+            btnToggleRigPower.Draw();
+            btnSellRig.Draw();
 
             if (activeRig) {
                 shaderManager.BeginShader();
@@ -823,30 +848,30 @@ int main() {
 
             const float barW = std::min(rigBaseW, leftW - 40.0f);
             const float barX = pad + (leftW - barW) / 2.0f;
-            const float barY = rigY + 340.0f;
+            const float barY = rigY + 332.0f;
 
-            Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 28.0f}, powerRatio, powerColor, powerText);
+            Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 26.0f}, powerRatio, powerColor, powerText);
 
             // Termal, Demeraj veya Sigorta Bildirim Kutusu
             if (powerGrid.IsBreakerTripped()) {
-                DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{190, 20, 20, 240});
+                DrawRectangleRounded(Rectangle{barX, barY + 32.0f, barW, 36.0f}, 0.2f, 4, Color{190, 20, 20, 240});
                 Render::UIFrame::DrawTextCustom("! SEBEKE ASIRI YUKLENDI - SIGORTA ATTI ! SAG PANELDEN SALTERI ACIN",
-                                               barX + 24.0f, barY + 48.0f, 16.0f, WHITE, true);
+                                               barX + 24.0f, barY + 42.0f, 15.0f, WHITE, true);
             } else if (activeRig && activeRig->IsInStartupSurge()) {
-                DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{180, 110, 15, 230});
+                DrawRectangleRounded(Rectangle{barX, barY + 32.0f, barW, 36.0f}, 0.2f, 4, Color{180, 110, 15, 230});
                 Render::UIFrame::DrawTextCustom("[DEMERAJ] KALKIS AKIMI AKTIF: +30% GUC CEKISI - FANLAR VE KAPASITORLER",
-                                               barX + 24.0f, barY + 48.0f, 15.0f, WHITE, true);
+                                               barX + 24.0f, barY + 42.0f, 14.0f, WHITE, true);
             } else if (shaderManager.IsThermalActive()) {
-                DrawRectangleRounded(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, Color{32, 16, 52, 230});
-                DrawRectangleRoundedLines(Rectangle{barX, barY + 38.0f, barW, 40.0f}, 0.2f, 4, 1.4f, Color{220, 0, 255, 255});
+                DrawRectangleRounded(Rectangle{barX, barY + 32.0f, barW, 36.0f}, 0.2f, 4, Color{32, 16, 52, 230});
+                DrawRectangleRoundedLines(Rectangle{barX, barY + 32.0f, barW, 36.0f}, 0.2f, 4, 1.4f, Color{220, 0, 255, 255});
                 Render::UIFrame::DrawTextCustom("[CANLI TERMAL FLIR VIZYONU AKTIF] - Isi dagilimi fragment shader ile renklendiriliyor",
-                                               barX + 24.0f, barY + 48.0f, 15.0f, Color{230, 130, 255, 255}, true);
+                                               barX + 24.0f, barY + 42.0f, 14.0f, Color{230, 130, 255, 255}, true);
             }
 
             // Hızlı Rig Seçici Şeridi (Quick Rig Selector)
             Vector2 mouse = GetMousePosition();
             int quickRigIdx = -1;
-            Rectangle selectorBounds{pad + 20.0f, contentY + contentH - 44.0f, leftW - 40.0f, 32.0f};
+            Rectangle selectorBounds{pad + 20.0f, contentY + contentH - 40.0f, leftW - 40.0f, 30.0f};
             rigRenderer.DrawQuickRigSelector(warehouse, thermalModel, selectorBounds, mouse, quickRigIdx);
             if (quickRigIdx >= 0) {
                 warehouse.SetActiveRigIndex(static_cast<size_t>(quickRigIdx));
@@ -857,7 +882,7 @@ int main() {
             int selectedRigIdx = -1;
             int toggledRigIdx = -1;
             rigRenderer.DrawWarehouseOverviewGrid(warehouse, thermalModel,
-                                                 Rectangle{pad + 10.0f, contentY + 50.0f, leftW - 20.0f, contentH - 60.0f},
+                                                 Rectangle{pad + 10.0f, contentY + 46.0f, leftW - 20.0f, contentH - 56.0f},
                                                  animTime, mouse, overviewScrollY, maxOverviewScrollY,
                                                  selectedRigIdx, toggledRigIdx);
             if (toggledRigIdx >= 0) {
@@ -892,7 +917,7 @@ int main() {
         Render::UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("TIP_FOOTER"),
                                        pad + 10.0f, screenH - footerH + 12.0f, 14.0f, Color{150, 165, 190, 255}, false);
 
-        std::string verTag = "GameOfTex v1.8 [Rajdhani Typography & High-Res UI]";
+        std::string verTag = "GameOfTex v1.9 [Segoe UI Vector Typography & F11 Responsive]";
         float verW = Render::UIFrame::MeasureTextCustom(verTag, 14.0f, false);
         Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, screenH - footerH + 12.0f, 14.0f, Color{100, 120, 150, 255}, false);
 
