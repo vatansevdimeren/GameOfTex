@@ -56,6 +56,10 @@ add_executable(GameOfTex
     src/render/SettingsModal.cpp
     src/render/GPUInspectionModal.hpp
     src/render/GPUInspectionModal.cpp
+    src/core/MarketCatalog.hpp
+    src/core/MarketCatalog.cpp
+    src/render/MarketModal.hpp
+    src/render/MarketModal.cpp
 )
 
 target_include_directories(GameOfTex PRIVATE

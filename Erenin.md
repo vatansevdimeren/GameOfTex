@@ -282,4 +282,50 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
    * Git bir **kaynak kod versiyon kontrol** sistemidir. `.exe` gibi ikili (binary) dosyalar her derlemede birkaç megabayt değişir ve reponun boyutunu hızla şişirir (repo cloning süreleri çok uzar).
    * Dünyadaki tüm standart açık kaynak ve oyun projelerinde (Unreal, Godot, Linux vb.) kodlar depoda tutulur, derlenmiş çalıştırılabilir dosyalar ise **GitHub Releases** veya **Artifacts** kısmında dağıtılır.
 
+---
+
+## 🛒 9. Donanım ve Tesis Marketi Mimarisi (Hardware Market Architecture)
+
+### 9.1. `MarketCatalog.hpp` & `MarketCatalog.cpp` (Pazar Veritabanı ve Envanter Yöneticisi)
+* **Görevi:** Satın alınabilir tüm donanım modellerini, şebeke/trafo seviyelerini ve depo/tesis geliştirmelerini tek bir çatı altında tutar.
+* **SRP Gerekçesi:** Sadece ürün katalog verisini ve satın alınan kalıcı geliştirmeleri (yeşil enerji, yangın söndürme) yönetir. Ekrana çizim yapmaz veya bakiye kesintisi yapmaz.
+
+#### Fonksiyonlar ve Görevleri:
+* `const std::vector<GPUModelItem>& GetGPUModels() const`:
+  * Sistemdeki 5 farklı GPU modelini döner:
+    1. **GTX 1660 Super:** Giriş seviye (30 MH/s, 75W, $250)
+    2. **RTX 3070 Ti:** F/P canavarı (65 MH/s, 145W, $550)
+    3. **RTX 4080 Super:** Yüksek performans (110 MH/s, 220W, $1,100)
+    4. **RTX 4090 Monster:** Amiral gemisi (175 MH/s, 360W, $2,000)
+    5. **Cryptonex Titan ASIC:** Endüstriyel madencilik canavarı (320 MH/s, 550W, $4,500)
+* `std::vector<PowerUpgradeItem>& GetPowerUpgrades()`:
+  * Şebeke sigorta sınırını artıran trafo modellerini yönetir (3.6 kW -> 7.5 kW -> 15 kW -> 30 kW).
+* `std::vector<FacilityUpgradeItem>& GetFacilityUpgrades()`:
+  * Güneş panelleri ve yangın söndürme modüllerini tutar.
+* `bool HasAutoFireSuppression() const`:
+  * **Mekanik:** Kartlar 140°C'ye ulaştığında yanıp patlamak yerine otomatik termal köpük korumasını devreye sokarak rig'i güvenle kapatır.
+* `double GetTotalGreenWatts() const`:
+  * Kurulu güneş panellerinden gelen bedava yeşil elektrik üretimini toplar.
+
+---
+
+### 9.2. `MarketModal.hpp` & `MarketModal.cpp` (Pazar Arayüzü ve Görsel Barlar)
+* **Görevi:** Glassmorphic modern pazar penceresini çizer, sekmeler arası geçişi sağlar ve kartların teknik özelliklerini görsel renkli ilerleme barları halinde sunar.
+* **SRP Gerekçesi:** Yalnızca UI çizimini ve tıklama tespitini yapar. Satın alma olaylarını `MarketPurchaseAction` yapısıyla ana döngüye iletir.
+
+#### Fonksiyonlar ve Görevleri:
+* `Open()`, `Close()`, `IsOpen()`: Modal pencerenin görünürlüğünü yönetir.
+* `MarketPurchaseAction Update(...)`:
+  * Sekme butonlarını, satın alma butonlarını ve ESC tuşunu dinler.
+  * Rig doluluğunu ve nakit yeterliliğini denetleyerek buton durumlarını (`[SATIN AL]`, `[RIG DOLU!]`, `[YETERSIZ BAKIYE]`) dinamik günceller.
+* `void Draw(...)`:
+  * Ekranı yarı saydam karartır ve ortalanmış pazar penceresini çizer.
+* `void DrawTabs(...)`:
+  * 4 farklı kategori menüsünü (`EKRAN KARTLARI`, `ELEKTRİK & TRAFO`, `SOĞUTMA SİSTEMLERİ`, `TESİS & DEPO`) şık neon alt çizgilerle çizer.
+* `void DrawStatBar(...)`:
+  * **İşlevi:** Donanımların Kazım Gücü (Cyan), Güç Tüketimi (Sarı/Turuncu) ve Enerji Verimliliği (Yeşil) değerlerini oranlayarak canlı grafik barları halinde çizer.
+* `void DrawGPUsCategory(...)`, `DrawPowerCategory(...)`, `DrawCoolingCategory(...)`, `DrawFacilitiesCategory(...)`:
+  * İlgili sekmenin kartlarını ve fiyatlarını seçili para birimine (USD, USDT, TRY, EUR) göre yerelleştirerek listeler.
+
+
 

@@ -16,6 +16,8 @@
 #include "render/LoginScreen.hpp"
 #include "render/SettingsModal.hpp"
 #include "render/GPUInspectionModal.hpp"
+#include "core/MarketCatalog.hpp"
+#include "render/MarketModal.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -65,10 +67,12 @@ int main() {
     Render::LoginScreen loginScreen;
     Render::SettingsModal settingsModal;
     Render::GPUInspectionModal gpuInspectionModal;
+    Core::MarketCatalog marketCatalog;
+    Render::MarketModal marketModal;
 
     // 4. Çekirdek Simülasyon Nesneleri (Clean Code / SRP)
     Core::EconomyManager economy(1000.0, 3100.0, "TEX");
-    Core::PowerGrid powerGrid(10000.0, 0.15); // Çoklu rig için 10.0 kW sigorta limiti
+    Core::PowerGrid powerGrid(3600.0, 0.15); // Standart pano (3.6 kW) ile başlar, marketten yükseltilebilir
     Core::ThermalModel thermalModel(22.0);    // 22°C Oda sıcaklığı
     Core::CoolingManager coolingManager;
     thermalModel.SetCoolingPowerWatts(coolingManager.CalculateTotalCoolingWatts());
@@ -137,7 +141,9 @@ int main() {
 
         // ESC Tuşu: Modal açıksa kapat, değilse tam ekrandan küçük pencereli moda dön!
         if (IsKeyPressed(KEY_ESCAPE)) {
-            if (gpuInspectionModal.IsOpen()) {
+            if (marketModal.IsOpen()) {
+                marketModal.Close();
+            } else if (gpuInspectionModal.IsOpen()) {
                 gpuInspectionModal.Close();
             } else if (settingsModal.IsOpen()) {
                 settingsModal.Close();
@@ -181,6 +187,45 @@ int main() {
                 auto removed = activeRig->RemoveGPU(slot);
                 if (removed) {
                     economy.AddFiat(75.0); // Hurda metal ve parça geri dönüşüm geliri
+                }
+            }
+        }
+
+        // Donanım Marketi Modalı Açıksa Güncelle ve Satın Almaları İşle
+        if (marketModal.IsOpen()) {
+            auto action = marketModal.Update(economy, warehouse, coolingManager, marketCatalog, powerGrid);
+            if (action.type == Render::MarketPurchaseAction::ActionType::BUY_GPU) {
+                const auto* model = marketCatalog.GetGPUModel(action.itemIndex);
+                if (model && activeRig && activeRig->GetGPUCount() < activeRig->GetMaxCapacity()) {
+                    if (economy.DeductFiat(model->priceUSD)) {
+                        activeRig->InstallGPU(std::make_unique<Core::GPU>(model->name, model->hashrate, model->powerWatts, 1.0));
+                    }
+                }
+            } else if (action.type == Render::MarketPurchaseAction::ActionType::BUY_POWER) {
+                const auto& powerUpgrades = marketCatalog.GetPowerUpgrades();
+                if (action.itemIndex < powerUpgrades.size()) {
+                    const auto& upg = powerUpgrades[action.itemIndex];
+                    if (!upg.isInstalled && economy.DeductFiat(upg.priceUSD)) {
+                        marketCatalog.PurchasePowerUpgrade(action.itemIndex);
+                        powerGrid.SetMaxCapacityWatts(upg.capacityWatts);
+                    }
+                }
+            } else if (action.type == Render::MarketPurchaseAction::ActionType::BUY_COOLING) {
+                double cost = coolingManager.UpgradeTier(action.itemIndex);
+                if (cost > 0.0) {
+                    economy.DeductFiat(cost);
+                    thermalModel.SetCoolingPowerWatts(coolingManager.CalculateTotalCoolingWatts());
+                }
+            } else if (action.type == Render::MarketPurchaseAction::ActionType::BUY_FACILITY) {
+                const auto& facilities = marketCatalog.GetFacilityUpgrades();
+                if (action.itemIndex < facilities.size()) {
+                    const auto& fac = facilities[action.itemIndex];
+                    if (!fac.isInstalled && economy.DeductFiat(fac.priceUSD)) {
+                        marketCatalog.PurchaseFacilityUpgrade(action.itemIndex);
+                        if (fac.addedGreenWatts > 0.0) {
+                            powerGrid.AddProducerWatts(fac.addedGreenWatts);
+                        }
+                    }
                 }
             }
         }
@@ -283,7 +328,7 @@ int main() {
         const float rigX = pad + (leftW - rigBaseW) / 2.0f;
         const float rigY = contentY + 60.0f;
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
             Vector2 mouse = GetMousePosition();
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse);
@@ -295,18 +340,14 @@ int main() {
             }
         }
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen()) {
-            // 1. GPU Satın Al
-            btnBuyGPU.SetTitle(Core::LocalizationManager::Tr("BTN_BUY_GPU"));
-            if (activeRig) {
-                std::string gpuSub = (isTR ? "Maliyet: " : "Cost: ") + economy.FormatFiat(600.0) + (isTR ? " | Rig: " : " | Rig: ") + std::to_string(activeRig->GetGPUCount()) + "/" + std::to_string(activeRig->GetMaxCapacity());
-                btnBuyGPU.SetSubtitle(gpuSub);
-                btnBuyGPU.SetDisabled(economy.GetFiatBalance() < 600.0 || activeRig->GetGPUCount() >= activeRig->GetMaxCapacity());
-                if (btnBuyGPU.UpdateAndCheckClick()) {
-                    if (economy.DeductFiat(600.0)) {
-                        activeRig->InstallGPU(std::make_unique<Core::GPU>("RTX 3070 Ti", 80.0, 180.0, 1.0));
-                    }
-                }
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen()) {
+            // 1. Donanım ve Tesis Marketi
+            btnBuyGPU.SetTitle(isTR ? "🛒 DONANIM MARKETI" : "🛒 HARDWARE STORE");
+            std::string gpuSub = isTR ? "Farkli Modeller, Trafo ve Tesis" : "Different Models, Power & Facilities";
+            btnBuyGPU.SetSubtitle(gpuSub);
+            btnBuyGPU.SetDisabled(false);
+            if (btnBuyGPU.UpdateAndCheckClick()) {
+                marketModal.Open();
             }
 
             // 2. Yeni Rig Satın Al ($2,500)
@@ -436,7 +477,11 @@ int main() {
 
                                 // 140°C üzeri: KART AŞIRI SICAKLIKTAN YANAR (BURNT)!
                                 if (cardTemp >= 140.0 && !coolingManager.IsImmersionCoolingActive()) {
-                                    gpu->SetBurnt(true);
+                                    if (marketCatalog.HasAutoFireSuppression()) {
+                                        r->SetPoweredOn(false); // Otomatik yangın söndürücü sistemi rig'i güvenle kapatır
+                                    } else {
+                                        gpu->SetBurnt(true);
+                                    }
                                 }
                             } else {
                                 gpu->SetThrottled(false);
@@ -571,7 +616,7 @@ int main() {
         Render::UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("TIP_FOOTER"),
                                        pad + 10.0f, screenH - footerH + 12.0f, 14.0f, Color{150, 165, 190, 255}, false);
 
-        std::string verTag = "GameOfTex v1.5 [Warehouse Overview & Power Controls]";
+        std::string verTag = "GameOfTex v1.6 [Hardware Market & Facility Store]";
         float verW = Render::UIFrame::MeasureTextCustom(verTag, 14.0f, false);
         Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, screenH - footerH + 12.0f, 14.0f, Color{100, 120, 150, 255}, false);
 
@@ -583,6 +628,11 @@ int main() {
         // 6. AYARLAR MODAL PENCERESİ
         if (settingsModal.IsOpen()) {
             settingsModal.Draw(economy);
+        }
+
+        // 7. DONANIM VE TESİS MARKETİ MODAL PENCERESİ
+        if (marketModal.IsOpen()) {
+            marketModal.Draw(economy, warehouse, coolingManager, marketCatalog, powerGrid);
         }
 
         EndDrawing();
