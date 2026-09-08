@@ -221,3 +221,65 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * **Örgülü PCIe Güç Kabloları (`DrawBraidedPCIeCable`):** Üst alüminyum destek kanalından her ekran kartının 8-pin besleme soketine inen sarı-siyah örgülü yüksek akım kablo demeti.
 * **Akıllı LED Göstergeleri:** Kart durumuna göre renk değiştiren durum LED'i (Yeşil: Kazımda, Turuncu: Termal Kısılma, Kırmızı Flaş: Yandı, Sönük Gri: Rig Kapalı).
 
+---
+
+## 🌐 6. Çoklu Dil Desteği (Localization Architecture)
+
+### 6.1. `Localization.hpp` & `Localization.cpp` (Yerelleştirme Yöneticisi)
+* **Görevi:** Oyun içi tüm metinlerin, buton etiketlerinin ve uyarıların Türkçe (TR 🇹🇷) ve İngilizce (EN 🇺🇸) dillerinde dinamik olarak yönetilmesini sağlar.
+* **Tasarım Deseni (Design Pattern):** Singleton (`LocalizationManager::Get()`) deseni ile projenin her yerinden statik fonksiyonla (`LocalizationManager::Tr("KEY")`) hızlı erişim sunar.
+
+#### Fonksiyonlar ve Görevleri:
+* `static LocalizationManager& Get()`: Tekil nesne örneğini döner.
+* `void SetLanguage(Language lang)`: Aktif dili (`Language::TURKISH` veya `Language::ENGLISH`) ayarlar.
+* `Language GetLanguage() const`: Mevcut dil enum değerini döner.
+* `void ToggleLanguage()`: Türkçe ve İngilizce arasında tek tıkla geçiş yapar.
+* `const std::string& GetLanguageName() const`: Ayarlar menüsünde buton üzerinde görünecek dinamik dil adını döner.
+* `const char* Get(const std::string& key) const`: İlgili dil sözlüğünden metni arar; bulunamazsa anahtarın kendisini döner (güvenli fallback mekanizması).
+* `static const char* Tr(const std::string& key)`: Kısayol yardımcı fonksiyon. Kod içerisinde `Core::LocalizationManager::Tr("BTN_BUY_GPU")` şeklinde pratik çağrılır.
+* `void InitTranslations()`:
+  * **SRP Gerekçesi:** Yalnızca dil haritalarını (std::unordered_map) başlatır; çizim veya mantık kodu içermez.
+
+---
+
+## 💱 7. Çoklu Para Birimi Sistemi (Multi-Currency Support)
+
+### 7.1. `CurrencyType` & `EconomyManager` Güncellemeleri
+* **Görevi:** Oyuncunun nakit bakiyesini ve mağaza fiyatlarını farklı küresel para birimlerinde görmesini sağlar.
+* **Desteklenen Para Birimleri:**
+  * `USD ($)`: Amerikan Doları (Varsayılan baz birim)
+  * `USDT (₮)`: Tether Kripto Sabit Coin (1:1 parite)
+  * `TRY (₺)`: Türk Lirası (Gerçekçi parite çarpanı: ~38.5 ₺/$)
+  * `EUR (€)`: Euro (Gerçekçi parite çarpanı: ~0.92 €/$)
+
+#### Fonksiyonlar ve Görevleri:
+* `void NextCurrency()`: Para birimlerini sırayla döngüye sokar (USD -> USDT -> TRY -> EUR -> USD).
+* `CurrencyType GetCurrentCurrency() const`: Aktif para birimi türünü döner.
+* `std::string GetCurrencySymbol() const`: Seçili birimin sembolünü döner ($, ₮, ₺, €).
+* `std::string GetCurrencyName() const`: Ayarlar ekranındaki buton etiketi için birim kodunu ve sembolünü döner.
+* `std::string FormatFiat(double usdAmount) const`:
+  * **İşlevi:** Baz USD cinsinden tutulan bakiyeyi aktif para biriminin paritesine çarpar ve yerelleştirilmiş formatta string olarak döner.
+  * **Örnek:** USD modunda `$1,250.00`, TRY modunda `48,125.00 ₺`.
+* `std::string FormatPrice(double usdPrice) const`:
+  * **İşlevi:** Mağazadaki butonlar ve yükseltme maliyetleri için tamsayı formatlı fiyat etiketi üretir.
+
+---
+
+## 🚀 8. Dağıtım & Arkadaşların Oyunu Çalıştırması Rehberi
+
+### "Arkadaşlarımda derleyici / Visual Studio yok, oyunu nasıl açacaklar?"
+
+1. **GitHub Releases (En Profesyonel ve Önerilen Yöntem):**
+   * GitHub deposunda sağ tarafta bulunan **Releases** sekmesine tıklanır -> **Draft a new release** seçilir.
+   * `dist/GameOfTex-Windows.zip` dosyası buraya yüklenir.
+   * Arkadaşların doğrudan tek bir "Download ZIP" linkine tıklayarak oyunu indirir.
+   * ZIP dosyasını klasöre çıkartıp `GameOfTex.exe`'ye çift tıklamaları yeterlidir. Hiçbir C++, CMake veya Visual Studio kurulumuna gerek **YOKTUR**.
+
+2. **Doğrudan ZIP Paylaşımı:**
+   * Proje kökünde oluşturduğumuz `dist/GameOfTex-Windows.zip` (~270 KB) paketini Discord, Telegram veya Google Drive üzerinden arkadaşlarınıza doğrudan atabilirsiniz.
+
+3. **Neden `.exe` Doğrudan Git Deposuna (Commit İle) Eklenmez?**
+   * Git bir **kaynak kod versiyon kontrol** sistemidir. `.exe` gibi ikili (binary) dosyalar her derlemede birkaç megabayt değişir ve reponun boyutunu hızla şişirir (repo cloning süreleri çok uzar).
+   * Dünyadaki tüm standart açık kaynak ve oyun projelerinde (Unreal, Godot, Linux vb.) kodlar depoda tutulur, derlenmiş çalıştırılabilir dosyalar ise **GitHub Releases** veya **Artifacts** kısmında dağıtılır.
+
+

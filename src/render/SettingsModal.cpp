@@ -1,5 +1,6 @@
 #include "SettingsModal.hpp"
 #include "UIFrame.hpp"
+#include "../core/Localization.hpp"
 #include <algorithm>
 
 namespace Render {
@@ -12,7 +13,9 @@ SettingsModal::SettingsModal()
     , m_btnScale150(Rectangle{}, "1.50x COK BUYUK", "Buyuk Ekranlar Icin", Color{30, 35, 45, 255}, Color{0, 240, 255, 255})
     , m_btnScale175(Rectangle{}, "1.75x DEV", "Ultra Genis Font", Color{30, 35, 45, 255}, Color{100, 255, 200, 255})
     , m_btnScale200(Rectangle{}, "2.0x ULTRA", "Maksimum Boyut", Color{30, 35, 45, 255}, Color{255, 200, 0, 255})
-    , m_btnToggleFullscreen(Rectangle{}, "TAM EKRAN AC / KAPA", "[F11] Kisa Yolu", Color{35, 45, 60, 255}, Color{0, 220, 255, 255})
+    , m_btnToggleFullscreen(Rectangle{}, "TAM EKRAN (F11)", "Pencere / Fullscreen", Color{35, 45, 60, 255}, Color{0, 220, 255, 255})
+    , m_btnToggleLanguage(Rectangle{}, "DIL: TURKCE 🇹🇷", "Degistir / Switch", Color{25, 45, 50, 255}, Color{0, 240, 180, 255})
+    , m_btnToggleCurrency(Rectangle{}, "PARA BIRIMI: USD ($)", "USDT / TRY / EUR", Color{45, 38, 20, 255}, Color{255, 200, 0, 255})
 {
 }
 
@@ -28,34 +31,46 @@ bool SettingsModal::IsOpen() const {
     return m_isOpen;
 }
 
-void SettingsModal::Update() {
+void SettingsModal::Update(Core::EconomyManager& economy) {
     if (!m_isOpen) return;
 
     const float screenW = static_cast<float>(GetScreenWidth());
     const float screenH = static_cast<float>(GetScreenHeight());
 
-    const float modalW = std::clamp(screenW * 0.50f, 540.0f, 720.0f);
-    const float modalH = std::clamp(screenH * 0.72f, 500.0f, 640.0f);
+    const float modalW = std::clamp(screenW * 0.54f, 580.0f, 750.0f);
+    const float modalH = std::clamp(screenH * 0.78f, 540.0f, 680.0f);
     const float modalX = (screenW - modalW) / 2.0f;
     const float modalY = (screenH - modalH) / 2.0f;
 
     const float innerX = modalX + 40.0f;
     const float innerW = modalW - 80.0f;
-    const float btnH = 50.0f;
+    const float btnH = 46.0f;
 
-    // Ölçek butonlarının yerleşimi (2 sütun veya alt alta)
+    // Ölçek butonlarının yerleşimi (2 sütun)
     const float colW = (innerW - 14.0f) / 2.0f;
 
-    m_btnScale100.SetBounds(Rectangle{innerX, modalY + 140.0f, colW, btnH});
-    m_btnScale125.SetBounds(Rectangle{innerX + colW + 14.0f, modalY + 140.0f, colW, btnH});
+    m_btnScale100.SetBounds(Rectangle{innerX, modalY + 120.0f, colW, btnH});
+    m_btnScale125.SetBounds(Rectangle{innerX + colW + 14.0f, modalY + 120.0f, colW, btnH});
 
-    m_btnScale150.SetBounds(Rectangle{innerX, modalY + 200.0f, colW, btnH});
-    m_btnScale175.SetBounds(Rectangle{innerX + colW + 14.0f, modalY + 200.0f, colW, btnH});
+    m_btnScale150.SetBounds(Rectangle{innerX, modalY + 172.0f, colW, btnH});
+    m_btnScale175.SetBounds(Rectangle{innerX + colW + 14.0f, modalY + 172.0f, colW, btnH});
 
-    m_btnScale200.SetBounds(Rectangle{innerX, modalY + 260.0f, innerW, btnH});
+    m_btnScale200.SetBounds(Rectangle{innerX, modalY + 224.0f, innerW, btnH});
 
-    m_btnToggleFullscreen.SetBounds(Rectangle{innerX, modalY + 340.0f, innerW, btnH});
-    m_btnClose.SetBounds(Rectangle{innerX, modalY + modalH - 75.0f, innerW, 54.0f});
+    // Tam ekran ve Dil butonları (yan yana 2 sütun)
+    m_btnToggleFullscreen.SetBounds(Rectangle{innerX, modalY + 300.0f, colW, 52.0f});
+    m_btnToggleLanguage.SetBounds(Rectangle{innerX + colW + 14.0f, modalY + 300.0f, colW, 52.0f});
+
+    // Para birimi butonu
+    m_btnToggleCurrency.SetBounds(Rectangle{innerX, modalY + 360.0f, innerW, 54.0f});
+
+    m_btnClose.SetBounds(Rectangle{innerX, modalY + modalH - 70.0f, innerW, 50.0f});
+
+    // Buton etiketlerini güncelle
+    m_btnToggleLanguage.SetTitle(std::string("DIL / LANG: ") + Core::LocalizationManager::Get().GetLanguageName());
+    std::string curTitle = std::string(Core::LocalizationManager::Tr("SETTINGS_CURRENCY")) + economy.GetCurrencyCode() + " (" + economy.GetCurrencySymbol() + ")";
+    m_btnToggleCurrency.SetTitle(curTitle);
+    m_btnClose.SetTitle(Core::LocalizationManager::Tr("SETTINGS_CLOSE"));
 
     // Tıklamaları işle
     if (m_btnScale100.UpdateAndCheckClick()) UIFrame::SetUIScale(1.0f);
@@ -68,12 +83,20 @@ void SettingsModal::Update() {
         ToggleFullscreen();
     }
 
+    if (m_btnToggleLanguage.UpdateAndCheckClick()) {
+        Core::LocalizationManager::Get().ToggleLanguage();
+    }
+
+    if (m_btnToggleCurrency.UpdateAndCheckClick()) {
+        economy.NextCurrency();
+    }
+
     if (m_btnClose.UpdateAndCheckClick() || IsKeyPressed(KEY_ESCAPE)) {
         Close();
     }
 }
 
-void SettingsModal::Draw() const {
+void SettingsModal::Draw(const Core::EconomyManager& economy) const {
     if (!m_isOpen) return;
 
     const float screenW = static_cast<float>(GetScreenWidth());
@@ -82,20 +105,20 @@ void SettingsModal::Draw() const {
     // Karartma katmanı
     DrawRectangle(0, 0, static_cast<int>(screenW), static_cast<int>(screenH), Color{0, 0, 0, 190});
 
-    const float modalW = std::clamp(screenW * 0.50f, 540.0f, 720.0f);
-    const float modalH = std::clamp(screenH * 0.72f, 500.0f, 640.0f);
+    const float modalW = std::clamp(screenW * 0.54f, 580.0f, 750.0f);
+    const float modalH = std::clamp(screenH * 0.78f, 540.0f, 680.0f);
     const float modalX = (screenW - modalW) / 2.0f;
     const float modalY = (screenH - modalH) / 2.0f;
 
     const float innerX = modalX + 40.0f;
 
-    UIFrame::DrawCard(Rectangle{modalX, modalY, modalW, modalH}, "SISTEM VE GORSEL AYARLARI", Color{0, 220, 255, 255});
+    UIFrame::DrawCard(Rectangle{modalX, modalY, modalW, modalH}, Core::LocalizationManager::Tr("SETTINGS_TITLE"), Color{0, 220, 255, 255});
 
     // Başlık ve Açıklamalar
-    UIFrame::DrawTextCustom("YAZI VE ARAYUZ BOYUTLANDIRMA (UI SCALE)", innerX, modalY + 65.0f, 18.0f, RAYWHITE, true);
+    UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("SETTINGS_SCALE_DESC"), innerX, modalY + 58.0f, 17.0f, RAYWHITE, true);
 
     std::string currentScaleStr = "Mevcut Olcek: " + std::to_string(static_cast<int>(UIFrame::GetUIScale() * 100)) + "%";
-    UIFrame::DrawTextCustom(currentScaleStr, innerX, modalY + 95.0f, 16.0f, Color{0, 255, 180, 255}, true);
+    UIFrame::DrawTextCustom(currentScaleStr, innerX, modalY + 85.0f, 15.0f, Color{0, 255, 180, 255}, true);
 
     // Butonlar
     m_btnScale100.Draw();
@@ -104,8 +127,9 @@ void SettingsModal::Draw() const {
     m_btnScale175.Draw();
     m_btnScale200.Draw();
 
-    UIFrame::DrawTextCustom("GORUNTU MODU:", innerX, modalY + 318.0f, 15.0f, Color{180, 195, 220, 255}, true);
     m_btnToggleFullscreen.Draw();
+    m_btnToggleLanguage.Draw();
+    m_btnToggleCurrency.Draw();
 
     m_btnClose.Draw();
 }

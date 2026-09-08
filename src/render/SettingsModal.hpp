@@ -2,15 +2,17 @@
 
 #include "raylib.h"
 #include "UIButton.hpp"
+#include "../core/EconomyManager.hpp"
+#include "../core/Localization.hpp"
 #include <string>
 
 namespace Render {
 
 /**
  * @class SettingsModal
- * @brief Modal dialog for adjusting UI text scaling, graphics settings, and fullscreen.
+ * @brief Modal dialog for adjusting UI text scaling, language, currency, and fullscreen.
  * 
- * SRP: This class is solely responsible for rendering the settings popup and handling scale selections.
+ * SRP: This class is solely responsible for rendering the settings popup and handling user preferences.
  */
 class SettingsModal {
 public:
@@ -21,14 +23,14 @@ public:
     [[nodiscard]] bool IsOpen() const;
 
     /**
-     * @brief Updates hover/clicks for UI scale buttons and close button.
+     * @brief Updates hover/clicks for scale, language, currency, and close buttons.
      */
-    void Update();
+    void Update(Core::EconomyManager& economy);
 
     /**
      * @brief Draws the modal dialog over the current screen.
      */
-    void Draw() const;
+    void Draw(const Core::EconomyManager& economy) const;
 
 private:
     bool m_isOpen;
@@ -39,6 +41,8 @@ private:
     UIButton m_btnScale175;
     UIButton m_btnScale200;
     UIButton m_btnToggleFullscreen;
+    UIButton m_btnToggleLanguage;
+    UIButton m_btnToggleCurrency;
 };
 
 } // namespace Render

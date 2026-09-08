@@ -4,6 +4,13 @@
 
 namespace Core {
 
+enum class CurrencyType {
+    USD,
+    USDT,
+    TRY,
+    EUR
+};
+
 /**
  * @class EconomyManager
  * @brief Manages fiat bank balance, crypto wallet, network difficulty, and market prices.
@@ -25,6 +32,16 @@ public:
     [[nodiscard]] double GetFiatBalance() const;
     [[nodiscard]] double GetCryptoBalance() const;
     [[nodiscard]] const std::string& GetCoinSymbol() const;
+
+    // Currency controls
+    void SetCurrency(CurrencyType curr);
+    [[nodiscard]] CurrencyType GetCurrency() const;
+    void NextCurrency();
+    [[nodiscard]] std::string GetCurrencyCode() const;
+    [[nodiscard]] std::string GetCurrencySymbol() const;
+    [[nodiscard]] double GetExchangeRate() const;
+    [[nodiscard]] std::string FormatFiat(double usdAmount) const;
+    [[nodiscard]] std::string FormatPrice(double usdPrice) const;
 
     // Direct balance modifiers
     void AddFiat(double amount);
@@ -55,6 +72,7 @@ private:
     double m_cryptoBalance;
     std::string m_coinSymbol;
 
+    CurrencyType m_currency{CurrencyType::USD};
     double m_cryptoPrice;
     double m_networkDifficulty; // Difficulty divisor for mining
     double m_marketTimer;

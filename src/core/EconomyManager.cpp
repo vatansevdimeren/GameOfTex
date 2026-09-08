@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <cmath>
 #include <random>
+#include <iomanip>
+#include <sstream>
 
 namespace Core {
 
@@ -25,6 +27,95 @@ double EconomyManager::GetCryptoBalance() const {
 
 const std::string& EconomyManager::GetCoinSymbol() const {
     return m_coinSymbol;
+}
+
+void EconomyManager::SetCurrency(CurrencyType curr) {
+    m_currency = curr;
+}
+
+CurrencyType EconomyManager::GetCurrency() const {
+    return m_currency;
+}
+
+void EconomyManager::NextCurrency() {
+    switch (m_currency) {
+        case CurrencyType::USD: m_currency = CurrencyType::USDT; break;
+        case CurrencyType::USDT: m_currency = CurrencyType::TRY; break;
+        case CurrencyType::TRY: m_currency = CurrencyType::EUR; break;
+        case CurrencyType::EUR: m_currency = CurrencyType::USD; break;
+    }
+}
+
+std::string EconomyManager::GetCurrencyCode() const {
+    switch (m_currency) {
+        case CurrencyType::USD: return "USD";
+        case CurrencyType::USDT: return "USDT";
+        case CurrencyType::TRY: return "TRY";
+        case CurrencyType::EUR: return "EUR";
+    }
+    return "USD";
+}
+
+std::string EconomyManager::GetCurrencySymbol() const {
+    switch (m_currency) {
+        case CurrencyType::USD: return "$";
+        case CurrencyType::USDT: return "₮";
+        case CurrencyType::TRY: return "₺";
+        case CurrencyType::EUR: return "€";
+    }
+    return "$";
+}
+
+double EconomyManager::GetExchangeRate() const {
+    switch (m_currency) {
+        case CurrencyType::USD: return 1.0;
+        case CurrencyType::USDT: return 1.0;
+        case CurrencyType::TRY: return 34.0;
+        case CurrencyType::EUR: return 0.92;
+    }
+    return 1.0;
+}
+
+std::string EconomyManager::FormatFiat(double usdAmount) const {
+    double converted = usdAmount * GetExchangeRate();
+    std::ostringstream ss;
+    ss << std::fixed << std::setprecision(2);
+    switch (m_currency) {
+        case CurrencyType::USD:
+            ss << "$" << converted;
+            break;
+        case CurrencyType::USDT:
+            ss << converted << " USDT";
+            break;
+        case CurrencyType::TRY:
+            ss << converted << " ₺";
+            break;
+        case CurrencyType::EUR:
+            ss << converted << " €";
+            break;
+    }
+    return ss.str();
+}
+
+std::string EconomyManager::FormatPrice(double usdPrice) const {
+    double converted = usdPrice * GetExchangeRate();
+    std::ostringstream ss;
+    ss << std::fixed << std::setprecision(0);
+    switch (m_currency) {
+        case CurrencyType::USD:
+            ss << "$" << converted;
+            break;
+        case CurrencyType::USDT:
+            ss << converted << " USDT";
+            break;
+        case CurrencyType::TRY:
+            ss << converted << " ₺";
+            break;
+        case CurrencyType::EUR:
+            ss << converted << " €";
+            break;
+    }
+    return ss.str();
 }
 
 void EconomyManager::AddFiat(double amount) {

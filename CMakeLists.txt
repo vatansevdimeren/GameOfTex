@@ -38,6 +38,8 @@ add_executable(GameOfTex
     src/core/EconomyManager.cpp
     src/core/UserProfile.hpp
     src/core/UserProfile.cpp
+    src/core/Localization.hpp
+    src/core/Localization.cpp
     src/render/ShaderManager.hpp
     src/render/ShaderManager.cpp
     src/render/TextureManager.hpp

@@ -2,6 +2,7 @@
 build/
 bin/
 out/
+dist/
 CMakeSettings.json
 
 # Visual Studio & IDE Dosyaları
