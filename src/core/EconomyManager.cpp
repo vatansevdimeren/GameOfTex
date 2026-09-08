@@ -12,7 +12,8 @@ EconomyManager::EconomyManager(double initialFiat, double initialCryptoPrice, st
     , m_cryptoBalance(0.0)
     , m_coinSymbol(std::move(coinSymbol))
     , m_cryptoPrice(initialCryptoPrice)
-    , m_networkDifficulty(10000.0) // 10k MH per coin base rate
+    , m_baseDifficulty(350000.0) // 350k MH per coin base rate
+    , m_networkDifficulty(350000.0)
     , m_marketTimer(0.0)
 {
 }
@@ -162,6 +163,10 @@ double EconomyManager::MineCoins(double hashrateMHS, double deltaTimeSeconds) {
     if (hashrateMHS <= 0.0 || deltaTimeSeconds <= 0.0) {
         return 0.0;
     }
+
+    // Gerçekçi Kripto Dinamik Ağ Zorluğu (Mining Difficulty Adjustment):
+    // Oyuncunun kazım gücü büyüdükçe küresel ağ zorluğu da dinamik adapte olur.
+    m_networkDifficulty = m_baseDifficulty + (hashrateMHS * 180.0);
 
     // Kazılan coin formülü: (Hashrate * saniye) / Ağ Zorluğu
     const double mintedCoins = (hashrateMHS * deltaTimeSeconds) / m_networkDifficulty;

@@ -9,7 +9,9 @@ include(FetchContent)
 # Raylib kütüphanesini otomatik çek ve bağla
 FetchContent_Declare(
     raylib
-    SOURCE_DIR "C:/Users/cells/raylib-5.0"
+    GIT_REPOSITORY https://github.com/raysan5/raylib.git
+    GIT_TAG 5.0
+    GIT_SHALLOW TRUE
 )
 
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)

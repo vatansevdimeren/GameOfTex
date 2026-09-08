@@ -29,8 +29,17 @@ void UIFrame::DrawTextCustom(const std::string& text, float x, float y, float si
     const float scaledSize = size * s_uiScale;
     if (s_hasCustomFonts) {
         Font fontToUse = bold ? s_fontBold : s_fontRegular;
+        // Text drop-shadow (shade effect for depth, readability, and AAA polish)
+        if (color.a > 30) {
+            Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.85f)};
+            DrawTextEx(fontToUse, text.c_str(), Vector2{x + 1.2f, y + 1.2f}, scaledSize, 1.0f, shadowColor);
+        }
         DrawTextEx(fontToUse, text.c_str(), Vector2{x, y}, scaledSize, 1.0f, color);
     } else {
+        if (color.a > 30) {
+            Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.85f)};
+            DrawText(text.c_str(), static_cast<int>(x + 1), static_cast<int>(y + 1), static_cast<int>(scaledSize), shadowColor);
+        }
         DrawText(text.c_str(), static_cast<int>(x), static_cast<int>(y), static_cast<int>(scaledSize), color);
     }
 }
@@ -46,6 +55,9 @@ float UIFrame::MeasureTextCustom(const std::string& text, float size, bool bold)
 }
 
 void UIFrame::DrawCard(Rectangle bounds, const std::string& title, Color accent) {
+    // Yumuşak kart arka gölgesi (Ambient card shade)
+    DrawRectangleRounded(Rectangle{bounds.x + 3.0f, bounds.y + 4.0f, bounds.width, bounds.height}, 0.03f, 6, Color{0, 0, 0, 90});
+
     // Koyu yarı saydam gövde (Glassmorphism etkisi)
     DrawRectangleRounded(bounds, 0.03f, 6, Color{18, 22, 30, 245});
     // Belirgin neon hatlı kenarlık

@@ -181,10 +181,10 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
         title += "  [! PSU ASIRI YUKLENDI - YUKSELTIN !]";
         titleColor = Color{255, 120, 20, 255};
     } else if (isPowered) {
-        title += "  [⚡ AKTIF / CALISIYOR]";
+        title += "  [AKTIF / CALISIYOR]";
         titleColor = Color{0, 240, 160, 255};
     } else {
-        title += "  [⏸️ KAPALI / DEVRE DISI]";
+        title += "  [KAPALI / DEVRE DISI]";
         titleColor = Color{200, 70, 70, 255};
     }
     UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 16.0f, titleColor, true);
@@ -201,17 +201,17 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
     snprintf(psuBuf, sizeof(psuBuf), "PSU: %.0fW / %.0fW", rigWatts, psuMax);
     Color psuCol = (rigWatts > psuMax) ? Color{255, 50, 50, 255} : ((rigWatts > psuMax * 0.85) ? Color{255, 180, 40, 255} : Color{80, 200, 255, 255});
 
-    float badgeW1 = MeasureText(tempBuf, 13) + 16.0f;
+    float badgeW1 = UIFrame::MeasureTextCustom(tempBuf, 13.0f, true) + 20.0f;
     Rectangle badgeTempRec{static_cast<float>(posX + rigWidth - badgeW1 - 18.0f), static_cast<float>(posY + 23.0f), badgeW1, 24.0f};
     DrawRectangleRounded(badgeTempRec, 0.3f, 4, Color{28, 36, 50, 240});
     DrawRectangleRoundedLines(badgeTempRec, 0.3f, 4, 1.0f, tempCol);
-    DrawText(tempBuf, static_cast<int>(badgeTempRec.x + 8.0f), static_cast<int>(badgeTempRec.y + 5.0f), 13, tempCol);
+    UIFrame::DrawTextCustom(tempBuf, badgeTempRec.x + 10.0f, badgeTempRec.y + 4.0f, 13.0f, tempCol, true);
 
-    float badgeW2 = MeasureText(psuBuf, 13) + 16.0f;
+    float badgeW2 = UIFrame::MeasureTextCustom(psuBuf, 13.0f, true) + 20.0f;
     Rectangle badgePsuRec{badgeTempRec.x - badgeW2 - 8.0f, static_cast<float>(posY + 23.0f), badgeW2, 24.0f};
     DrawRectangleRounded(badgePsuRec, 0.3f, 4, Color{28, 36, 50, 240});
     DrawRectangleRoundedLines(badgePsuRec, 0.3f, 4, 1.0f, psuCol);
-    DrawText(psuBuf, static_cast<int>(badgePsuRec.x + 8.0f), static_cast<int>(badgePsuRec.y + 5.0f), 13, psuCol);
+    UIFrame::DrawTextCustom(psuBuf, badgePsuRec.x + 10.0f, badgePsuRec.y + 4.0f, 13.0f, psuCol, true);
 
     // Draw installed GPUs
     const auto& gpus = rig.GetGPUs();
@@ -301,27 +301,57 @@ void RigRenderer::DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, co
         DrawRectangleRounded(rigCardRect, 0.12f, 4, bg);
         DrawRectangleRoundedLines(rigCardRect, 0.12f, 4, isCurrentActive ? 2.0f : 1.0f, border);
 
-        // Sol: Rig Adı ve Güç Durumu
-        std::string rigTitle = "#" + std::to_string(i + 1) + " " + rig->GetName();
-        UIFrame::DrawTextCustom(rigTitle, cardX + 16.0f, cy + 14.0f, 17.0f, WHITE, true);
+        // Sağ Taraf Butonları: [AÇ / KAPAT] ve [İNCELE] (Garantili Sağ Kenar Hizalama)
+        const float btnW = 82.0f;
+        const float btnGap = 8.0f;
+        const float rightMargin = 16.0f;
+        const float btnInspectX = cardX + cardW - rightMargin - btnW;
+        const float btnPowerX = btnInspectX - btnGap - btnW;
+        const float btnY = cy + (cardH - 38.0f) / 2.0f;
 
-        // Durum Rozeti
-        if (isPowered) {
-            DrawRectangleRounded(Rectangle{cardX + 16.0f, cy + 42.0f, 95.0f, 24.0f}, 0.3f, 4, Color{15, 60, 35, 230});
-            DrawRectangleRoundedLines(Rectangle{cardX + 16.0f, cy + 42.0f, 95.0f, 24.0f}, 0.3f, 4, 1.0f, Color{0, 240, 140, 255});
-            UIFrame::DrawTextCustom("⚡ CALISIYOR", cardX + 22.0f, cy + 47.0f, 12.0f, Color{0, 240, 140, 255}, true);
-        } else {
-            DrawRectangleRounded(Rectangle{cardX + 16.0f, cy + 42.0f, 85.0f, 24.0f}, 0.3f, 4, Color{60, 20, 20, 230});
-            DrawRectangleRoundedLines(Rectangle{cardX + 16.0f, cy + 42.0f, 85.0f, 24.0f}, 0.3f, 4, 1.0f, Color{255, 70, 70, 255});
-            UIFrame::DrawTextCustom("⏸️ KAPALI", cardX + 22.0f, cy + 47.0f, 12.0f, Color{255, 100, 100, 255}, true);
+        Rectangle btnPowerRect{btnPowerX, btnY, btnW, 38.0f};
+        Rectangle btnInspectRect{btnInspectX, btnY, btnW, 38.0f};
+
+        // Butonlardan önceki içerik için maksimum güvenli X koordinatı
+        const float contentMaxX = btnPowerX - 14.0f;
+
+        // 1. Üst Satır (Sol): Rig Adı
+        std::string rigTitle = "#" + std::to_string(i + 1) + " " + rig->GetName();
+        UIFrame::DrawTextCustom(rigTitle, cardX + 16.0f, cy + 12.0f, 16.0f, WHITE, true);
+        float titleW = UIFrame::MeasureTextCustom(rigTitle, 16.0f, true);
+
+        // Durum Rozeti (Rig Adının hemen yanında)
+        std::string statusText = isPowered ? "[CALISIYOR]" : "[KAPALI]";
+        Color statusCol = isPowered ? Color{0, 240, 140, 255} : Color{255, 100, 100, 255};
+        if (rig->IsPSUOverloaded()) {
+            statusText = "[PSU ASIRI YUK]";
+            statusCol = Color{255, 140, 30, 255};
+        }
+        float statusW = UIFrame::MeasureTextCustom(statusText, 11.0f, true) + 12.0f;
+        float statusX = cardX + 26.0f + titleW;
+        if (statusX + statusW < contentMaxX - 100.0f) {
+            Rectangle sBadgeRec{statusX, cy + 11.0f, statusW, 20.0f};
+            DrawRectangleRounded(sBadgeRec, 0.3f, 4, Color{20, 28, 38, 220});
+            DrawRectangleRoundedLines(sBadgeRec, 0.3f, 4, 1.0f, statusCol);
+            UIFrame::DrawTextCustom(statusText, sBadgeRec.x + 6.0f, sBadgeRec.y + 3.0f, 11.0f, statusCol, true);
         }
 
-        // Orta: 6 Adet Mini GPU Yuvası
-        const float slotStartX = cardX + 125.0f;
-        const float slotY = cy + 40.0f;
-        const float slotBoxW = 28.0f;
-        const float slotBoxH = 34.0f;
-        const float slotGap = 6.0f;
+        // 1. Üst Satır (Sağ): PSU Güç Durumu
+        double psuWatts = isPowered ? rig->CalculateTotalPowerWatts() : 0.0;
+        double psuMax = rig->GetPSUMaxWatts();
+        std::string psuStr = "PSU: " + std::to_string(static_cast<int>(psuWatts)) + "W / " + std::to_string(static_cast<int>(psuMax)) + "W";
+        float psuW = UIFrame::MeasureTextCustom(psuStr, 12.0f, false);
+        if (contentMaxX - psuW > cardX + 250.0f) {
+            Color psuColor = (psuWatts > psuMax) ? Color{255, 60, 60, 255} : Color{130, 175, 215, 255};
+            UIFrame::DrawTextCustom(psuStr, contentMaxX - psuW, cy + 14.0f, 12.0f, psuColor, false);
+        }
+
+        // 2. Alt Satır: 6 Adet Mini GPU Yuvası (Kompakt)
+        const float slotStartX = cardX + 16.0f;
+        const float slotY = cy + 44.0f;
+        const float slotBoxW = 24.0f;
+        const float slotBoxH = 32.0f;
+        const float slotGap = 4.0f;
 
         const auto& gpus = rig->GetGPUs();
         double maxTemp = 0.0;
@@ -350,42 +380,41 @@ void RigRenderer::DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, co
 
                 DrawRectangleRounded(sRect, 0.2f, 3, slotBg);
                 DrawRectangleRoundedLines(sRect, 0.2f, 3, 1.2f, slotBorder);
-                UIFrame::DrawTextCustom(icon, sRect.x + 3.0f, sRect.y + 10.0f, 11.0f, slotBorder, true);
+                UIFrame::DrawTextCustom(icon, sRect.x + 2.0f, sRect.y + 9.0f, 10.0f, slotBorder, true);
             } else {
                 // Boş slot
                 DrawRectangleRounded(sRect, 0.2f, 3, Color{15, 18, 24, 255});
                 DrawRectangleRoundedLines(sRect, 0.2f, 3, 1.0f, Color{40, 45, 55, 255});
-                UIFrame::DrawTextCustom("-", sRect.x + 11.0f, sRect.y + 10.0f, 12.0f, Color{70, 75, 85, 255}, false);
+                UIFrame::DrawTextCustom("-", sRect.x + 9.0f, sRect.y + 8.0f, 11.0f, Color{70, 75, 85, 255}, false);
             }
         }
 
-        // Sağ Orta: Metrikler (Hashrate, Watt, En Yüksek Isı)
-        const float metricsX = cardX + 350.0f;
+        // 2. Alt Satır (Orta): Metrikler (Hashrate, Watt, Max Isı) - Asla butonların üzerine taşmaz!
+        const float metricsX = slotStartX + 6.0f * (slotBoxW + slotGap) + 14.0f;
         std::ostringstream ssM;
         ssM << "Kazim: " << std::fixed << std::setprecision(1) << rig->CalculateTotalHashrate() << " MH/s   |   "
             << "Guc: " << static_cast<int>(rig->CalculateTotalPowerWatts()) << "W   |   "
-            << "Max Isi: " << static_cast<int>(maxTemp) << " C";
-        UIFrame::DrawTextCustom(ssM.str(), metricsX, cy + 16.0f, 14.0f, Color{180, 210, 240, 255}, false);
+            << "Max: " << static_cast<int>(maxTemp) << " C";
+        UIFrame::DrawTextCustom(ssM.str(), metricsX, cy + 50.0f, 13.0f, Color{175, 205, 235, 255}, false);
 
-        // Sağ Taraf Butonları: [AÇ / KAPAT] ve [İNCELE]
-        Rectangle btnPowerRect{cardW - 190.0f + cardX, cy + 24.0f, 85.0f, 44.0f};
-        Rectangle btnInspectRect{cardW - 95.0f + cardX, cy + 24.0f, 85.0f, 44.0f};
-
+        // Buton Tıklama ve Hover Durumları
         bool hoverPower = mouseInBounds && CheckCollisionPointRec(mousePos, btnPowerRect);
         bool hoverInspect = mouseInBounds && CheckCollisionPointRec(mousePos, btnInspectRect);
 
         // Güç Butonu
         Color pBtnBg = isPowered ? (hoverPower ? Color{100, 30, 30, 255} : Color{70, 25, 25, 255})
                                  : (hoverPower ? Color{25, 90, 50, 255} : Color{20, 65, 35, 255});
-        DrawRectangleRounded(btnPowerRect, 0.2f, 4, pBtnBg);
-        DrawRectangleRoundedLines(btnPowerRect, 0.2f, 4, 1.2f, isPowered ? RED : GREEN);
-        UIFrame::DrawTextCustom(isPowered ? "KAPAT" : "AC", btnPowerRect.x + 22.0f, btnPowerRect.y + 14.0f, 13.0f, WHITE, true);
+        DrawRectangleRounded(btnPowerRect, 0.25f, 4, pBtnBg);
+        DrawRectangleRoundedLines(btnPowerRect, 0.25f, 4, 1.2f, isPowered ? RED : GREEN);
+        float pTxtW = UIFrame::MeasureTextCustom(isPowered ? "KAPAT" : "AC", 13.0f, true);
+        UIFrame::DrawTextCustom(isPowered ? "KAPAT" : "AC", btnPowerRect.x + (btnW - pTxtW) / 2.0f, btnPowerRect.y + 11.0f, 13.0f, WHITE, true);
 
         // İncele / Seç Butonu
         Color iBtnBg = hoverInspect ? Color{35, 55, 85, 255} : Color{25, 40, 65, 255};
-        DrawRectangleRounded(btnInspectRect, 0.2f, 4, iBtnBg);
-        DrawRectangleRoundedLines(btnInspectRect, 0.2f, 4, 1.2f, Color{0, 220, 255, 255});
-        UIFrame::DrawTextCustom("INCELE", btnInspectRect.x + 18.0f, btnInspectRect.y + 14.0f, 13.0f, Color{0, 220, 255, 255}, true);
+        DrawRectangleRounded(btnInspectRect, 0.25f, 4, iBtnBg);
+        DrawRectangleRoundedLines(btnInspectRect, 0.25f, 4, 1.2f, Color{0, 220, 255, 255});
+        float iTxtW = UIFrame::MeasureTextCustom("INCELE", 13.0f, true);
+        UIFrame::DrawTextCustom("INCELE", btnInspectRect.x + (btnW - iTxtW) / 2.0f, btnInspectRect.y + 11.0f, 13.0f, Color{0, 220, 255, 255}, true);
 
         // Tıklama Kontrolleri
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && mouseInBounds) {

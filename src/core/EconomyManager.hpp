@@ -74,7 +74,8 @@ private:
 
     CurrencyType m_currency{CurrencyType::USD};
     double m_cryptoPrice;
-    double m_networkDifficulty; // Difficulty divisor for mining
+    double m_baseDifficulty{350000.0};
+    double m_networkDifficulty{350000.0}; // Difficulty divisor for mining
     double m_marketTimer;
 };
 

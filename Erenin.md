@@ -477,11 +477,63 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 ### 12.5. Türkçe Karakter ve Font Atlası Düzeltmesi (Unicode Glyph Fix)
 * **Problem:** Raylib `LoadFontEx` varsayılan olarak sadece ilk 95 ASCII karakteri yüklediği için ekranda bazı Türkçe harfler (ç, Ç, ğ, Ğ, ı, İ, ö, Ö, ş, Ş, ü, Ü ve °) çıkmıyordu.
 * **Çözüm:**
-  * `main.cpp` içerisindeki font yükleyicisine `codepoints` dizisi entegre edildi:
-    * ASCII Basic (32 - 126)
-    * Latin-1 Supplement (160 - 255: ç, Ç, ö, Ö, ü, Ü, °, vb.)
-    * Latin Extended-A (0x0100 - 0x017F: ğ, Ğ, ı, İ, ş, Ş, vb.)
-  * Segoe UI ve Arial font atlasları tüm Türkçe harfleri ve derece sembolünü eksiksiz renderlayacak şekilde rasterize edildi.
+---
+
+## 🎨 13. Tipografi, Metin Gölgelendirmesi (Text Shade), Düzen Çakışması (Overlap Fix) ve Dinamik Ekonomi Dengelemesi
+
+### 13.1. Rajdhani Siber Tipografi & Vektör Font Entegrasyonu
+* **Geliştirme:** Resmi Google Fonts deposundan açık kaynaklı, güvenilir ve modern cyberpunk tarzı `Rajdhani-Medium.ttf` ve `Rajdhani-Bold.ttf` fontları projeye dahil edildi (`assets/fonts/`).
+* **Özellikleri:**
+  * Türkçe Genişletilmiş Kod Noktaları (ç, Ç, ğ, Ğ, ı, İ, ö, Ö, ş, Ş, ü, Ü, °) ile eksiksiz rasterize edilir.
+  * Eğer yerel font bulunamazsa Windows Segoe UI veya Arial fontlarına kusursuz geri düşüş (fallback) mekanizması korunur.
+  * `TEXTURE_FILTER_BILINEAR` ile yüksek çözünürlüklü ve pürüzsüz antialiased yazı kalitesi sunar.
+
+---
+
+### 13.2. Metin Gölgelendirmesi (Text Drop-Shadow / Shade)
+* **Problem:** Yazılar koyu veya renkli zeminlerde bazen düz kalıyor, okunurluk ve derinlik hissi zayıflıyordu.
+* **Çözüm:** `UIFrame::DrawTextCustom` içine text drop-shadow eklendi:
+  * Her metnin arkasına `(x + 1.2f, y + 1.2f)` ofsetiyle `%85` alfa değerinde yumuşak siyah gölge (`Color{0, 0, 0, 180}`) çizilir.
+  * Bu sayede yazılar zemin parazitlerinden tamamen ayrılır ve AAA oyun arayüzü kalitesine kavuşur.
+  * `UIFrame::DrawCard` zeminlerine yumuşak ambient gölge eklenerek Glassmorphic panel derinliği artırıldı.
+
+---
+
+### 13.3. Depo Genel Bakış (Rigleri Gör) Buton ve Metin Çarpışması Giderimi
+* **Düzeltilen Sorun:** "Rigleri gör" (Kuşbakışı genel bakış) modunda rig kartları listelenirken sol taraftaki metrikler (`Kazım: ... | Güç: ... | Max: ...`) sağdaki `[AÇ/KAPAT]` ve `[İNCELE]` butonlarının üzerine biniyordu.
+* **Çözüm (`RigRenderer::DrawWarehouseOverviewGrid`):**
+  * Kart düzeni 3 bağımsız ve emniyetli bölgeye ayrıldı:
+    1. **Üst Sol:** Rig Adı, Durum Rozeti (`[CALISIYOR]` / `[KAPALI]` / `[PSU ASIRI YUK]`) ve PSU tüketim oranı.
+    2. **Alt Sol & Orta:** 6 adet mini GPU yuvası ve metrik kutusu (`metricsX` güvenli aralıkta, butonlara asla yaklaşamaz).
+    3. **Sağ Kenar:** `[AÇ/KAPAT]` ve `[İNCELE]` butonları kartın sağ kenarına sabitlendi (`btnInspectX`, `btnPowerX`), metinlerle arasına garantili boşluk bırakıldı.
+
+---
+
+### 13.4. Sol Viewport Sekmeleri ve Rig Kontrol Butonları Emniyeti
+* **Düzeltilen Sorun:** `btnTabRigDetail` ve `btnTabOverview` sekmeleri ile rig gezinme butonları (`btnToggleRigPower`, `btnSellRig`, vb.) dar ekranlarda üst üste biniyordu. Ayrıca genel bakış açıkken arka plandaki görünmez rig butonlarına tıklanabiliyordu.
+* **Çözüm (`main.cpp`):**
+  * Rig kontrol ve hurdaya satma butonları yalnızca `currentViewMode == WarehouseViewMode::RIG_DETAIL` modunda ekrana yerleştirilir, güncellenir ve çizilir.
+  * Buton genişlikleri optimize edilerek dar pencerelerde (1100px) dahi sekmelerle butonlar arasında güvenli boşluk temin edildi.
+
+---
+
+### 13.5. Dinamik Madencilik Ağ Zorluğu & Ekonomi Dengelemesi
+* **Problem:** Başlangıçta 1-2 kart takıldığında saniyeler içinde on binlerce dolar kazanılıyor, oyunun ilerleme ve tycoon dinamiği dakikalar içinde tükeniyordu.
+* **Çözüm (`EconomyManager.hpp` & `EconomyManager.cpp`):**
+  * **Baz Zorluk:** `10,000.0` yerine `350,000.0 MH` seviyesine dengelendi.
+  * **Dinamik Ağ Zorluğu Formülü:** Oyuncunun depodaki toplam hashrate'i arttıkça küresel ağ zorluğu otomatik adapte olur:
+    $$\text{Ağ Zorluğu} = 350,000 + (\text{Toplam Hashrate} \times 180.0)$$
+  * **Dengeli Tycoon Eğrisi:**
+    * Başlangıç kartı (GTX 1660 Super, 30 MH/s) dakikada ~$10 net getiri sağlar ve amortisman süresi ~25 dakikaya oturur.
+    * Kart sayısı ve hashrate arttıkça kazanç büyür ancak zorluk da adapte olarak enflasyonu önler.
+    * Bölgesel elektrik tarifeleri (Teksas $0.12 vs İzlanda $0.06 vs Sibirya $0.04) anlamlı bir gider haline gelir; dünya haritasından soğuk ve ucuz tesislere geçmek gerçek bir stratejik avantaja dönüşür.
+
+---
+
+### 13.6. Temiz Stilize Rozetler (Zero-Glitch Text Tags)
+* **Düzeltilen Sorun:** Bazı işletim sistemi ve font rasterizasyonlarında `⚡`, `❄️`, `🔥`, `🛒` gibi ham Unicode emojiler `?` glif hatası veya yazı bozulması (syntax hatası hissi) yaratabiliyordu.
+* **Çözüm:** Tüm ham emojiler `[MARKET]`, `[ALARM]`, `[SOGUK]`, `[SICAK]`, `[DEMERAJ]`, `[PSU]`, `[CALISIYOR]` gibi fütüristik neon braket formatına dönüştürüldü. Yazı motorunda sıfır glif hatası sağlandı.
+
 
 
 
