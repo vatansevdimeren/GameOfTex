@@ -47,10 +47,10 @@ public:
                                    int& outSelectedRigIndex, int& outToggledRigIndex) const;
 
     /**
-     * @brief Draws a horizontal quick-jump selector bar for all rigs.
+     * @brief Draws a quick switcher strip of all rigs in the facility at the bottom.
      */
-    void DrawQuickRigSelector(const Core::Warehouse& warehouse, const Rectangle& bounds,
-                              Vector2 mousePos, int& outSelectedRigIndex) const;
+    void DrawQuickRigSelector(const Core::Warehouse& warehouse, const Core::ThermalModel& thermalModel,
+                              const Rectangle& bounds, Vector2 mousePos, int& outSelectedRigIndex) const;
 
 private:
     /**

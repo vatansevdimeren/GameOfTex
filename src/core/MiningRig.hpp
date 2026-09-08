@@ -65,12 +65,26 @@ public:
     [[nodiscard]] double CalculateTotalHashrate() const;
     [[nodiscard]] double CalculateTotalPowerWatts() const;
 
+    // Power Supply (PSU) System
+    [[nodiscard]] double GetPSUMaxWatts() const;
+    [[nodiscard]] const std::string& GetPSUName() const;
+    [[nodiscard]] size_t GetPSUTier() const;
+    [[nodiscard]] double GetNextPSUCost() const;
+    [[nodiscard]] std::string GetNextPSUName() const;
+    [[nodiscard]] bool CanUpgradePSU() const;
+    bool UpgradePSU();
+    [[nodiscard]] bool IsPSUOverloaded() const;
+
+    // Temperature metrics
+    [[nodiscard]] double CalculateAverageTemperature(const class ThermalModel& thermalModel) const;
+
 private:
     std::string m_name;
     size_t m_maxCapacity;
     double m_motherboardBaseWatts;
     bool m_isPoweredOn{true};
     double m_startupSurgeTimer{0.0};
+    size_t m_psuTier{0}; // 0: 850W, 1: 1300W, 2: 1800W, 3: 2600W
     std::vector<std::unique_ptr<GPU>> m_gpus;
 };
 

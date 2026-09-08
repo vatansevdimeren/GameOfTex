@@ -1,4 +1,5 @@
 #include "MiningRig.hpp"
+#include "ThermalModel.hpp"
 
 namespace Core {
 
@@ -108,6 +109,72 @@ double MiningRig::CalculateTotalPowerWatts() const {
         total *= 1.30;
     }
     return total;
+}
+
+double MiningRig::GetPSUMaxWatts() const {
+    static const double capacities[] = { 850.0, 1300.0, 1800.0, 2600.0 };
+    if (m_psuTier < 4) return capacities[m_psuTier];
+    return 2600.0;
+}
+
+const std::string& MiningRig::GetPSUName() const {
+    static const std::string names[] = {
+        "850W Gold (ATX 3.0)",
+        "1300W Platinum Modular",
+        "1800W Titanium High-Load",
+        "2600W Server Dual PSU"
+    };
+    if (m_psuTier < 4) return names[m_psuTier];
+    return names[3];
+}
+
+size_t MiningRig::GetPSUTier() const {
+    return m_psuTier;
+}
+
+double MiningRig::GetNextPSUCost() const {
+    static const double costs[] = { 350.0, 650.0, 1100.0, 0.0 };
+    if (m_psuTier < 3) return costs[m_psuTier];
+    return 0.0;
+}
+
+std::string MiningRig::GetNextPSUName() const {
+    if (m_psuTier == 0) return "1300W Platinum";
+    if (m_psuTier == 1) return "1800W Titanium";
+    if (m_psuTier == 2) return "2600W Server Dual";
+    return "MAKSIMUM PSU";
+}
+
+bool MiningRig::CanUpgradePSU() const {
+    return m_psuTier < 3;
+}
+
+bool MiningRig::UpgradePSU() {
+    if (m_psuTier < 3) {
+        m_psuTier++;
+        return true;
+    }
+    return false;
+}
+
+bool MiningRig::IsPSUOverloaded() const {
+    if (!m_isPoweredOn) return false;
+    return CalculateTotalPowerWatts() > GetPSUMaxWatts();
+}
+
+double MiningRig::CalculateAverageTemperature(const ThermalModel& thermalModel) const {
+    if (m_gpus.empty()) return thermalModel.GetAmbientTemperature();
+    double sum = 0.0;
+    size_t count = 0;
+    for (const auto& gpu : m_gpus) {
+        if (gpu) {
+            double temp = m_isPoweredOn ? thermalModel.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), gpu->GetFanSpeedPercent() / 100.0)
+                                        : thermalModel.GetAmbientTemperature();
+            sum += temp;
+            count++;
+        }
+    }
+    return (count > 0) ? (sum / static_cast<double>(count)) : thermalModel.GetAmbientTemperature();
 }
 
 } // namespace Core

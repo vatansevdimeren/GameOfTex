@@ -62,6 +62,10 @@ add_executable(GameOfTex
     src/core/TaskManager.cpp
     src/render/TaskModal.hpp
     src/render/TaskModal.cpp
+    src/core/FacilityManager.hpp
+    src/core/FacilityManager.cpp
+    src/render/WorldMapModal.hpp
+    src/render/WorldMapModal.cpp
 )
 
 target_include_directories(GameOfTex PRIVATE

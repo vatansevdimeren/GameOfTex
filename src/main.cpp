@@ -20,6 +20,8 @@
 #include "render/MarketModal.hpp"
 #include "core/TaskManager.hpp"
 #include "render/TaskModal.hpp"
+#include "core/FacilityManager.hpp"
+#include "render/WorldMapModal.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -42,13 +44,21 @@ int main() {
     SetTargetFPS(60);
     SetExitKey(KEY_NULL); // ESC tuşunun oyunu aniden kapatmasını engelle
 
-    // 2. Yüksek Çözünürlüklü Vektör Fontlarını Yükle (Segoe UI / Arial)
-    Font fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 36, nullptr, 0);
-    Font fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 40, nullptr, 0);
+    // 2. Yüksek Çözünürlüklü Vektör Fontlarını Yükle (Türkçe Genişletilmiş Kod Noktaları ile)
+    std::vector<int> codepoints;
+    // ASCII Basic (32 - 126)
+    for (int i = 32; i <= 126; ++i) codepoints.push_back(i);
+    // Latin-1 Supplement (160 - 255): ç, Ç, ö, Ö, ü, Ü, °, vb.
+    for (int i = 160; i <= 255; ++i) codepoints.push_back(i);
+    // Latin Extended-A (0x0100 - 0x017F): ğ, Ğ, ı, İ, ş, Ş, vb.
+    for (int i = 0x0100; i <= 0x017F; ++i) codepoints.push_back(i);
+
+    Font fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
+    Font fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 40, codepoints.data(), static_cast<int>(codepoints.size()));
 
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 36, nullptr, 0);
-        fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 40, nullptr, 0);
+        fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 40, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     if (fontRegular.texture.id > 0) {
@@ -75,20 +85,11 @@ int main() {
     Render::MarketModal marketModal;
     Core::TaskManager taskManager;
     Render::TaskModal taskModal;
+    Core::FacilityManager facilityManager;
+    Render::WorldMapModal worldMapModal;
 
     // 4. Çekirdek Simülasyon Nesneleri (Clean Code / SRP)
     Core::EconomyManager economy(1000.0, 3100.0, "TEX");
-    Core::PowerGrid powerGrid(3600.0, 0.15); // Standart pano (3.6 kW) ile başlar, marketten yükseltilebilir
-    Core::ThermalModel thermalModel(22.0);    // 22°C Oda sıcaklığı
-    Core::CoolingManager coolingManager;
-    thermalModel.SetCoolingPowerWatts(coolingManager.CalculateTotalCoolingWatts());
-
-    // Depo (Warehouse) - Çoklu Rig Yönetimi
-    Core::Warehouse warehouse("Mega Madencilik Tesisi - Hangar 01");
-    if (auto* firstRig = warehouse.GetActiveRig()) {
-        firstRig->InstallGPU(std::make_unique<Core::GPU>("RTX 3080", 100.0, 220.0, 1.05));
-        firstRig->InstallGPU(std::make_unique<Core::GPU>("RTX 3070", 62.0, 130.0, 0.98));
-    }
 
     // 5. Render, Texture ve Shader Sistemi
     Render::ShaderManager shaderManager;
@@ -135,11 +136,19 @@ int main() {
 
     Render::UIButton btnOpenSettings(Rectangle{}, "AYARLAR", "", Color{35, 42, 56, 255}, Color{0, 220, 255, 255});
     Render::UIButton btnOpenTasks(Rectangle{}, "GOREVLER", "", Color{30, 40, 58, 255}, Color{255, 200, 40, 255});
+    Render::UIButton btnOpenWorldMap(Rectangle{}, "HARITA", "", Color{25, 45, 65, 255}, Color{0, 220, 255, 255});
+    Render::UIButton btnUpgradePSU(Rectangle{}, "PSU YUKSELT", "", Color{40, 32, 58, 255}, Color{200, 100, 255, 255});
 
     // 7. Ana Oyun Döngüsü
     while (!WindowShouldClose()) {
         const float dt = GetFrameTime();
         animTime += dt;
+
+        auto* activeFacility = facilityManager.GetActiveFacility();
+        auto& warehouse = *activeFacility->warehouse;
+        auto& thermalModel = *activeFacility->thermalModel;
+        auto& powerGrid = *activeFacility->powerGrid;
+        auto& coolingManager = *activeFacility->coolingManager;
 
         // F11: Tam Ekran Geçişi
         if (IsKeyPressed(KEY_F11)) {
@@ -148,7 +157,9 @@ int main() {
 
         // ESC Tuşu: Modal açıksa kapat, değilse tam ekrandan küçük pencereli moda dön!
         if (IsKeyPressed(KEY_ESCAPE)) {
-            if (taskModal.IsOpen()) {
+            if (worldMapModal.IsOpen()) {
+                worldMapModal.Close();
+            } else if (taskModal.IsOpen()) {
                 taskModal.Close();
             } else if (marketModal.IsOpen()) {
                 marketModal.Close();
@@ -245,6 +256,11 @@ int main() {
             taskModal.Update(taskManager, economy);
         }
 
+        // Dünya Haritası Modalı Açıksa Güncelle
+        if (worldMapModal.IsOpen()) {
+            worldMapModal.Update(facilityManager, economy);
+        }
+
         // Ayarlar Modalı Açıksa Güncelle
         if (settingsModal.IsOpen()) {
             settingsModal.Update(economy);
@@ -257,16 +273,20 @@ int main() {
 
         // Üst Rozetlerin Dinamik Genişliği
         const float totalBadgesW = screenW - (pad * 2.0f);
-        const float badgeGap = 10.0f;
-        const float settingsBtnW = 110.0f;
-        const float taskBtnW = 145.0f;
-        const float remainingW = totalBadgesW - settingsBtnW - taskBtnW - (badgeGap * 6.0f);
+        const float badgeGap = 8.0f;
+        const float settingsBtnW = 95.0f;
+        const float taskBtnW = 135.0f;
+        const float worldMapBtnW = 120.0f;
+        const float totalBtnsW = settingsBtnW + taskBtnW + worldMapBtnW + (badgeGap * 2.0f);
+        const float remainingW = totalBadgesW - totalBtnsW - (badgeGap * 5.0f);
         const float badgeW = remainingW / 5.0f;
         const float badgeH = 54.0f;
         const float badgeY = (headerH - badgeH) / 2.0f;
 
         btnOpenSettings.SetBounds(Rectangle{screenW - pad - settingsBtnW, badgeY, settingsBtnW, badgeH});
         btnOpenTasks.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - taskBtnW, badgeY, taskBtnW, badgeH});
+        btnOpenWorldMap.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - taskBtnW - badgeGap - worldMapBtnW, badgeY, worldMapBtnW, badgeH});
+        btnOpenWorldMap.SetTitle(std::string("[M] ") + Core::LocalizationManager::Tr("BTN_WORLD_MAP"));
 
         size_t unclaimedCount = taskManager.GetUnclaimedCompletedCount();
         if (unclaimedCount > 0) {
@@ -277,12 +297,15 @@ int main() {
             btnOpenTasks.SetAccentColor(Color{60, 160, 240, 255});
         }
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen()) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
             if (btnOpenSettings.UpdateAndCheckClick()) {
                 settingsModal.Open();
             }
             if (btnOpenTasks.UpdateAndCheckClick()) {
                 taskModal.Open();
+            }
+            if (btnOpenWorldMap.UpdateAndCheckClick()) {
+                worldMapModal.Open();
             }
         }
 
@@ -352,28 +375,29 @@ int main() {
             if (btnNextRig.UpdateAndCheckClick()) warehouse.NextRig();
         }
 
-        // Sağ Paneldeki Butonların Dinamik Konumları (8 Buton)
+        // Sağ Paneldeki Butonların Dinamik Konumları (9 Buton)
         const float btnW = rightW - 32.0f;
-        const float btnH = std::clamp((contentH - 85.0f) / 8.2f, 48.0f, 64.0f);
-        const float btnGap = 6.0f;
-        const float startBtnY = contentY + 50.0f;
+        const float btnH = std::clamp((contentH - 95.0f) / 9.2f, 44.0f, 58.0f);
+        const float btnGap = 5.0f;
+        const float startBtnY = contentY + 46.0f;
         const float btnX = rightX + 16.0f;
 
         btnBuyGPU.SetBounds(Rectangle{btnX, startBtnY + (0 * (btnH + btnGap)), btnW, btnH});
         btnBuyRig.SetBounds(Rectangle{btnX, startBtnY + (1 * (btnH + btnGap)), btnW, btnH});
-        btnSellCrypto.SetBounds(Rectangle{btnX, startBtnY + (2 * (btnH + btnGap)), btnW, btnH});
-        btnUpgradeCooling.SetBounds(Rectangle{btnX, startBtnY + (3 * (btnH + btnGap)), btnW, btnH});
-        btnOverclock.SetBounds(Rectangle{btnX, startBtnY + (4 * (btnH + btnGap)), btnW, btnH});
-        btnUndervolt.SetBounds(Rectangle{btnX, startBtnY + (5 * (btnH + btnGap)), btnW, btnH});
-        btnThermalToggle.SetBounds(Rectangle{btnX, startBtnY + (6 * (btnH + btnGap)), btnW, btnH});
-        btnResetBreaker.SetBounds(Rectangle{btnX, startBtnY + (7 * (btnH + btnGap)), btnW, btnH});
+        btnUpgradePSU.SetBounds(Rectangle{btnX, startBtnY + (2 * (btnH + btnGap)), btnW, btnH});
+        btnSellCrypto.SetBounds(Rectangle{btnX, startBtnY + (3 * (btnH + btnGap)), btnW, btnH});
+        btnUpgradeCooling.SetBounds(Rectangle{btnX, startBtnY + (4 * (btnH + btnGap)), btnW, btnH});
+        btnOverclock.SetBounds(Rectangle{btnX, startBtnY + (5 * (btnH + btnGap)), btnW, btnH});
+        btnUndervolt.SetBounds(Rectangle{btnX, startBtnY + (6 * (btnH + btnGap)), btnW, btnH});
+        btnThermalToggle.SetBounds(Rectangle{btnX, startBtnY + (7 * (btnH + btnGap)), btnW, btnH});
+        btnResetBreaker.SetBounds(Rectangle{btnX, startBtnY + (8 * (btnH + btnGap)), btnW, btnH});
 
         // Kart Tıklama Tespiti (Viewport içerisindeki GPU'ya tıklandı mı?)
         constexpr float rigBaseW = 720.0f;
         const float rigX = pad + (leftW - rigBaseW) / 2.0f;
         const float rigY = contentY + 60.0f;
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
             Vector2 mouse = GetMousePosition();
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse);
@@ -386,7 +410,7 @@ int main() {
             }
         }
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen()) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
             // 1. Donanım ve Tesis Marketi
             btnBuyGPU.SetTitle(isTR ? "🛒 DONANIM MARKETI" : "🛒 HARDWARE STORE");
             std::string gpuSub = isTR ? "Farkli Modeller, Trafo ve Tesis" : "Different Models, Power & Facilities";
@@ -398,10 +422,17 @@ int main() {
 
             // 2. Yeni Rig Satın Al ($2,500)
             btnBuyRig.SetTitle(Core::LocalizationManager::Tr("BTN_BUY_RIG"));
-            btnBuyRig.SetDisabled(economy.GetFiatBalance() < 2500.0);
-            std::string rigSub = (isTR ? "Maliyet: " : "Cost: ") + economy.FormatFiat(2500.0) + (isTR ? " | Toplam: " : " | Total: ") + std::to_string(warehouse.GetRigCount());
+            bool isRigCapFull = (warehouse.GetRigCount() >= warehouse.GetMaxRigCapacity());
+            btnBuyRig.SetDisabled(economy.GetFiatBalance() < 2500.0 || isRigCapFull);
+            std::string rigSub;
+            if (isRigCapFull) {
+                rigSub = isTR ? ("KAPASITE DOLU (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + ") - HARITADAN YENI DEPO ALIN")
+                              : ("CAPACITY FULL (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + ") - BUY NEW SITE");
+            } else {
+                rigSub = (isTR ? "Maliyet: " : "Cost: ") + economy.FormatFiat(2500.0) + (isTR ? " | Kapasite: " : " | Capacity: ") + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity());
+            }
             btnBuyRig.SetSubtitle(rigSub);
-            if (btnBuyRig.UpdateAndCheckClick()) {
+            if (btnBuyRig.UpdateAndCheckClick() && !isRigCapFull) {
                 if (economy.DeductFiat(2500.0)) {
                     std::string newRigName = std::string("Rig ") + (warehouse.GetRigCount() < 9 ? "0" : "") + std::to_string(warehouse.GetRigCount() + 1) + " - Frame";
                     warehouse.AddNewRig(newRigName, 6);
@@ -409,7 +440,27 @@ int main() {
                 }
             }
 
-            // 3. Kripto Sat
+            // 3. Rig İçi PSU Yükseltme
+            if (activeRig) {
+                if (activeRig->CanUpgradePSU()) {
+                    btnUpgradePSU.SetTitle(Core::LocalizationManager::Tr("BTN_UPGRADE_PSU"));
+                    double psuCost = activeRig->GetNextPSUCost();
+                    std::string psuSub = activeRig->GetNextPSUName() + " (" + economy.FormatFiat(psuCost) + ")";
+                    btnUpgradePSU.SetSubtitle(psuSub);
+                    btnUpgradePSU.SetDisabled(economy.GetFiatBalance() < psuCost);
+                    if (btnUpgradePSU.UpdateAndCheckClick()) {
+                        if (economy.DeductFiat(psuCost)) {
+                            activeRig->UpgradePSU();
+                        }
+                    }
+                } else {
+                    btnUpgradePSU.SetTitle(Core::LocalizationManager::Tr("PSU_MAX_REACHED"));
+                    btnUpgradePSU.SetSubtitle("2600W Server Dual PSU");
+                    btnUpgradePSU.SetDisabled(true);
+                }
+            }
+
+            // 4. Kripto Sat
             btnSellCrypto.SetTitle(Core::LocalizationManager::Tr("BTN_SELL_CRYPTO"));
             const double cryptoValue = economy.GetCryptoBalance() * economy.GetCryptoPrice();
             std::string cryptoSub = (isTR ? "Bozdurulacak: " : "To Liquidate: ") + economy.FormatFiat(cryptoValue);
@@ -593,6 +644,7 @@ int main() {
 
         btnOpenSettings.Draw();
         btnOpenTasks.Draw();
+        btnOpenWorldMap.Draw();
 
         // Küresel Ağ Zorluk ve Güç Sıçraması (Mining Spike) Canlı Uyarısı
         if (powerGrid.IsNetworkSpikeActive()) {
@@ -606,9 +658,11 @@ int main() {
 
         // 2. SOL PANEL: VIEWPORT ÇERÇEVESİ (SEÇİLİ RİG DETAYI VEYA DEPO KUŞBAKIŞI)
         const Rectangle viewportRect{pad, contentY, leftW, contentH};
+        double roomTemp = thermalModel.GetAmbientTemperature();
+        std::string tempEmoji = (roomTemp <= 0.0) ? "❄️ " : ((roomTemp >= 28.0) ? "🔥 " : "⚡ ");
         std::string viewportTitle = (currentViewMode == WarehouseViewMode::RIG_DETAIL)
-            ? (warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " RIG) [KARTA TIKLA: 360 INCELE]")
-            : ("DEPO GENEL BAKIS - " + warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetRigCount()) + " RIG)");
+            ? (warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " RIG | " + tempEmoji + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)")
+            : ("DEPO GENEL BAKIS - " + warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + " RIG | " + tempEmoji + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)");
         Render::UIFrame::DrawCard(viewportRect, viewportTitle, Color{0, 220, 255, 255});
 
         // Sekme Butonlarını Çiz
@@ -659,7 +713,7 @@ int main() {
             Vector2 mouse = GetMousePosition();
             int quickRigIdx = -1;
             Rectangle selectorBounds{pad + 20.0f, contentY + contentH - 44.0f, leftW - 40.0f, 32.0f};
-            rigRenderer.DrawQuickRigSelector(warehouse, selectorBounds, mouse, quickRigIdx);
+            rigRenderer.DrawQuickRigSelector(warehouse, thermalModel, selectorBounds, mouse, quickRigIdx);
             if (quickRigIdx >= 0) {
                 warehouse.SetActiveRigIndex(static_cast<size_t>(quickRigIdx));
             }
@@ -689,6 +743,7 @@ int main() {
 
         btnBuyGPU.Draw();
         btnBuyRig.Draw();
+        btnUpgradePSU.Draw();
         btnSellCrypto.Draw();
         btnUpgradeCooling.Draw();
         btnOverclock.Draw();
@@ -703,7 +758,7 @@ int main() {
         Render::UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("TIP_FOOTER"),
                                        pad + 10.0f, screenH - footerH + 12.0f, 14.0f, Color{150, 165, 190, 255}, false);
 
-        std::string verTag = "GameOfTex v1.6 [Hardware Market & Facility Store]";
+        std::string verTag = "GameOfTex v1.7 [Global Facilities & World Map]";
         float verW = Render::UIFrame::MeasureTextCustom(verTag, 14.0f, false);
         Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, screenH - footerH + 12.0f, 14.0f, Color{100, 120, 150, 255}, false);
 
@@ -725,6 +780,11 @@ int main() {
         // 8. GOREV & HEDEF MERKEZI MODAL PENCERESI
         if (taskModal.IsOpen()) {
             taskModal.Draw(taskManager, economy);
+        }
+
+        // 9. DUNYA HARITASI MODAL PENCERESI
+        if (worldMapModal.IsOpen()) {
+            worldMapModal.Draw(facilityManager, economy);
         }
 
         EndDrawing();

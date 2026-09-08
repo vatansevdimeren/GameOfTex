@@ -74,8 +74,19 @@ const MiningRig* Warehouse::GetRig(size_t index) const {
 }
 
 bool Warehouse::AddNewRig(const std::string& rigName, size_t gpuCapacity) {
+    if (m_rigs.size() >= m_maxRigCapacity) {
+        return false;
+    }
     m_rigs.push_back(std::make_unique<MiningRig>(rigName, gpuCapacity));
     return true;
+}
+
+size_t Warehouse::GetMaxRigCapacity() const {
+    return m_maxRigCapacity;
+}
+
+void Warehouse::SetMaxRigCapacity(size_t cap) {
+    m_maxRigCapacity = cap;
 }
 
 bool Warehouse::RemoveRig(size_t index) {

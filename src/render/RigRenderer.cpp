@@ -177,6 +177,9 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
     if (isBreakerTripped) {
         title += "  [! SEBEKE KESILDI - SALTER ATTI !]";
         titleColor = Color{255, 60, 60, 255};
+    } else if (rig.IsPSUOverloaded()) {
+        title += "  [! PSU ASIRI YUKLENDI - YUKSELTIN !]";
+        titleColor = Color{255, 120, 20, 255};
     } else if (isPowered) {
         title += "  [⚡ AKTIF / CALISIYOR]";
         titleColor = Color{0, 240, 160, 255};
@@ -184,7 +187,31 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
         title += "  [⏸️ KAPALI / DEVRE DISI]";
         titleColor = Color{200, 70, 70, 255};
     }
-    UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 17.0f, titleColor, true);
+    UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 16.0f, titleColor, true);
+
+    // Sağ Üst: Ortalama Sıcaklık ve PSU Güç Rozetleri
+    double avgTemp = rig.CalculateAverageTemperature(thermalModel);
+    Color tempCol = (avgTemp >= 85.0) ? Color{255, 60, 60, 255} : ((avgTemp >= 70.0) ? Color{255, 160, 30, 255} : Color{60, 230, 140, 255});
+    char tempBuf[32];
+    snprintf(tempBuf, sizeof(tempBuf), "Ort: %.1f C", avgTemp);
+
+    double rigWatts = isPowered ? rig.CalculateTotalPowerWatts() : 0.0;
+    double psuMax = rig.GetPSUMaxWatts();
+    char psuBuf[48];
+    snprintf(psuBuf, sizeof(psuBuf), "PSU: %.0fW / %.0fW", rigWatts, psuMax);
+    Color psuCol = (rigWatts > psuMax) ? Color{255, 50, 50, 255} : ((rigWatts > psuMax * 0.85) ? Color{255, 180, 40, 255} : Color{80, 200, 255, 255});
+
+    float badgeW1 = MeasureText(tempBuf, 13) + 16.0f;
+    Rectangle badgeTempRec{static_cast<float>(posX + rigWidth - badgeW1 - 18.0f), static_cast<float>(posY + 23.0f), badgeW1, 24.0f};
+    DrawRectangleRounded(badgeTempRec, 0.3f, 4, Color{28, 36, 50, 240});
+    DrawRectangleRoundedLines(badgeTempRec, 0.3f, 4, 1.0f, tempCol);
+    DrawText(tempBuf, static_cast<int>(badgeTempRec.x + 8.0f), static_cast<int>(badgeTempRec.y + 5.0f), 13, tempCol);
+
+    float badgeW2 = MeasureText(psuBuf, 13) + 16.0f;
+    Rectangle badgePsuRec{badgeTempRec.x - badgeW2 - 8.0f, static_cast<float>(posY + 23.0f), badgeW2, 24.0f};
+    DrawRectangleRounded(badgePsuRec, 0.3f, 4, Color{28, 36, 50, 240});
+    DrawRectangleRoundedLines(badgePsuRec, 0.3f, 4, 1.0f, psuCol);
+    DrawText(psuBuf, static_cast<int>(badgePsuRec.x + 8.0f), static_cast<int>(badgePsuRec.y + 5.0f), 13, psuCol);
 
     // Draw installed GPUs
     const auto& gpus = rig.GetGPUs();
@@ -391,8 +418,8 @@ void RigRenderer::DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, co
     }
 }
 
-void RigRenderer::DrawQuickRigSelector(const Core::Warehouse& warehouse, const Rectangle& bounds,
-                                      Vector2 mousePos, int& outSelectedRigIndex) const {
+void RigRenderer::DrawQuickRigSelector(const Core::Warehouse& warehouse, const Core::ThermalModel& thermalModel,
+                                      const Rectangle& bounds, Vector2 mousePos, int& outSelectedRigIndex) const {
     outSelectedRigIndex = -1;
     const auto& rigs = warehouse.GetAllRigs();
     if (rigs.empty()) return;
@@ -400,7 +427,7 @@ void RigRenderer::DrawQuickRigSelector(const Core::Warehouse& warehouse, const R
     const size_t activeIdx = warehouse.GetActiveRigIndex();
     const float pillH = bounds.height;
     const float pillGap = 6.0f;
-    const float pillW = std::clamp((bounds.width - (rigs.size() - 1) * pillGap) / static_cast<float>(rigs.size()), 70.0f, 120.0f);
+    const float pillW = std::clamp((bounds.width - (rigs.size() - 1) * pillGap) / static_cast<float>(rigs.size()), 70.0f, 130.0f);
 
     for (size_t i = 0; i < rigs.size(); ++i) {
         float px = bounds.x + (static_cast<float>(i) * (pillW + pillGap));
@@ -421,7 +448,8 @@ void RigRenderer::DrawQuickRigSelector(const Core::Warehouse& warehouse, const R
         Color textColor = isActive ? Color{0, 240, 255, 255} : (isPowered ? RAYWHITE : Color{255, 100, 100, 255});
         UIFrame::DrawTextCustom(label, px + 8.0f, bounds.y + 4.0f, 12.0f, textColor, true);
 
-        std::string sub = isPowered ? (std::to_string(static_cast<int>(rigs[i]->CalculateTotalHashrate())) + "M") : "OFF";
+        double avgT = rigs[i]->CalculateAverageTemperature(thermalModel);
+        std::string sub = isPowered ? (std::to_string(static_cast<int>(rigs[i]->CalculateTotalHashrate())) + "M | " + std::to_string(static_cast<int>(avgT)) + "C") : "OFF";
         UIFrame::DrawTextCustom(sub, px + 8.0f, bounds.y + 18.0f, 11.0f, isPowered ? Color{100, 220, 150, 255} : Color{180, 80, 80, 255}, false);
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && isHovered) {

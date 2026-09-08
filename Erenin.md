@@ -414,6 +414,76 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   * `ThermalModel::CalculateGPUTemperature` metoduna `facilityCoolingBonus = 1.0 / (1.0 + (m_coolingPowerWatts / 2500.0))` global ısı transfer çarpanı entegre edildi.
   * Soğutma yükseltmesi yapıldığında depodaki istisnasız TÜM rig ve kartların termal direnci anında düşer; HVAC veya Sıvı soğutma kurulduğunda oda sıcaklığı ve tüm kartlar 15-25°C birden serinler.
 
+---
+
+## 🗺️ 12. Dünya Haritası, Tesis Yönetimi, İkili Güç (PSU & Trafo) ve Türkçe Font Düzeltmesi
+
+### 12.1. `FacilityManager.hpp` & `FacilityManager.cpp` (Küresel Tesis Yönetimi)
+* **Görevi:** Dünyanın farklı iklim ve coğrafyalarındaki endüstriyel madencilik tesislerini yönetir.
+* **SRP Gerekçesi:** Yalnızca tesis kilitlerini, iklim parametrelerini ve aktif tesis referansını tutar; harita çizimi yapmaz.
+
+#### Tesis Lokasyonları ve İklim/Şebeke Özellikleri:
+1. **Teksas Madencilik Hangarı (Austin, ABD) [Başlangıç Deposu]:**
+   * *Bedel:* $0 (Varsayılan) | *İklim:* +30°C (Sıcak hava) | *Şebeke:* 15,000W ($0.14/kWh) | *Kapasite:* Max 5 Rig
+2. **Reykjavik Jeotermal Vadisi (Reykjavik, İzlanda):**
+   * *Bedel:* $8,500 | *İklim:* **-2°C (Doğal soğutma)** | *Şebeke:* 35,000W ($0.05/kWh) | *Kapasite:* Max 8 Rig
+3. **Tromsø Fiyort Sualtı Tesisi (Tromsø, Norveç):**
+   * *Bedel:* $24,000 | *İklim:* **-6°C (Kutup fiyort suyu)** | *Şebeke:* 65,000W ($0.06/kWh) | *Kapasite:* Max 14 Rig
+4. **Frankfurt Endüstri Parkı (Frankfurt, Almanya):**
+   * *Bedel:* $55,000 | *İklim:* +16°C | *Şebeke:* 120,000W ($0.18/kWh) | *Kapasite:* Max 20 Rig
+5. **Sibirya Kutup Madencilik Üssü (Novosibirsk, Rusya):**
+   * *Bedel:* $120,000 | *İklim:* **-18°C (Dondurucu kutup iklimi)** | *Şebeke:* 250,000W ($0.04/kWh) | *Kapasite:* Max 30 Rig
+
+#### Fonksiyonlar:
+* `GetActiveFacility()`, `SetActiveFacilityIndex()`: Aktif tesisin işaretçisini döner.
+* `PurchaseFacility(index, economy)`: Parasal satın alımı denetler ve tesisi kalıcı olarak oyuncuya açar.
+* `SwitchFacility(index)`: Satın alınmış tesisler arasında anlık geçiş yapar.
+
+---
+
+### 12.2. `WorldMapModal.hpp` & `WorldMapModal.cpp` (Taktik Dünya Haritası)
+* **Görevi:** Siber-radar tarzında dünya haritasını, kıta sınırlarını, radyal tarama çizgilerini ve küresel madencilik noktalarını çizer.
+* **Özellikleri:**
+  * Harita üzerinde yeşil (aktif), mavi (sahip olunan) ve altın sarısı (satılık) parlayan nabız düğümleri.
+  * Sağ panelde seçili tesisin iklimi, rig kapasitesi, trafo gücü ve elektrik maliyeti özeti.
+  * Tesis satın alma ve tek tıkla seyahat/geçiş mekanizması.
+
+---
+
+### 12.3. İkili Güç Hiyerarşisi (Rig PSU + Yüksek Kapasiteli Şebeke)
+* **Problem:** 10 GPU takıldığında 3,600W şebeke hemen bitiyor ve şalter atıyordu.
+* **Çözüm (İkili Sistem):**
+  1. **Ana Tesis Şebekesi (Facility Grid):** 15,000W'tan 250,000W'a kadar devasa trafolarla genişletildi. 10-30 rig rahatça kaldırılabilir.
+  2. **Rig İçi Power Supply (`MiningRig::m_psuTier`):** Her rig kasasının kendi bağımsız güç kaynağı vardır:
+     * Tier 0: 850W Gold (2-3 GPU)
+     * Tier 1: 1300W Platinum ($350 - 4-5 GPU)
+     * Tier 2: 1800W Titanium ($650 - 6 GPU)
+     * Tier 3: 2600W Server Dual PSU ($1,100 - Ağır ASIC / OC)
+  * Kartların watt toplamı rig PSU'sunu aşarsa rig üzerinde `[! PSU ASIRI YUKLENDI !]` uyarısı çıkar.
+  * Sağ kontrol panelinden `[ 🔌 PSU YUKSELT ]` butonuyla o kasanın güç kaynağı yükseltilebilir.
+
+---
+
+### 12.4. Ortalama Sıcaklık ve Oda İklimi Göstergeleri
+* **Rig Ortalama Sıcaklığı (`MiningRig::CalculateAverageTemperature`):**
+  * Her kasanın başlığında anlık ortalama sıcaklık rozeti (`Ort: 62.4°C`) ve PSU tüketim oranı (`PSU: 450W / 850W`) yer alır.
+  * Hızlı rig seçim şeridinde her kasanın sıcaklığı canlı yazılır (`[Rig 1: 180M | 62°C]`).
+* **Oda İklimi:**
+  * Sol viewport başlığında anlık oda sıcaklığı ve iklim simgesi (`❄️ Oda: -2°C` / `🔥 Oda: 30°C`) gösterilir.
+  * İzlanda veya Sibirya'ya geçildiğinde oda sıcaklığı derhal düşer, kartlar buz gibi çalışır.
+
+---
+
+### 12.5. Türkçe Karakter ve Font Atlası Düzeltmesi (Unicode Glyph Fix)
+* **Problem:** Raylib `LoadFontEx` varsayılan olarak sadece ilk 95 ASCII karakteri yüklediği için ekranda bazı Türkçe harfler (ç, Ç, ğ, Ğ, ı, İ, ö, Ö, ş, Ş, ü, Ü ve °) çıkmıyordu.
+* **Çözüm:**
+  * `main.cpp` içerisindeki font yükleyicisine `codepoints` dizisi entegre edildi:
+    * ASCII Basic (32 - 126)
+    * Latin-1 Supplement (160 - 255: ç, Ç, ö, Ö, ü, Ü, °, vb.)
+    * Latin Extended-A (0x0100 - 0x017F: ğ, Ğ, ı, İ, ş, Ş, vb.)
+  * Segoe UI ve Arial font atlasları tüm Türkçe harfleri ve derece sembolünü eksiksiz renderlayacak şekilde rasterize edildi.
+
+
 
 
 

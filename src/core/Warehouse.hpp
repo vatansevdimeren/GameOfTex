@@ -61,10 +61,14 @@ public:
 
     [[nodiscard]] const std::vector<std::unique_ptr<MiningRig>>& GetAllRigs() const;
 
+    [[nodiscard]] size_t GetMaxRigCapacity() const;
+    void SetMaxRigCapacity(size_t cap);
+
 private:
     std::string m_facilityName;
     std::vector<std::unique_ptr<MiningRig>> m_rigs;
     size_t m_activeRigIndex;
+    size_t m_maxRigCapacity{5};
 };
 
 } // namespace Core

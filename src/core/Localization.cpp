@@ -168,7 +168,43 @@ void LocalizationManager::InitTranslations() {
         {"TASK_TITLE_POWER", "Sanayi Trafosu"},
         {"TASK_DESC_POWER", "Sebeke panosunu 7,500W veya uzerine yukselt"},
         {"TASK_TITLE_SOLAR", "Yesil Enerji"},
-        {"TASK_DESC_SOLAR", "Tesisine en az 1,000W gunes paneli paketi kur"}
+        {"TASK_DESC_SOLAR", "Tesisine en az 1,000W gunes paneli paketi kur"},
+        
+        {"BTN_WORLD_MAP", "HARITA"},
+        {"WORLD_MAP_TITLE", "KURESEL MADENCILIK TESISLERI & DUNYA HARITASI"},
+        {"FAC_OWNED", "SAHIPSINIZ"},
+        {"FAC_ALREADY_PURCHASED", "SATIN ALINDI"},
+        {"FAC_BADGE_ACTIVE", "AKTIF TESIS"},
+        {"FAC_BADGE_OWNED", "SATIN ALINDI"},
+        {"FAC_BADGE_FOR_SALE", "SATILIK"},
+        {"FAC_BTN_ACTIVE", "BURADASINIZ"},
+        {"FAC_BTN_SWITCH", "TESISE GECIS YAP"},
+        {"FAC_BTN_BUY", "TESISI SATIN AL"},
+        {"FAC_PARAM_CLIMATE", "Ortam Iklim Isisi:"},
+        {"FAC_PARAM_CAPACITY", "Max Rig Kapasitesi:"},
+        {"FAC_PARAM_GRID", "Sebeke Trafosu:"},
+        {"FAC_PARAM_PRICE", "Elektrik Birim Fiyati:"},
+        {"FAC_PARAM_COST", "Tesis Bedeli:"},
+        
+        {"FAC_TEXAS_NAME", "Teksas Madencilik Hangari"},
+        {"FAC_TEXAS_COUNTRY", "Austin, ABD"},
+        {"FAC_TEXAS_DESC", "Giris seviye kisisel sanayi hangari. Sicak iklim."},
+        {"FAC_ICELAND_NAME", "Reykjavik Jeotermal Vadisi"},
+        {"FAC_ICELAND_COUNTRY", "Reykjavik, Izlanda"},
+        {"FAC_ICELAND_DESC", "Volkanik jeotermal santral yaninda dogal buzul sogutmasi."},
+        {"FAC_NORWAY_NAME", "Tromso Fiyort Sualti Tesisi"},
+        {"FAC_NORWAY_COUNTRY", "Tromso, Norvec"},
+        {"FAC_NORWAY_DESC", "Kutup cemberinde fiyort suyu ile dogal sirkulasyon."},
+        {"FAC_GERMANY_NAME", "Frankfurt Endustriyel Veri Parki"},
+        {"FAC_GERMANY_COUNTRY", "Frankfurt, Almanya"},
+        {"FAC_GERMANY_DESC", "Avrupa finans merkezinde yuksek guvenlikli sanayi trafosu."},
+        {"FAC_SIBERIA_NAME", "Sibirya Kutup Madencilik Ussu"},
+        {"FAC_SIBERIA_COUNTRY", "Novosibirsk, Rusya"},
+        {"FAC_SIBERIA_DESC", "Dondurucu kutup ikliminde devasa hidroelektrik hatti."},
+        
+        {"BTN_UPGRADE_PSU", "PSU'YU YUKSELT"},
+        {"PSU_MAX_REACHED", "PSU MAKSIMUMDA"},
+        {"BADGE_ROOM_TEMP", "ODA ISISI"}
     };
 
     // ==================== ENGLISH DICTIONARY ====================
@@ -294,7 +330,43 @@ void LocalizationManager::InitTranslations() {
         {"TASK_TITLE_POWER", "Industrial Power"},
         {"TASK_DESC_POWER", "Upgrade power panel capacity to 7,500W or higher"},
         {"TASK_TITLE_SOLAR", "Green Energy"},
-        {"TASK_DESC_SOLAR", "Install at least 1,000W solar panel array"}
+        {"TASK_DESC_SOLAR", "Install at least 1,000W solar panel array"},
+        
+        {"BTN_WORLD_MAP", "WORLD MAP"},
+        {"WORLD_MAP_TITLE", "GLOBAL MINING FACILITIES & WORLD MAP"},
+        {"FAC_OWNED", "OWNED"},
+        {"FAC_ALREADY_PURCHASED", "PURCHASED"},
+        {"FAC_BADGE_ACTIVE", "ACTIVE SITE"},
+        {"FAC_BADGE_OWNED", "PURCHASED"},
+        {"FAC_BADGE_FOR_SALE", "FOR SALE"},
+        {"FAC_BTN_ACTIVE", "CURRENT LOCATION"},
+        {"FAC_BTN_SWITCH", "SWITCH TO SITE"},
+        {"FAC_BTN_BUY", "BUY FACILITY"},
+        {"FAC_PARAM_CLIMATE", "Climate Temp:"},
+        {"FAC_PARAM_CAPACITY", "Max Rig Capacity:"},
+        {"FAC_PARAM_GRID", "Power Substation:"},
+        {"FAC_PARAM_PRICE", "Electricity Rate:"},
+        {"FAC_PARAM_COST", "Facility Cost:"},
+        
+        {"FAC_TEXAS_NAME", "Texas Mining Hangar"},
+        {"FAC_TEXAS_COUNTRY", "Austin, USA"},
+        {"FAC_TEXAS_DESC", "Entry industrial hangar in warm climate."},
+        {"FAC_ICELAND_NAME", "Reykjavik Geothermal Valley"},
+        {"FAC_ICELAND_COUNTRY", "Reykjavik, Iceland"},
+        {"FAC_ICELAND_DESC", "Natural glacier cooling next to geothermal plant."},
+        {"FAC_NORWAY_NAME", "Tromso Fjord Underwater Site"},
+        {"FAC_NORWAY_COUNTRY", "Tromso, Norway"},
+        {"FAC_NORWAY_DESC", "Arctic circle natural fjord cooling circulation."},
+        {"FAC_GERMANY_NAME", "Frankfurt Industrial Data Park"},
+        {"FAC_GERMANY_COUNTRY", "Frankfurt, Germany"},
+        {"FAC_GERMANY_DESC", "High-security industrial grid in European hub."},
+        {"FAC_SIBERIA_NAME", "Siberian Arctic Mining Base"},
+        {"FAC_SIBERIA_COUNTRY", "Novosibirsk, Russia"},
+        {"FAC_SIBERIA_DESC", "Freezing arctic climate with massive hydro grid."},
+        
+        {"BTN_UPGRADE_PSU", "UPGRADE PSU"},
+        {"PSU_MAX_REACHED", "MAX PSU REACHED"},
+        {"BADGE_ROOM_TEMP", "ROOM TEMP"}
     };
 }
 
