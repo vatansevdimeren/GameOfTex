@@ -16,7 +16,7 @@ public:
      * @param baseAmbientTempCelsius Ambient room temperature (e.g. 21.0°C).
      * @param thermalResistance GPU heatsink thermal resistance in °C/Watt (default 0.18).
      */
-    explicit ThermalModel(double baseAmbientTempCelsius = 21.0, double thermalResistance = 0.18);
+    explicit ThermalModel(double baseAmbientTempCelsius = 21.0, double thermalResistance = 0.32);
 
     // Getters and Setters
     [[nodiscard]] double GetAmbientTemperature() const;

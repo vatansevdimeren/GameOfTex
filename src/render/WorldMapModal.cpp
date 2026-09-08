@@ -1,4 +1,4 @@
-﻿#include "WorldMapModal.hpp"
+#include "WorldMapModal.hpp"
 #include "UIFrame.hpp"
 #include "../core/Localization.hpp"
 #include <algorithm>
@@ -205,7 +205,7 @@ void WorldMapModal::Draw(const Core::FacilityManager& facilityManager, const Cor
     DrawRectangleRoundedLines(Rectangle{modalX + 10.0f, modalY + 10.0f, modalW - 20.0f, 48.0f}, 0.08f, 6, 1.0f, Color{70, 130, 210, 140});
 
     const char* titleText = Core::LocalizationManager::Tr("WORLD_MAP_TITLE");
-    DrawText(titleText, static_cast<int>(modalX + 25.0f), static_cast<int>(modalY + 22.0f), 22, Color{0, 230, 255, 255});
+    UIFrame::DrawTextCustom(titleText, modalX + 25.0f, modalY + 20.0f, 22.0f, Color{0, 230, 255, 255}, true);
 
     m_btnClose.Draw();
 
@@ -251,9 +251,9 @@ void WorldMapModal::Draw(const Core::FacilityManager& facilityManager, const Cor
 
         // City Name Tag
         const char* cityName = Core::LocalizationManager::Tr(fac.countryKey);
-        int nameW = MeasureText(cityName, 11);
-        DrawRectangle(static_cast<int>(nodeX - nameW / 2.0f - 4.0f), static_cast<int>(nodeY + 12.0f), nameW + 8, 16, Color{15, 20, 30, 220});
-        DrawText(cityName, static_cast<int>(nodeX - nameW / 2.0f), static_cast<int>(nodeY + 14.0f), 11, RAYWHITE);
+        float nameW = UIFrame::MeasureTextCustom(cityName, 11.0f, true);
+        DrawRectangle(static_cast<int>(nodeX - nameW / 2.0f - 6.0f), static_cast<int>(nodeY + 12.0f), static_cast<int>(nameW + 12.0f), 18, Color{15, 20, 30, 230});
+        UIFrame::DrawTextCustom(cityName, nodeX - nameW / 2.0f, nodeY + 13.0f, 11.0f, RAYWHITE, true);
     }
 
     // Right Location Dossier Panel
@@ -270,24 +270,24 @@ void WorldMapModal::Draw(const Core::FacilityManager& facilityManager, const Cor
         bool isActive = (m_selectedFacilityIndex == facilityManager.GetActiveFacilityIndex());
 
         // Location Title & Country
-        DrawText(Core::LocalizationManager::Tr(fac.nameKey), static_cast<int>(infoX + 16.0f), static_cast<int>(infoY + 16.0f), 18, Color{255, 220, 80, 255});
-        DrawText(Core::LocalizationManager::Tr(fac.countryKey), static_cast<int>(infoX + 16.0f), static_cast<int>(infoY + 40.0f), 13, Color{140, 165, 195, 255});
+        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.nameKey), infoX + 16.0f, infoY + 14.0f, 17.0f, Color{255, 220, 80, 255}, true);
+        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.countryKey), infoX + 16.0f, infoY + 38.0f, 13.0f, Color{140, 165, 195, 255}, false);
 
         // Status Badge
         Rectangle statusRec{infoX + infoW - 130.0f, infoY + 14.0f, 115.0f, 24.0f};
         if (isActive) {
             DrawRectangleRounded(statusRec, 0.3f, 4, Color{20, 120, 70, 255});
-            DrawText(Core::LocalizationManager::Tr("FAC_BADGE_ACTIVE"), static_cast<int>(statusRec.x + 8.0f), static_cast<int>(statusRec.y + 5.0f), 12, WHITE);
+            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_ACTIVE"), statusRec.x + 8.0f, statusRec.y + 4.0f, 12.0f, WHITE, true);
         } else if (fac.isPurchased) {
             DrawRectangleRounded(statusRec, 0.3f, 4, Color{30, 80, 140, 255});
-            DrawText(Core::LocalizationManager::Tr("FAC_BADGE_OWNED"), static_cast<int>(statusRec.x + 12.0f), static_cast<int>(statusRec.y + 5.0f), 12, WHITE);
+            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_OWNED"), statusRec.x + 12.0f, statusRec.y + 4.0f, 12.0f, WHITE, true);
         } else {
             DrawRectangleRounded(statusRec, 0.3f, 4, Color{130, 90, 20, 255});
-            DrawText(Core::LocalizationManager::Tr("FAC_BADGE_FOR_SALE"), static_cast<int>(statusRec.x + 10.0f), static_cast<int>(statusRec.y + 5.0f), 12, WHITE);
+            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_FOR_SALE"), statusRec.x + 10.0f, statusRec.y + 4.0f, 12.0f, WHITE, true);
         }
 
         // Description
-        DrawText(Core::LocalizationManager::Tr(fac.descKey), static_cast<int>(infoX + 16.0f), static_cast<int>(infoY + 68.0f), 12, Color{180, 195, 215, 255});
+        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.descKey), infoX + 16.0f, infoY + 66.0f, 12.0f, Color{180, 195, 215, 255}, false);
 
         // Parameters Badges List
         float paramY = infoY + 115.0f;
@@ -298,9 +298,9 @@ void WorldMapModal::Draw(const Core::FacilityManager& facilityManager, const Cor
             Rectangle pRec{infoX + 14.0f, paramY, infoW - 28.0f, paramH};
             DrawRectangleRounded(pRec, 0.2f, 4, Color{26, 34, 52, 255});
             DrawRectangleRoundedLines(pRec, 0.2f, 4, 1.0f, Color{45, 60, 85, 200});
-            DrawText(label, static_cast<int>(pRec.x + 12.0f), static_cast<int>(pRec.y + 9.0f), 13, Color{150, 170, 195, 255});
-            int vw = MeasureText(val.c_str(), 14);
-            DrawText(val.c_str(), static_cast<int>(pRec.x + pRec.width - vw - 12.0f), static_cast<int>(pRec.y + 8.0f), 14, valColor);
+            UIFrame::DrawTextCustom(label, pRec.x + 12.0f, pRec.y + 9.0f, 13.0f, Color{150, 170, 195, 255}, false);
+            float vw = UIFrame::MeasureTextCustom(val.c_str(), 14.0f, true);
+            UIFrame::DrawTextCustom(val.c_str(), pRec.x + pRec.width - vw - 12.0f, pRec.y + 8.0f, 14.0f, valColor, true);
             paramY += paramH + gap;
         };
 

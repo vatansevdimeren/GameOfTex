@@ -534,6 +534,42 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * **Düzeltilen Sorun:** Bazı işletim sistemi ve font rasterizasyonlarında `⚡`, `❄️`, `🔥`, `🛒` gibi ham Unicode emojiler `?` glif hatası veya yazı bozulması (syntax hatası hissi) yaratabiliyordu.
 * **Çözüm:** Tüm ham emojiler `[MARKET]`, `[ALARM]`, `[SOGUK]`, `[SICAK]`, `[DEMERAJ]`, `[PSU]`, `[CALISIYOR]` gibi fütüristik neon braket formatına dönüştürüldü. Yazı motorunda sıfır glif hatası sağlandı.
 
+---
+
+## ⚡ 14. Canlı Termal Tepki, Saatlik/Günlük Finansal Metrikler ve Modal Tipografi Yenilemesi
+
+### 14.1. Anlık GPU Güç ve Sıcaklık Dinamiği (Direct Thermal Reaction)
+* **Problem:** GPU inceleme penceresinde (`GPUInspectionModal`) Power Limit veya Overclock artırıldığında sıcaklık derhal tepki vermiyor, eski donanım değerlerinde kalıyordu. Ayrıca baz termal direnç (0.18) yüksek watt tüketiminde dahi kartı aşırı serin tutuyordu.
+* **Çözüm (`ThermalModel.hpp` & `GPUInspectionModal.cpp`):**
+  1. `ThermalModel` baz termal direnci `0.18`'den `0.32` seviyesine çıkarıldı. Böylece 120W-250W aralığındaki kartlar gerçekçi fizik yükü altına girer; fan devri düşürüldüğünde veya güç sınırı zorlandığında 80°C - 105°C bandına doğru gerçekçi şekilde ısınır.
+  2. `GPUInspectionModal::Update` fonksiyonu artık `const Core::ThermalModel*` parametresi alır. Oyuncu hız aşırtma veya güç sınırını değiştirdiği milisaniyede `CalculateGPUTemperature` çağrılarak `m_currentTemp` anında güncellenir ve arayüzde gecikmesiz yansıtılır.
+
+---
+
+### 14.2. Saatlik ve Günlük Finansal Metrikler (Hourly & Daily Revenue/Profit)
+* **Gereksinim:** Oyuncuların her bir kartın saatlik ve günlük ne kadar brüt gelir getirdiğini, ne kadar elektrik yaktığını ve net kârını açıkça görebilmesi.
+* **Çözüm (`EconomyManager.hpp` & `GPUInspectionModal.cpp`):**
+  * `EconomyManager` sınıfına SRP ilkelerine uygun 5 yeni analitik fonksiyon eklendi:
+    * `CalculateHourlyCoins(double hashrate)`: $3600 \times \frac{\text{hashrate}}{\text{zorluk}} \times 0.05$
+    * `CalculateHourlyRevenueUSD(double hashrate)`: $\text{Saatlik Coin} \times \text{Coin Fiyatı}$
+    * `CalculateDailyRevenueUSD(double hashrate)`: $\text{Saatlik Gelir} \times 24$
+    * `CalculateHourlyElectricityCostUSD(double watts, double gridRateKWh)`: $\frac{\text{watts}}{1000} \times \text{gridRateKWh}$
+    * `CalculateHourlyNetProfitUSD(...)`: $\text{Saatlik Brüt Gelir} - \text{Saatlik Elektrik Gideri}$
+  * `GPUInspectionModal::Draw` içine şık bir finansal bilgi kutusu eklendi:
+    * `[GELIR] Saatlik: $X.XX/s | Gunluk: $Y.YY/g` (Canlı altın sarısı renginde)
+    * `[NET KAR] $Z.ZZ/s (Elektrik: -$E.EE/s)` (Kâr pozitifse siber yeşil, negatifse kırmızı renkte)
+
+---
+
+### 14.3. Görevler ve Dünya Haritası Pikselli Font Giderimi (Vektör Tipografi)
+* **Problem:** `TaskModal.cpp` ve `WorldMapModal.cpp` dosyalarında Raylib'in varsayılan 10x10 pikselli ham bitmap `DrawText` ve `MeasureText` fonksiyonları kullanılıyordu. Bu durum, diğer pencerelerin aksine görev ve harita ekranında yazıların pikselli, bulanık ve eski görünmesine sebep oluyordu.
+* **Çözüm:**
+  * `TaskModal.cpp` içindeki 9 adet `DrawText` ve 4 adet `MeasureText` çağrısı,
+  * `WorldMapModal.cpp` içindeki 12 adet `DrawText` ve 2 adet `MeasureText` çağrısı,
+  * Tamamen `UIFrame::DrawTextCustom` ve `UIFrame::MeasureTextCustom` fonksiyonlarına geçirildi.
+  * Artık tüm modal ve pencereler çift filtreli, gölgeli ve pürüzsüz `Rajdhani` vektör font motorundan beslenmektedir.
+
+
 
 
 

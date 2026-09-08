@@ -6,6 +6,11 @@
 #include "TextureManager.hpp"
 #include <string>
 
+namespace Core {
+class ThermalModel;
+class EconomyManager;
+}
+
 namespace Render {
 
 /**
@@ -28,17 +33,21 @@ public:
     /**
      * @brief Updates rotation dragging, slider buttons, repair and scrap actions.
      * @param economyFiat Player's available cash to pay for repairs.
+     * @param thermalModel Active facility thermal model for real-time temperature reaction.
      * @param outRepairCost Outputs repair cost deducted if repaired this frame.
      * @param outScrapRequested Outputs true if player clicked to scrap/remove card.
      */
-    void Update(double economyFiat, double& outRepairCost, bool& outScrapRequested);
+    void Update(double economyFiat, const Core::ThermalModel* thermalModel, double& outRepairCost, bool& outScrapRequested);
 
     /**
      * @brief Renders the 360-degree card, status gauges, and OC controls.
      * @param animTime Accumulated time for fan rotation.
      * @param textureManager Texture manager for high-res sprites.
+     * @param economy Economy manager for real-time hourly and daily earnings.
+     * @param electricityRateKWh Facility electricity price per kWh.
      */
-    void Draw(double animTime, const TextureManager* textureManager = nullptr) const;
+    void Draw(double animTime, const TextureManager* textureManager = nullptr,
+              const Core::EconomyManager* economy = nullptr, double electricityRateKWh = 0.12) const;
 
 private:
     void Draw3DCardPreview(float centerX, float centerY, float height, double animTime,

@@ -206,7 +206,7 @@ int main() {
         if (gpuInspectionModal.IsOpen()) {
             double repairCost = 0.0;
             bool scrapRequested = false;
-            gpuInspectionModal.Update(economy.GetFiatBalance(), repairCost, scrapRequested);
+            gpuInspectionModal.Update(economy.GetFiatBalance(), &thermalModel, repairCost, scrapRequested);
             if (repairCost > 0.0) {
                 economy.DeductFiat(repairCost);
             }
@@ -768,13 +768,13 @@ int main() {
         Render::UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("TIP_FOOTER"),
                                        pad + 10.0f, screenH - footerH + 12.0f, 14.0f, Color{150, 165, 190, 255}, false);
 
-        std::string verTag = "GameOfTex v1.7 [Global Facilities & World Map]";
+        std::string verTag = "GameOfTex v1.8 [Rajdhani Typography & High-Res UI]";
         float verW = Render::UIFrame::MeasureTextCustom(verTag, 14.0f, false);
         Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, screenH - footerH + 12.0f, 14.0f, Color{100, 120, 150, 255}, false);
 
         // 5. GPU 360 İNCELEME MODALI (AÇIKSA EN ÜSTTE ÇİZİLİR)
         if (gpuInspectionModal.IsOpen()) {
-            gpuInspectionModal.Draw(animTime, &textureManager);
+            gpuInspectionModal.Draw(animTime, &textureManager, &economy, activeFacility->gridPricePerKwh);
         }
 
         // 6. AYARLAR MODAL PENCERESİ

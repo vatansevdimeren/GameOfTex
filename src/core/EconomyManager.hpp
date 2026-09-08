@@ -60,12 +60,14 @@ public:
      */
     double MineCoins(double hashrateMHS, double deltaTimeSeconds);
 
-    /**
-     * @brief Sells an amount of cryptocurrency at current market price.
-     * @param amount Amount of crypto to liquidate.
-     * @return True if sold successfully, false if insufficient crypto balance.
-     */
     bool SellCrypto(double amount);
+
+    // Saatlik ve Günlük Getiri/Kar Hesaplamaları
+    [[nodiscard]] double CalculateHourlyCoins(double hashrateMHS) const;
+    [[nodiscard]] double CalculateHourlyRevenueUSD(double hashrateMHS) const;
+    [[nodiscard]] double CalculateDailyRevenueUSD(double hashrateMHS) const;
+    [[nodiscard]] double CalculateHourlyElectricityCostUSD(double powerWatts, double electricityRateKWh) const;
+    [[nodiscard]] double CalculateHourlyNetProfitUSD(double hashrateMHS, double powerWatts, double electricityRateKWh) const;
 
 private:
     double m_fiatBalance;

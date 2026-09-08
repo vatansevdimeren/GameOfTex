@@ -1,5 +1,7 @@
 #include "GPUInspectionModal.hpp"
 #include "UIFrame.hpp"
+#include "../core/ThermalModel.hpp"
+#include "../core/EconomyManager.hpp"
 #include <cmath>
 #include <iomanip>
 #include <sstream>
@@ -50,10 +52,18 @@ size_t GPUInspectionModal::GetSlotIndex() const {
     return m_slotIndex;
 }
 
-void GPUInspectionModal::Update(double economyFiat, double& outRepairCost, bool& outScrapRequested) {
+void GPUInspectionModal::Update(double economyFiat, const Core::ThermalModel* thermalModel, double& outRepairCost, bool& outScrapRequested) {
     outRepairCost = 0.0;
     outScrapRequested = false;
     if (!m_isOpen || !m_targetGPU) return;
+
+    // Canlı ve Anlık Sıcaklık Güncellemesi: Güç/Saat/Fan değiştiği anda derece anında artar!
+    if (thermalModel) {
+        m_currentTemp = thermalModel->CalculateGPUTemperature(
+            m_targetGPU->GetEffectivePowerWatts(),
+            m_targetGPU->GetFanSpeedPercent() / 100.0
+        );
+    }
 
     const float screenW = static_cast<float>(GetScreenWidth());
     const float screenH = static_cast<float>(GetScreenHeight());
@@ -98,16 +108,16 @@ void GPUInspectionModal::Update(double economyFiat, double& outRepairCost, bool&
     const float ctrlH = 42.0f;
 
     // Saat frekansı butonları
-    m_btnClockDown.SetBounds(Rectangle{rightPanelX + rightPanelW - 260.0f, modalY + 230.0f, ctrlW, ctrlH});
-    m_btnClockUp.SetBounds(Rectangle{rightPanelX + rightPanelW - 130.0f, modalY + 230.0f, ctrlW, ctrlH});
+    m_btnClockDown.SetBounds(Rectangle{rightPanelX + rightPanelW - 260.0f, modalY + 246.0f, ctrlW, ctrlH});
+    m_btnClockUp.SetBounds(Rectangle{rightPanelX + rightPanelW - 130.0f, modalY + 246.0f, ctrlW, ctrlH});
 
     // Güç limiti butonları
-    m_btnPowerDown.SetBounds(Rectangle{rightPanelX + rightPanelW - 260.0f, modalY + 295.0f, ctrlW, ctrlH});
-    m_btnPowerUp.SetBounds(Rectangle{rightPanelX + rightPanelW - 130.0f, modalY + 295.0f, ctrlW, ctrlH});
+    m_btnPowerDown.SetBounds(Rectangle{rightPanelX + rightPanelW - 260.0f, modalY + 306.0f, ctrlW, ctrlH});
+    m_btnPowerUp.SetBounds(Rectangle{rightPanelX + rightPanelW - 130.0f, modalY + 306.0f, ctrlW, ctrlH});
 
     // Fan hızı butonları
-    m_btnFanDown.SetBounds(Rectangle{rightPanelX + rightPanelW - 260.0f, modalY + 360.0f, ctrlW, ctrlH});
-    m_btnFanUp.SetBounds(Rectangle{rightPanelX + rightPanelW - 130.0f, modalY + 360.0f, ctrlW, ctrlH});
+    m_btnFanDown.SetBounds(Rectangle{rightPanelX + rightPanelW - 260.0f, modalY + 366.0f, ctrlW, ctrlH});
+    m_btnFanUp.SetBounds(Rectangle{rightPanelX + rightPanelW - 130.0f, modalY + 366.0f, ctrlW, ctrlH});
 
     // Tamir, Hurdaya Sat/Çıkar ve Kapat butonları
     m_btnRepair.SetBounds(Rectangle{rightPanelX, modalY + modalH - 160.0f, rightPanelW - 30.0f, 42.0f});
@@ -261,7 +271,8 @@ void GPUInspectionModal::Draw3DCardPreview(float centerX, float centerY, float h
     }
 }
 
-void GPUInspectionModal::Draw(double animTime, const TextureManager* textureManager) const {
+void GPUInspectionModal::Draw(double animTime, const TextureManager* textureManager,
+                              const Core::EconomyManager* economy, double electricityRateKWh) const {
     if (!m_isOpen || !m_targetGPU) return;
 
     const float screenW = static_cast<float>(GetScreenWidth());
@@ -299,59 +310,76 @@ void GPUInspectionModal::Draw(double animTime, const TextureManager* textureMana
 
     // Isı ve Yangın Durum Rozeti
     Color tempBadgeColor = Color{0, 255, 150, 255};
-    std::string statusText = "GÜVENLİ";
+    std::string statusText = "GUVENLI";
     if (m_targetGPU->IsBurnt()) {
         tempBadgeColor = Color{255, 30, 30, 255};
-        statusText = "KART AŞIRI SICAKLIKTAN YANDI!";
+        statusText = "KART ASIRI SICAKLIKTAN YANDI!";
     } else if (m_currentTemp >= 135.0) {
         tempBadgeColor = Color{255, 30, 30, 255};
-        statusText = "KRİTİK YANGIN TEHLİKESİ! 140°C'DE YANACAK!";
+        statusText = "KRITIK YANGIN TEHLIKESI! 140 C'DE YANACAK!";
     } else if (m_currentTemp >= 105.0) {
         tempBadgeColor = Color{255, 120, 0, 255};
-        statusText = "TEHLİKELİ SICAKLIK (SAĞLIK ERİYOR)";
+        statusText = "TEHLIKELI SICAKLIK (SAGLIK ERIYOR)";
     } else if (m_currentTemp >= 85.0) {
         tempBadgeColor = Color{255, 200, 0, 255};
-        statusText = "TERMAL YAVAŞLATMA (THROTTLED)";
+        statusText = "TERMAL YAVASLATMA (THROTTLED)";
     }
 
-    Rectangle dangerBox{rightPanelX, modalY + 65.0f, rightPanelW - 30.0f, 50.0f};
+    Rectangle dangerBox{rightPanelX, modalY + 65.0f, rightPanelW - 30.0f, 44.0f};
     DrawRectangleRounded(dangerBox, 0.2f, 4, Color{25, 20, 25, 240});
     DrawRectangleRoundedLines(dangerBox, 0.2f, 4, 1.8f, tempBadgeColor);
-    UIFrame::DrawTextCustom("SICAKLIK DURUMU: " + statusText, rightPanelX + 16.0f, modalY + 80.0f, 15.0f, tempBadgeColor, true);
+    UIFrame::DrawTextCustom("SICAKLIK DURUMU: " + statusText, rightPanelX + 16.0f, modalY + 78.0f, 14.0f, tempBadgeColor, true);
 
     // Sağlık Barı (Kart Sağlığı %100 - %0)
-    std::string healthStr = "DONANIM SAĞLIĞI: %" + std::to_string(static_cast<int>(m_targetGPU->GetHealthPercent()));
-    UIFrame::DrawProgressBar(Rectangle{rightPanelX, modalY + 125.0f, rightPanelW - 30.0f, 24.0f},
+    std::string healthStr = "DONANIM SAGLIGI: %" + std::to_string(static_cast<int>(m_targetGPU->GetHealthPercent()));
+    UIFrame::DrawProgressBar(Rectangle{rightPanelX, modalY + 118.0f, rightPanelW - 30.0f, 22.0f},
                             static_cast<float>(m_targetGPU->GetHealthPercent() / 100.0),
                             m_targetGPU->GetHealthPercent() > 50.0 ? Color{0, 230, 130, 255} : Color{255, 60, 60, 255},
                             healthStr);
 
-    // Silikon Kalitesi ve Anlık Çekirdek Isısı
+    // Silikon Kalitesi, Canlı Isı, Hashrate ve Güç
     std::ostringstream ssSilicon, ssLiveTemp, ssHash, ssWatts;
     ssSilicon << "Silikon Kalitesi: %" << static_cast<int>(m_targetGPU->GetSiliconQuality() * 100.0)
-              << (m_targetGPU->GetSiliconQuality() >= 1.05 ? " (Altın Silikon!)" : " (Standart)");
+              << (m_targetGPU->GetSiliconQuality() >= 1.05 ? " (Altin Silikon!)" : " (Standart)");
     ssLiveTemp << "Anlik Cekirdek Isisi: " << static_cast<int>(m_currentTemp) << " C";
     ssHash << "Etkin Kazim Gucu: " << std::fixed << std::setprecision(1) << m_targetGPU->GetEffectiveHashrate() << " MH/s";
     ssWatts << "Guc Tuketimi: " << std::fixed << std::setprecision(0) << m_targetGPU->GetEffectivePowerWatts() << " W";
 
-    UIFrame::DrawTextCustom(ssSilicon.str(), rightPanelX, modalY + 160.0f, 15.0f, GOLD, true);
-    UIFrame::DrawTextCustom(ssLiveTemp.str(), rightPanelX, modalY + 185.0f, 15.0f, tempBadgeColor, true);
-    UIFrame::DrawTextCustom(ssHash.str(), rightPanelX + 260.0f, modalY + 160.0f, 15.0f, Color{0, 220, 255, 255}, true);
-    UIFrame::DrawTextCustom(ssWatts.str(), rightPanelX + 260.0f, modalY + 185.0f, 15.0f, ORANGE, true);
+    UIFrame::DrawTextCustom(ssSilicon.str(), rightPanelX, modalY + 148.0f, 13.0f, GOLD, true);
+    UIFrame::DrawTextCustom(ssLiveTemp.str(), rightPanelX, modalY + 168.0f, 14.0f, tempBadgeColor, true);
+    UIFrame::DrawTextCustom(ssHash.str(), rightPanelX + 240.0f, modalY + 148.0f, 13.0f, Color{0, 220, 255, 255}, true);
+    UIFrame::DrawTextCustom(ssWatts.str(), rightPanelX + 240.0f, modalY + 168.0f, 13.0f, ORANGE, true);
+
+    // Saatlik ve Günlük Getiri Bilgisi
+    if (economy) {
+        double hrRev = economy->CalculateHourlyRevenueUSD(m_targetGPU->GetEffectiveHashrate());
+        double dayRev = economy->CalculateDailyRevenueUSD(m_targetGPU->GetEffectiveHashrate());
+        double hrElec = economy->CalculateHourlyElectricityCostUSD(m_targetGPU->GetEffectivePowerWatts(), electricityRateKWh);
+        double hrNet = hrRev - hrElec;
+
+        std::string revStr = "[GELIR] Saatlik: " + economy->FormatFiat(hrRev) + "/saat  |  Gunluk: " + economy->FormatFiat(dayRev);
+        std::string profitStr = "[NET KAR] " + economy->FormatFiat(hrNet) + "/saat  (Elektrik: -" + economy->FormatFiat(hrElec) + "/saat)";
+
+        Rectangle profitBox{rightPanelX, modalY + 192.0f, rightPanelW - 30.0f, 44.0f};
+        DrawRectangleRounded(profitBox, 0.2f, 4, Color{20, 28, 40, 240});
+        DrawRectangleRoundedLines(profitBox, 0.2f, 4, 1.0f, (hrNet >= 0.0) ? Color{0, 230, 150, 220} : Color{255, 60, 60, 220});
+        UIFrame::DrawTextCustom(revStr, rightPanelX + 12.0f, modalY + 197.0f, 12.0f, Color{255, 215, 60, 255}, true);
+        UIFrame::DrawTextCustom(profitStr, rightPanelX + 12.0f, modalY + 215.0f, 12.0f, (hrNet >= 0.0) ? Color{80, 240, 160, 255} : Color{255, 100, 100, 255}, true);
+    }
 
     // İnce Ayar Kontrolleri (Overclock & Undervolt)
     std::string clockStr = std::string("Cekirdek Saat Farki: ") + (m_targetGPU->GetCoreClockOffset() >= 0 ? "+" : "") + std::to_string(static_cast<int>(m_targetGPU->GetCoreClockOffset())) + " MHz";
-    UIFrame::DrawTextCustom(clockStr, rightPanelX, modalY + 240.0f, 16.0f, WHITE, true);
+    UIFrame::DrawTextCustom(clockStr, rightPanelX, modalY + 256.0f, 15.0f, WHITE, true);
     m_btnClockDown.Draw();
     m_btnClockUp.Draw();
 
     std::string powerStr = "Guc Limiti: %" + std::to_string(static_cast<int>(m_targetGPU->GetPowerLimitPercent()));
-    UIFrame::DrawTextCustom(powerStr, rightPanelX, modalY + 305.0f, 16.0f, WHITE, true);
+    UIFrame::DrawTextCustom(powerStr, rightPanelX, modalY + 316.0f, 15.0f, WHITE, true);
     m_btnPowerDown.Draw();
     m_btnPowerUp.Draw();
 
     std::string fanStr = "Manuel Fan Devri: %" + std::to_string(static_cast<int>(m_targetGPU->GetFanSpeedPercent()));
-    UIFrame::DrawTextCustom(fanStr, rightPanelX, modalY + 370.0f, 16.0f, WHITE, true);
+    UIFrame::DrawTextCustom(fanStr, rightPanelX, modalY + 376.0f, 15.0f, WHITE, true);
     m_btnFanDown.Draw();
     m_btnFanUp.Draw();
 

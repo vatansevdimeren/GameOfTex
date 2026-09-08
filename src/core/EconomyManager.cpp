@@ -185,4 +185,26 @@ bool EconomyManager::SellCrypto(double amount) {
     return true;
 }
 
+double EconomyManager::CalculateHourlyCoins(double hashrateMHS) const {
+    if (hashrateMHS <= 0.0 || m_networkDifficulty <= 0.0) return 0.0;
+    return (hashrateMHS * 3600.0) / m_networkDifficulty;
+}
+
+double EconomyManager::CalculateHourlyRevenueUSD(double hashrateMHS) const {
+    return CalculateHourlyCoins(hashrateMHS) * m_cryptoPrice;
+}
+
+double EconomyManager::CalculateDailyRevenueUSD(double hashrateMHS) const {
+    return CalculateHourlyRevenueUSD(hashrateMHS) * 24.0;
+}
+
+double EconomyManager::CalculateHourlyElectricityCostUSD(double powerWatts, double electricityRateKWh) const {
+    if (powerWatts <= 0.0 || electricityRateKWh <= 0.0) return 0.0;
+    return (powerWatts / 1000.0) * electricityRateKWh;
+}
+
+double EconomyManager::CalculateHourlyNetProfitUSD(double hashrateMHS, double powerWatts, double electricityRateKWh) const {
+    return CalculateHourlyRevenueUSD(hashrateMHS) - CalculateHourlyElectricityCostUSD(powerWatts, electricityRateKWh);
+}
+
 } // namespace Core
