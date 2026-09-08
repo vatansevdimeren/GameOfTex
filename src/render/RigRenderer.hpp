@@ -30,6 +30,12 @@ public:
     void DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& thermalModel,
                  int posX, int posY, double animTime, const TextureManager* textureManager = nullptr) const;
 
+    /**
+     * @brief Detects if mouse clicked on an installed GPU card slot.
+     * @return Slot index (0 to N-1) or -1 if none clicked.
+     */
+    [[nodiscard]] int GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2 mousePos) const;
+
 private:
     /**
      * @brief Draws a single GPU card at given coordinates.

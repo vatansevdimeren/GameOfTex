@@ -1,0 +1,29 @@
+# CMake & Derleme Çıktıları
+build/
+bin/
+out/
+CMakeSettings.json
+
+# Visual Studio & IDE Dosyaları
+.vs/
+*.sln
+*.vcxproj*
+*.suo
+*.user
+*.opendb
+*.db
+
+# Derlenmiş İkili Dosyalar (Binaries)
+*.exe
+*.obj
+*.lib
+*.dll
+*.pdb
+*.ilk
+*.exp
+*.tlog
+
+# İşletim Sistemi Geçici Dosyaları
+.DS_Store
+Thumbs.db
+desktop.ini

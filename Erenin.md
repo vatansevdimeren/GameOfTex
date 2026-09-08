@@ -123,6 +123,13 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * `NextRig()` & `PreviousRig()`: Arayüzdeki viewport ekranında incelenen aktif rig'i değiştirir (`1/X`).
 * `CalculateTotalHashrate()` & `CalculateTotalPowerWatts()`: Tüm depodaki riglerin toplam hashrate ve elektrik tüketimini şebekeye ve ekonomiye kümülatif aktarır.
 
+### 1.8. `CoolingManager.hpp` & `CoolingManager.cpp` (Çok Kademeli Endüstriyel Soğutma Sistemi)
+* **Görevi:** Depodaki soğutma kademelerini, yatırım maliyetlerini ve toplam ısı tahliye gücünü yönetir.
+* `Kademe 0: Temel Oda Fanı`: 300W Soğutma (Başlangıç).
+* `Kademe 1: Sanayi Egzoz Fanları`: +800W Soğutma ($600).
+* `Kademe 2: HVAC Soğuk Koridor Chiller`: +2,500W Soğutma ($1,800).
+* `Kademe 3: Daldırma Sıvı Soğutma Tankı (Immersion)`: +6,000W Soğutma ($6,000) - Kartları mineral yağ tankına batırarak aşırı ısınmayı ve yanmayı tamamen engeller!
+
 ---
 
 ## 🎨 2. Görselleştirme, Dokular ve Ayarlar Katmanı (`src/render/`)
@@ -132,12 +139,22 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * `gpu_card.png`: Ekran kartı gövdesine giydirilen ultra-res doku.
 * `fan_blade.png`: Isıya göre dönen fan pervanesi görseli.
 * `warehouse_bg.png`: Tesis arka plan resmi.
-* **SRP & Fallback:** Görseller bulunamazsa oyun asla çökmez; otomatik olarak keskin procedürel 2D çizim motorunu devreye sokar.
 
 ### 2.7. `SettingsModal.hpp` & `SettingsModal.cpp` (Ayarlar ve UI Scale Penceresi)
 * **Görevi:** Kullanıcının ekran boyutuna ve göz zevkine göre yazı ve arayüz ölçeğini anında büyütmesini sağlar.
 * `UI Scale Seviyeleri`: 1.0x (Normal), 1.25x (Büyük), 1.50x (Çok Büyük), 1.75x (Dev), 2.0x (Ultra).
 * `ToggleFullscreen()`: Tek tıkla tam ekran moduna geçirir.
+
+### 2.8. `GPUInspectionModal.hpp` & `GPUInspectionModal.cpp` (360° İnceleme & Overclock Modalı)
+* **Görevi:** Rig üzerindeki herhangi bir karta tıklandığında açılan devasa 3D inceleme ve hassas ayar ekranıdır.
+* `Draw3DCardPreview(...)`: Kartı fareyle sürükleyerek veya butonlarla 360 derece döndürür. Ön yüzde dönen RGB fanlar ve soğutucu ızgara; arka yüzde (backplate) bakır ısı boruları ve fırçalanmış alüminyum plaka sergilenir.
+* `Saat Frekansı (Core Clock Offset)`: -300 MHz ile +500 MHz arası hassas ayar.
+* `Güç Limiti (Power Limit)`: %60 ile %160 arası voltaj/tüketim kontrolü.
+* `Manuel Fan Profili`: %20 ile %100 arası fan devri.
+* `140°C Yanma (Burn) ve Tamir Mekaniği`: 
+  * Sıcaklık 105°C'yi aşarsa kart sağlığı erimeye başlar.
+  * Sıcaklık 140°C'ye ulaşırsa kart alev alarak **YANAR (BURNT)**, hashrate sıfırlanır ve kömür gibi kararır.
+  * Oyuncu `[KARTI TAMIR ET ($400)]` butonuyla kartı servise gönderip sağlığını %100'e geri getirebilir.
 
 ---
 
@@ -145,8 +162,9 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 
 * `GameState::LOGIN`: Oyun ilk açıldığında `LoginScreen` devreye girer. Kullanıcı şirket adını yazıp avatarını seçtikten sonra hesabı oluşturulur ve **+\$1,000 hoş geldin bonusu** hesabına geçer.
 * `GameState::GAMEPLAY`: 
+  * **İnteraktif GPU Tıklama:** Kasadaki herhangi bir karta tıkladığında anında 360° döndürülebilir inceleme modalı açılır.
+  * **Kademeli Soğutma Satın Alımı:** Sağ panelden sırasıyla Egzoz Fanları, HVAC Chiller ve Daldırma Sıvı Soğutma üniteleri satın alınabilir.
   * **[AYARLAR] Butonu:** Sağ üst köşedeki butonla açılır; font boyutunu ve UI ölçeğini 2.0x seviyesine kadar büyütebilirsin.
   * **Çoklu Rig & Depo Gezintisi:** Sol panelde `[< ONCEKI]` ve `[SONRAKI >]` butonlarıyla depodaki raflar arasında geçiş yapabilir, seçili rig'e yeni GPU'lar takabilirsin.
   * **`[ 🏗️ YENI RIG SATIN AL ($2,500) ]`**: Depoyu genişleterek yeni bir raf satın alır.
   * **[F11] Tam Ekran Desteği:** Tek tuşla ekranı doldurur.
-  * Sağ panelde tıklanabilir 8 adet modern ve dinamik buton.

@@ -47,8 +47,13 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         fanRgb = Color{255, 30, 30, 255}; // Dangerous Red
     }
 
-    // 1. Ekran Kartı Gövdesi (Varsa Ultra-Res doku, yoksa kaliteli prosedürel çizim)
-    if (textureManager && textureManager->HasGPUTexture()) {
+    bool isBurnt = gpu && gpu->IsBurnt();
+
+    // 1. Ekran Kartı Gövdesi (Yanmışsa kömürleşmiş, değilse ultra-res veya prosedürel)
+    if (isBurnt) {
+        DrawRectangle(x, y, gpuWidth, gpuHeight, Color{18, 14, 14, 255});
+        DrawRectangleLines(x, y, gpuWidth, gpuHeight, Color{120, 20, 20, 255});
+    } else if (textureManager && textureManager->HasGPUTexture()) {
         textureManager->DrawGPUTexture(Rectangle{static_cast<float>(x), static_cast<float>(y),
                                                  static_cast<float>(gpuWidth), static_cast<float>(gpuHeight)});
     } else {
@@ -60,26 +65,40 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         }
     }
 
-    // 2. Dönen Fanlar (Varsa harici pervane görseli)
-    if (textureManager && textureManager->HasFanTexture()) {
-        textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 60.0f, 32.0f, currentAngle, fanRgb);
-        textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 145.0f, 32.0f, -currentAngle, fanRgb);
+    // 2. Dönen Fanlar (Yanmış kartın fanı dönmez)
+    if (!isBurnt) {
+        if (textureManager && textureManager->HasFanTexture()) {
+            textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 60.0f, 32.0f, currentAngle, fanRgb);
+            textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 145.0f, 32.0f, -currentAngle, fanRgb);
+        } else {
+            DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, currentAngle, fanRgb);
+            DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, -currentAngle, fanRgb);
+        }
     } else {
-        DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, currentAngle, fanRgb);
-        DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, -currentAngle, fanRgb);
+        // Yanmış kartın üstüne alev/arıza etiketi
+        DrawRectangle(x + 6, y + 90, gpuWidth - 12, 40, Color{180, 20, 20, 230});
+        UIFrame::DrawTextCustom("YANDI!", static_cast<float>(x + 18), static_cast<float>(y + 100), 16.0f, WHITE, true);
     }
 
     // Status LED
-    Color ledColor = (tempCelsius >= 85.0) ? RED : ((tempCelsius >= 70.0) ? ORANGE : GREEN);
+    Color ledColor = isBurnt ? RED : ((tempCelsius >= 85.0) ? RED : ((tempCelsius >= 70.0) ? ORANGE : GREEN));
     DrawCircle(x + gpuWidth - 12, y + 12, 4.0f, ledColor);
+
+    // Fare kartın üzerindeyse inceleme çerçevesi
+    Vector2 mousePos = GetMousePosition();
+    if (CheckCollisionPointRec(mousePos, Rectangle{static_cast<float>(x), static_cast<float>(y), static_cast<float>(gpuWidth), static_cast<float>(gpuHeight)})) {
+        DrawRectangleLinesEx(Rectangle{static_cast<float>(x - 2), static_cast<float>(y - 2), static_cast<float>(gpuWidth + 4), static_cast<float>(gpuHeight + 4)}, 2.0f, Color{0, 240, 255, 220});
+        DrawRectangle(x + 10, y + 4, gpuWidth - 20, 18, Color{0, 200, 255, 220});
+        UIFrame::DrawTextCustom("INCELE", static_cast<float>(x + 20), static_cast<float>(y + 5), 11.0f, BLACK, true);
+    }
 
     // Readout metinleri (Net ve okunaklı)
     if (gpu) {
         std::string tempText = std::to_string(static_cast<int>(tempCelsius)) + "C";
         UIFrame::DrawTextCustom(tempText, static_cast<float>(x + 10), static_cast<float>(y + gpuHeight - 20), 14.0f, WHITE, true);
 
-        std::string hrText = std::to_string(static_cast<int>(gpu->GetEffectiveHashrate())) + "M";
-        UIFrame::DrawTextCustom(hrText, static_cast<float>(x + gpuWidth - 38), static_cast<float>(y + gpuHeight - 20), 14.0f, fanRgb, true);
+        std::string hrText = isBurnt ? "0 MH" : (std::to_string(static_cast<int>(gpu->GetEffectiveHashrate())) + "M");
+        UIFrame::DrawTextCustom(hrText, static_cast<float>(x + gpuWidth - 44), static_cast<float>(y + gpuHeight - 20), 14.0f, isBurnt ? RED : fanRgb, true);
     }
 }
 
@@ -121,6 +140,22 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
             UIFrame::DrawTextCustom("EMPTY", static_cast<float>(cardX + 22), static_cast<float>(gpuY + 100), 14.0f, Color{80, 90, 105, 255}, false);
         }
     }
+}
+
+int RigRenderer::GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2 mousePos) const {
+    constexpr int slotSpacing = 112;
+    const int startX = posX + 30;
+    const int gpuY = posY + 55;
+
+    for (size_t i = 0; i < gpuCount; ++i) {
+        int cardX = startX + static_cast<int>(i * slotSpacing);
+        Rectangle cardRect{static_cast<float>(cardX), static_cast<float>(gpuY), 90.0f, 220.0f};
+
+        if (CheckCollisionPointRec(mousePos, cardRect)) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
 }
 
 } // namespace Render

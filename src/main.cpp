@@ -6,6 +6,7 @@
 #include "core/PowerGrid.hpp"
 #include "core/EconomyManager.hpp"
 #include "core/UserProfile.hpp"
+#include "core/CoolingManager.hpp"
 #include "render/ShaderManager.hpp"
 #include "render/RigRenderer.hpp"
 #include "render/TextureManager.hpp"
@@ -13,6 +14,7 @@
 #include "render/UIFrame.hpp"
 #include "render/LoginScreen.hpp"
 #include "render/SettingsModal.hpp"
+#include "render/GPUInspectionModal.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -51,19 +53,21 @@ int main() {
 
     GameState currentState = GameState::LOGIN;
 
-    // 3. Profil ve Giriş Sistemi
+    // 3. Profil, Giriş ve Modal Pencereleri
     Core::UserProfile userProfile;
     Render::LoginScreen loginScreen;
     Render::SettingsModal settingsModal;
+    Render::GPUInspectionModal gpuInspectionModal;
 
     // 4. Çekirdek Simülasyon Nesneleri (Clean Code / SRP)
     Core::EconomyManager economy(1000.0, 3100.0, "TEX");
-    Core::PowerGrid powerGrid(8000.0, 0.15); // Çoklu rig için 8.0 kW sigorta limiti
-    Core::ThermalModel thermalModel(22.0);   // 22°C Oda sıcaklığı
-    thermalModel.SetCoolingPowerWatts(500.0);
+    Core::PowerGrid powerGrid(10000.0, 0.15); // Çoklu rig için 10.0 kW sigorta limiti
+    Core::ThermalModel thermalModel(22.0);    // 22°C Oda sıcaklığı
+    Core::CoolingManager coolingManager;
+    thermalModel.SetCoolingPowerWatts(coolingManager.CalculateTotalCoolingWatts());
 
     // Depo (Warehouse) - Çoklu Rig Yönetimi
-    Core::Warehouse warehouse("Mega Madencilik Tesisi - Hangardır 01");
+    Core::Warehouse warehouse("Mega Madencilik Tesisi - Hangar 01");
     if (auto* firstRig = warehouse.GetActiveRig()) {
         firstRig->InstallGPU(std::make_unique<Core::GPU>("RTX 3080", 100.0, 220.0, 1.05));
         firstRig->InstallGPU(std::make_unique<Core::GPU>("RTX 3070", 62.0, 130.0, 0.98));
@@ -92,8 +96,8 @@ int main() {
     Render::UIButton btnSellCrypto(Rectangle{}, "KRIPTO PARALARI SAT", "Anlik Deger: $0.00",
                                   Color{45, 40, 20, 255}, Color{255, 200, 0, 255});
 
-    Render::UIButton btnAddCooler(Rectangle{}, "SANAYI KLIMASI EKLE", "Maliyet: $150 (+250W)",
-                                 Color{20, 45, 50, 255}, Color{0, 240, 200, 255});
+    Render::UIButton btnUpgradeCooling(Rectangle{}, "SOGUTMAYI YUKSELT", "",
+                                      Color{20, 45, 50, 255}, Color{0, 240, 200, 255});
 
     Render::UIButton btnOverclock(Rectangle{}, "HIZ ASIRTMA (+5% OC)", "Daha Fazla MH/s",
                                  Color{45, 30, 25, 255}, Color{255, 120, 0, 255});
@@ -140,6 +144,15 @@ int main() {
 
         // ==================== OYUN İÇİ (GAMEPLAY) ====================
 
+        // GPU İnceleme Modalı Açıksa Güncelle
+        if (gpuInspectionModal.IsOpen()) {
+            double repairCost = 0.0;
+            gpuInspectionModal.Update(economy.GetFiatBalance(), repairCost);
+            if (repairCost > 0.0) {
+                economy.DeductFiat(repairCost);
+            }
+        }
+
         // Ayarlar Modalı Açıksa Güncelle
         if (settingsModal.IsOpen()) {
             settingsModal.Update();
@@ -150,7 +163,7 @@ int main() {
         const float headerH = 76.0f;
         const float footerH = 42.0f;
 
-        // Üst Rozetlerin Dinamik Genişliği (5 Rozet + 1 Ayarlar Butonu)
+        // Üst Rozetlerin Dinamik Genişliği
         const float totalBadgesW = screenW - (pad * 2.0f);
         const float badgeGap = 10.0f;
         const float settingsBtnW = 120.0f;
@@ -160,7 +173,7 @@ int main() {
         const float badgeY = (headerH - badgeH) / 2.0f;
 
         btnOpenSettings.SetBounds(Rectangle{screenW - pad - settingsBtnW, badgeY, settingsBtnW, badgeH});
-        if (!settingsModal.IsOpen() && btnOpenSettings.UpdateAndCheckClick()) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && btnOpenSettings.UpdateAndCheckClick()) {
             settingsModal.Open();
         }
 
@@ -177,7 +190,7 @@ int main() {
         btnPrevRig.SetBounds(Rectangle{pad + leftW - 230.0f, contentY + 10.0f, 105.0f, 32.0f});
         btnNextRig.SetBounds(Rectangle{pad + leftW - 120.0f, contentY + 10.0f, 105.0f, 32.0f});
 
-        if (!settingsModal.IsOpen()) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen()) {
             if (btnPrevRig.UpdateAndCheckClick()) warehouse.PreviousRig();
             if (btnNextRig.UpdateAndCheckClick()) warehouse.NextRig();
         }
@@ -192,7 +205,7 @@ int main() {
         btnBuyGPU.SetBounds(Rectangle{btnX, startBtnY + (0 * (btnH + btnGap)), btnW, btnH});
         btnBuyRig.SetBounds(Rectangle{btnX, startBtnY + (1 * (btnH + btnGap)), btnW, btnH});
         btnSellCrypto.SetBounds(Rectangle{btnX, startBtnY + (2 * (btnH + btnGap)), btnW, btnH});
-        btnAddCooler.SetBounds(Rectangle{btnX, startBtnY + (3 * (btnH + btnGap)), btnW, btnH});
+        btnUpgradeCooling.SetBounds(Rectangle{btnX, startBtnY + (3 * (btnH + btnGap)), btnW, btnH});
         btnOverclock.SetBounds(Rectangle{btnX, startBtnY + (4 * (btnH + btnGap)), btnW, btnH});
         btnUndervolt.SetBounds(Rectangle{btnX, startBtnY + (5 * (btnH + btnGap)), btnW, btnH});
         btnThermalToggle.SetBounds(Rectangle{btnX, startBtnY + (6 * (btnH + btnGap)), btnW, btnH});
@@ -201,7 +214,24 @@ int main() {
         // --- BUTON TIKLAMA VE AKSİYON KONTROLLERİ ---
         auto* activeRig = warehouse.GetActiveRig();
 
-        if (!settingsModal.IsOpen()) {
+        // Kart Tıklama Tespiti (Viewport içerisindeki GPU'ya tıklandı mı?)
+        constexpr float rigBaseW = 720.0f;
+        const float rigX = pad + (leftW - rigBaseW) / 2.0f;
+        const float rigY = contentY + 60.0f;
+
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && activeRig) {
+            Vector2 mouse = GetMousePosition();
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse);
+                if (clickedIndex >= 0 && clickedIndex < static_cast<int>(activeRig->GetGPUCount())) {
+                    auto* targetCard = activeRig->GetGPU(static_cast<size_t>(clickedIndex));
+                    double cardTemp = thermalModel.CalculateGPUTemperature(targetCard->GetEffectivePowerWatts(), 0.85);
+                    gpuInspectionModal.Open(targetCard, cardTemp, static_cast<size_t>(clickedIndex));
+                }
+            }
+        }
+
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen()) {
             // 1. GPU Satın Al
             if (activeRig) {
                 std::string gpuSub = "Maliyet: $600 | Secili Rig: " + std::to_string(activeRig->GetGPUCount()) + "/" + std::to_string(activeRig->GetMaxCapacity());
@@ -236,14 +266,34 @@ int main() {
                 economy.SellCrypto(economy.GetCryptoBalance());
             }
 
-            // 4. Klima Ekle
-            std::string coolSub = "Maliyet: $150 | Toplam: " + std::to_string(static_cast<int>(thermalModel.GetCoolingPowerWatts())) + "W";
-            btnAddCooler.SetSubtitle(coolSub);
-            btnAddCooler.SetDisabled(economy.GetFiatBalance() < 150.0);
-            if (btnAddCooler.UpdateAndCheckClick()) {
-                if (economy.DeductFiat(150.0)) {
-                    thermalModel.SetCoolingPowerWatts(thermalModel.GetCoolingPowerWatts() + 250.0);
+            // 4. Soğutmayı Kademeli Yükselt
+            size_t nextCoolingTier = 0;
+            const auto& coolingTiers = coolingManager.GetTiers();
+            for (size_t i = 1; i < coolingTiers.size(); ++i) {
+                if (!coolingTiers[i].isInstalled) {
+                    nextCoolingTier = i;
+                    break;
                 }
+            }
+
+            if (nextCoolingTier > 0) {
+                const auto& nextTierInfo = coolingTiers[nextCoolingTier];
+                btnUpgradeCooling.SetTitle(nextTierInfo.name);
+                std::ostringstream ssCool;
+                ssCool << "Maliyet: $" << static_cast<int>(nextTierInfo.cost) << " (+" << static_cast<int>(nextTierInfo.addedCoolingWatts) << "W)";
+                btnUpgradeCooling.SetSubtitle(ssCool.str());
+                btnUpgradeCooling.SetDisabled(economy.GetFiatBalance() < nextTierInfo.cost);
+
+                if (btnUpgradeCooling.UpdateAndCheckClick()) {
+                    if (economy.DeductFiat(nextTierInfo.cost)) {
+                        coolingManager.UpgradeTier(nextCoolingTier);
+                        thermalModel.SetCoolingPowerWatts(coolingManager.CalculateTotalCoolingWatts());
+                    }
+                }
+            } else {
+                btnUpgradeCooling.SetTitle("DALDIRMA SIVI SOGUTMA AKTIF");
+                btnUpgradeCooling.SetSubtitle("Maksimum Sogutma (6,000W) - Kartlar Asla Yanmaz");
+                btnUpgradeCooling.SetDisabled(true);
             }
 
             // 5. Overclock
@@ -282,7 +332,7 @@ int main() {
             }
         }
 
-        // --- SİMÜLASYON MOTORU HESAPLAMALARI (TÜM DEPO İÇİN) ---
+        // --- SİMÜLASYON MOTORU HESAPLAMALARI VE YANMA/HASAR KONTROLÜ ---
         powerGrid.ResetStep();
 
         if (!powerGrid.IsBreakerTripped()) {
@@ -299,9 +349,21 @@ int main() {
                 if (r) {
                     for (const auto& gpu : r->GetGPUs()) {
                         if (gpu) {
-                            double cardTemp = thermalModel.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), 0.85);
+                            double cardTemp = thermalModel.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), gpu->GetFanSpeedPercent() / 100.0);
                             if (cardTemp > maxCardTemp) maxCardTemp = cardTemp;
+
+                            // 85°C üzeri: Thermal Throttling
                             gpu->SetThrottled(Core::ThermalModel::IsOverheating(cardTemp));
+
+                            // 105°C üzeri: Kart sağlığı erir (Damage)
+                            if (cardTemp >= 105.0 && !coolingManager.IsImmersionCoolingActive()) {
+                                gpu->TakeDamage(dt * 5.0);
+                            }
+
+                            // 140°C üzeri: KART AŞIRI SICAKLIKTAN YANAR (BURNT)!
+                            if (cardTemp >= 140.0 && !coolingManager.IsImmersionCoolingActive()) {
+                                gpu->SetBurnt(true);
+                            }
                         }
                     }
                 }
@@ -319,7 +381,7 @@ int main() {
         BeginDrawing();
         ClearBackground(Color{10, 12, 16, 255});
 
-        // Varsa ultra-res arka plan, yoksa ızgara
+        // Arka Plan
         if (textureManager.HasWarehouseBackground()) {
             textureManager.DrawBackground(Rectangle{0, 0, screenW, screenH});
         } else {
@@ -349,19 +411,13 @@ int main() {
 
         btnOpenSettings.Draw();
 
-        // 2. SOL PANEL: VIEWPORT ÇERÇEVESİ (SEÇİLİ RİG VE DEPO BİLGİSİ)
+        // 2. SOL PANEL: VIEWPORT ÇERÇEVESİ (SEÇİLİ RİG VE KARTLAR)
         const Rectangle viewportRect{pad, contentY, leftW, contentH};
-        std::string viewportTitle = warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " RIG)";
+        std::string viewportTitle = warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " RIG) [KARTA TIKLAYIN: 360 INCELEME]";
         Render::UIFrame::DrawCard(viewportRect, viewportTitle, Color{0, 220, 255, 255});
 
-        // Gezinme butonları
         btnPrevRig.Draw();
         btnNextRig.Draw();
-
-        // Rig'i sol kart içerisinde ortala
-        constexpr float rigBaseW = 720.0f;
-        const float rigX = pad + (leftW - rigBaseW) / 2.0f;
-        const float rigY = contentY + 60.0f;
 
         if (activeRig) {
             shaderManager.BeginShader();
@@ -369,7 +425,7 @@ int main() {
             shaderManager.EndShader();
         }
 
-        // Güç Gösterge Barı (Ortalanmış)
+        // Güç Gösterge Barı
         const float powerRatio = static_cast<float>(powerGrid.GetTotalConsumptionWatts() / powerGrid.GetMaxCapacityWatts());
         const Color powerColor = (powerRatio > 0.85f) ? Color{255, 50, 50, 255} : ((powerRatio > 0.60f) ? Color{255, 180, 0, 255} : Color{0, 230, 130, 255});
         const std::string powerText = "DEPO SEBEKE YUKU: " + std::to_string(static_cast<int>(powerGrid.GetTotalConsumptionWatts())) +
@@ -400,7 +456,7 @@ int main() {
         btnBuyGPU.Draw();
         btnBuyRig.Draw();
         btnSellCrypto.Draw();
-        btnAddCooler.Draw();
+        btnUpgradeCooling.Draw();
         btnOverclock.Draw();
         btnUndervolt.Draw();
         btnThermalToggle.Draw();
@@ -410,14 +466,19 @@ int main() {
         DrawRectangle(0, static_cast<int>(screenH - footerH), static_cast<int>(screenW), static_cast<int>(footerH), Color{14, 17, 23, 250});
         DrawLine(0, static_cast<int>(screenH - footerH), static_cast<int>(screenW), static_cast<int>(screenH - footerH), Color{35, 42, 56, 255});
 
-        Render::UIFrame::DrawTextCustom("[F11] Tam Ekran  |  [AYARLAR] ile font ve buton boyutunu istediginiz gibi buyutebilirsiniz!",
+        Render::UIFrame::DrawTextCustom("[IPUCU] Kasadaki herhangi bir ekran kartina tiklayarak 360 derece dondurulebilir inceleme ve OC panelini acabilirsiniz!",
                                        pad + 10.0f, screenH - footerH + 12.0f, 14.0f, Color{150, 165, 190, 255}, false);
 
-        std::string verTag = "GameOfTex v1.3 [Warehouse & Multi-Rig]";
+        std::string verTag = "GameOfTex v1.4 [Interactive 360 Inspection]";
         float verW = Render::UIFrame::MeasureTextCustom(verTag, 14.0f, false);
         Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, screenH - footerH + 12.0f, 14.0f, Color{100, 120, 150, 255}, false);
 
-        // 5. AYARLAR MODAL PENCERESİ (AÇIKSA EN ÜSTTE ÇİZİLİR)
+        // 5. GPU 360 İNCELEME MODALI (AÇIKSA EN ÜSTTE ÇİZİLİR)
+        if (gpuInspectionModal.IsOpen()) {
+            gpuInspectionModal.Draw(animTime, &textureManager);
+        }
+
+        // 6. AYARLAR MODAL PENCERESİ
         if (settingsModal.IsOpen()) {
             settingsModal.Draw();
         }
