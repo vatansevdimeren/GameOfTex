@@ -985,3 +985,28 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   3. **`fan_blade.png` (Şeffaf Alfa Kanallı Dönen Fan Pervanesi):**
      - Metalik merkez göbekli, 9 kanatlı aerodinamik siyah fan rotoru. Şeffaf alfa kanalı sayesinde ekran kartının üzerinde sıcaklığa göre akıcı bir şekilde dönmektedir.
 
+---
+
+## 22. DOĞRUDAN NATİVE TAM EKRAN BAŞLATMA VE KRİSTAL NETLİKTE TİPOGRAFİ (v2.2.3)
+
+### 22.1. Exe Açıldığında Doğrudan Native Tam Ekran Başlama (Direct Fullscreen Launch)
+* **Kullanıcı Şikayeti:** *"çözünürlüğü artırman gerekicek direkt ben exe yi actığımda direkt karsıma F11 ile tam ekrana baslıcak kücük ekran olamıcak kanki"*
+* **Kök Neden:**
+  1. `InitWindow(1280, 720)` pencereyi ilk önce 720p olarak açıyordu. Ardından çağrılan `ToggleFullscreen()` bazı sistemlerde GLFW penceresi henüz ekranda oluşmadan önce çağrıldığı için başarısız oluyor ya da ekran kartını 1280x720 video moduna zorlayıp tüm ekranda pikselli esnetme yapıyordu.
+  2. ESC tuşuna basıldığında modal olmasa dahi `toggleFullscreenNative()` çağrılarak oyun aniden küçük pencere moduna küçülüyordu.
+* **Uygulanan Çözüm (`main.cpp`):**
+  1. `ChangeDirectory(GetApplicationDirectory())` çağrısı `main()` girişine eklendi. Exe masaüstünden veya herhangi bir kısayoldan başlatılsa dahi tüm fontlar ve 4K dokular kesin olarak exe klasöründen eksiksiz yüklenir.
+  2. Windows `GetSystemMetrics(SM_CXSCREEN)` ve `GetSystemMetrics(SM_CYSCREEN)` ile kullanıcının monitörünün tam fiziksel çözünürlüğü (1920x1080, 2K veya 4K) tespit edildi.
+  3. `InitWindow(nativeScreenWidth, nativeScreenHeight)` doğrudan monitörün fiziksel boyutunda başlatıldı ve ilk karede `ToggleFullscreen()` uygulanarak doğrudan F11 tam ekran modunda açılması sağlandı. **Artık oyun asla 1280x720 küçük pencere olarak başlamaz.**
+  4. ESC tuşunun tam ekrandan çıkarma davranışı kaldırıldı; ESC yalnızca açık modalları kapatır. Tam ekran / pencere geçişi yalnızca F11 tuşu ile yapılır.
+
+### 22.2. Yazıların Pikselli / Bulanık Görünümünün Giderilmesi (Pixel-Perfect Snapped Vector Typography)
+* **Kullanıcı Şikayeti:** *"yazı kalitesini arttır pixel pixel duruyor gibi oluyor sunları düznlle"*
+* **Kök Neden:**
+  1. `GenTextureMipmaps` ve `TEXTURE_FILTER_TRILINEAR` fonksiyonları, alfa kanallı font atlasında alt mip seviyelerinde harf kenarlarını grileştirip bozuyordu. Küçük puntolarda bu durum harflerin pikselli ve bozuk görünmesine yol açıyordu.
+  2. Fontlar 32px rasterize edilip 11-14px gibi küçük boyutlara küçültülürken harf kalınlıkları piksel sınırlarına denk gelmediği için karakterlerde piksel atlamaları oluşuyordu.
+  3. Metin çizim koordinatları küsuratlı (float) olduğunda sub-pixel bulanıklığı meydana geliyordu.
+* **Uygulanan Çözüm (`main.cpp` & `UIFrame.cpp`):**
+  1. **48px Ultra Çözünürlüklü Vektör Font Atlası:** Segoe UI ve alternatif fontlar 48px yüksek çözünürlükle rasterize edildi.
+  2. **Mipmap Kaldırıldı & Bilinear Filtreleme:** Mipmap oluşturma iptal edildi; font atlasına doğrudan donanımsal `TEXTURE_FILTER_BILINEAR` uygulandı.
+  3. **Piksel Kenetleme (Pixel-Snapping):** `UIFrame::DrawTextCustom` içinde metin koordinatları `std::round(x)` ve `std::round(y)` ile tam ekran piksellerine kenetlendi. Harflerdeki tüm pikselleşme, bulanıklık ve titreme giderilerek ipeksi pürüzsüzlükte tipografi elde edildi.

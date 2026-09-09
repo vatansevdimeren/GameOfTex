@@ -1,5 +1,6 @@
 #include "UIFrame.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace Render {
 
@@ -27,21 +28,22 @@ float UIFrame::GetUIScale() {
 
 void UIFrame::DrawTextCustom(const std::string& text, float x, float y, float size, Color color, bool bold) {
     const float scaledSize = size * s_uiScale;
+    const float snapX = std::round(x);
+    const float snapY = std::round(y);
     if (s_hasCustomFonts) {
         Font fontToUse = bold ? s_fontBold : s_fontRegular;
-        // Text drop-shadow: Yalnızca büyük başlıklar için (>= 18px) hafif gölge.
-        // Küçük metinlerde (11-16px) gölge kaldırıldı; böylece bulanıklık ve çamurluluk tamamen yok edilir.
+        // Text drop-shadow: Yalnizca buyuk basliklar icin (>= 18px) hafif golge
         if (scaledSize >= 18.0f && color.a > 50) {
-            Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.40f)};
-            DrawTextEx(fontToUse, text.c_str(), Vector2{x + 1.0f, y + 1.0f}, scaledSize, 0.5f, shadowColor);
+            Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.35f)};
+            DrawTextEx(fontToUse, text.c_str(), Vector2{snapX + 1.0f, snapY + 1.0f}, scaledSize, 0.5f, shadowColor);
         }
-        DrawTextEx(fontToUse, text.c_str(), Vector2{x, y}, scaledSize, 0.5f, color);
+        DrawTextEx(fontToUse, text.c_str(), Vector2{snapX, snapY}, scaledSize, 0.5f, color);
     } else {
         if (color.a > 30) {
             Color shadowColor{0, 0, 0, static_cast<unsigned char>(color.a * 0.50f)};
-            DrawText(text.c_str(), static_cast<int>(x + 1), static_cast<int>(y + 1), static_cast<int>(scaledSize), shadowColor);
+            DrawText(text.c_str(), static_cast<int>(snapX + 1.0f), static_cast<int>(snapY + 1.0f), static_cast<int>(scaledSize), shadowColor);
         }
-        DrawText(text.c_str(), static_cast<int>(x), static_cast<int>(y), static_cast<int>(scaledSize), color);
+        DrawText(text.c_str(), static_cast<int>(snapX), static_cast<int>(snapY), static_cast<int>(scaledSize), color);
     }
 }
 

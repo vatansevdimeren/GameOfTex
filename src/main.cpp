@@ -2,6 +2,7 @@
 extern "C" __declspec(dllimport) int __stdcall SetProcessDPIAware(void);
 extern "C" __declspec(dllimport) void* __stdcall GetConsoleWindow(void);
 extern "C" __declspec(dllimport) int __stdcall ShowWindow(void* hWnd, int nCmdShow);
+extern "C" __declspec(dllimport) int __stdcall GetSystemMetrics(int nIndex);
 #endif
 
 #include "raylib.h"
@@ -48,34 +49,45 @@ enum class GameState {
 
 int main() {
 #ifdef _WIN32
-    // Windows DWM bitmap ölçekleme bulanıklığını tamamen devre dışı bırak
+    // Windows DWM bitmap olcekleme bulanikligini tamamen devre disi birak
     SetProcessDPIAware();
-    // Arka planda konsol penceresi açıksa hemen gizle (Zero-Console GUI)
+    // Arka planda konsol penceresi aciksa hemen gizle (Zero-Console GUI)
     void* consoleWnd = GetConsoleWindow();
     if (consoleWnd != nullptr) {
         ShowWindow(consoleWnd, 0); // SW_HIDE = 0
     }
 #endif
 
-    // 1. Pencere Yapılandırması (Resize ve F11 Tam Ekran desteği)
-    constexpr int initialWidth = 1280;
-    constexpr int initialHeight = 720;
+    // Calisma dizinini daima calistirilabilir dosyanin (exe) bulundugu klasore sabitle
+    // Boylece oyun masaustunden veya herhangi bir dizinden acilsa bile fontlar ve dokular eksiksiz yuklenir!
+    ChangeDirectory(GetApplicationDirectory());
+
+    // 1. Ekran Cozunurlugunu Tespit Et (Dogrudan Tam Ekran Baslatma - Asla kucuk baslamaz!)
+#ifdef _WIN32
+    int nativeScreenWidth = GetSystemMetrics(0);  // SM_CXSCREEN
+    int nativeScreenHeight = GetSystemMetrics(1); // SM_CYSCREEN
+#else
+    int nativeScreenWidth = 1920;
+    int nativeScreenHeight = 1080;
+#endif
+    if (nativeScreenWidth <= 0) nativeScreenWidth = 1920;
+    if (nativeScreenHeight <= 0) nativeScreenHeight = 1080;
+
+    // Pencere Yapilandirmasi: Dogrudan monitorun tam cozunurlugunde baslat (Kucuk pencere acilmaz!)
+    constexpr int fallbackWidth = 1280;
+    constexpr int fallbackHeight = 720;
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI);
-    InitWindow(initialWidth, initialHeight, "GameOfTex - Crypto Mining & Energy Tycoon (Warehouse Edition)");
+    InitWindow(nativeScreenWidth, nativeScreenHeight, "GameOfTex - Crypto Mining & Energy Tycoon (Warehouse Edition)");
     SetWindowMinSize(1024, 600);
     SetTargetFPS(60);
-    SetExitKey(KEY_NULL); // ESC tuşunun oyunu aniden kapatmasını engelle
+    SetExitKey(KEY_NULL); // ESC tusunun oyunu aniden kapatmasini engelle
 
-    // Direkt Tam Ekran Başlatma (Direct Native Fullscreen Launch - Sıfır Bulanıklık)
-    int initialMonitor = GetCurrentMonitor();
-    int monWidth = GetMonitorWidth(initialMonitor);
-    int monHeight = GetMonitorHeight(initialMonitor);
-    if (monWidth > 0 && monHeight > 0) {
-        SetWindowSize(monWidth, monHeight);
+    // Direkt Tam Ekran Baslat (Direct Native Fullscreen Launch - Sifir Bulaniklik)
+    if (!IsWindowFullscreen()) {
         ToggleFullscreen();
     }
 
-    // 2. Yüksek Çözünürlüklü Vektör Fontlarını Yükle (Türkçe Genişletilmiş Kod Noktaları ile)
+    // 2. Yuksek Cozunurluklu Vektor Fontlarini Yukle (Turkce Genisletilmis Kod Noktalari ile)
     std::vector<int> codepoints;
     // ASCII Basic (32 - 126)
     for (int i = 32; i <= 126; ++i) codepoints.push_back(i);
@@ -84,39 +96,38 @@ int main() {
     // Latin Extended-A (0x0100 - 0x017F): ğ, Ğ, ı, İ, ş, Ş, vb.
     for (int i = 0x0100; i <= 0x017F; ++i) codepoints.push_back(i);
 
-    // Öncelik 1: Segoe UI (Pürüzsüz, modern yuvarlak hatlar, sıfır pikselleşme ve kusursuz Türkçe karakter desteği)
-    Font fontRegular = LoadFontEx("assets/fonts/SegoeUI-Regular.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
-    Font fontBold = LoadFontEx("assets/fonts/SegoeUI-Bold.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
+    // Oncelik 1: Segoe UI (48px yuksek cozunurluk - ipeksi puruzsuzluk, sifir pikcellesme)
+    Font fontRegular = LoadFontEx("assets/fonts/SegoeUI-Regular.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+    Font fontBold = LoadFontEx("assets/fonts/SegoeUI-Bold.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
 
     // Yedek 1: Windows Sistem Segoe UI Fontu
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 2: Google Inter Fontu
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("assets/fonts/Inter.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("assets/fonts/Inter.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("assets/fonts/Inter.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("assets/fonts/Inter.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 3: Windows Arial
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 4: Rajdhani
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("assets/fonts/Rajdhani-Medium.ttf", 32, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("assets/fonts/Rajdhani-Bold.ttf", 36, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("assets/fonts/Rajdhani-Medium.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("assets/fonts/Rajdhani-Bold.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
+    // Bilinear filtreleme: Mipmap cagirisi yapilmaz (harfler asla bulaniklasmaz ve pikselleşmez!)
     if (fontRegular.texture.id > 0) {
-        GenTextureMipmaps(&fontRegular.texture);
-        GenTextureMipmaps(&fontBold.texture);
-        SetTextureFilter(fontRegular.texture, TEXTURE_FILTER_TRILINEAR);
-        SetTextureFilter(fontBold.texture, TEXTURE_FILTER_TRILINEAR);
+        SetTextureFilter(fontRegular.texture, TEXTURE_FILTER_BILINEAR);
+        SetTextureFilter(fontBold.texture, TEXTURE_FILTER_BILINEAR);
         Render::UIFrame::InitTheme(fontRegular, fontBold);
     }
 
@@ -232,24 +243,26 @@ int main() {
             int monitor = GetCurrentMonitor();
             if (IsWindowFullscreen()) {
                 ToggleFullscreen();
-                SetWindowSize(initialWidth, initialHeight);
+                SetWindowSize(fallbackWidth, fallbackHeight);
                 int monW = GetMonitorWidth(monitor);
                 int monH = GetMonitorHeight(monitor);
-                SetWindowPosition((monW - initialWidth) / 2, (monH - initialHeight) / 2);
+                SetWindowPosition((monW - fallbackWidth) / 2, (monH - fallbackHeight) / 2);
             } else {
                 int monW = GetMonitorWidth(monitor);
                 int monH = GetMonitorHeight(monitor);
+                if (monW <= 0) monW = nativeScreenWidth;
+                if (monH <= 0) monH = nativeScreenHeight;
                 SetWindowSize(monW, monH);
                 ToggleFullscreen();
             }
         };
 
-        // F11: Tam Ekran Geçişi (Native Çözünürlük Geçişi - Sıfır Bulanıklık)
+        // F11: Tam Ekran Gecisi (Native Cozunurluk Gecisi - Sifir Bulaniklik)
         if (IsKeyPressed(KEY_F11)) {
             toggleFullscreenNative();
         }
 
-        // ESC Tuşu: Modal açıksa kapat, değilse tam ekrandan küçük pencereli moda dön!
+        // ESC Tusu: Acik modal varsa kapat (Tam ekrandan cikmak icin F11 kullanilir)
         if (IsKeyPressed(KEY_ESCAPE)) {
             if (newsModal.IsOpen()) {
                 newsModal.Close();
@@ -265,8 +278,6 @@ int main() {
                 gpuInspectionModal.Close();
             } else if (settingsModal.IsOpen()) {
                 settingsModal.Close();
-            } else if (IsWindowFullscreen()) {
-                toggleFullscreenNative();
             }
         }
 
