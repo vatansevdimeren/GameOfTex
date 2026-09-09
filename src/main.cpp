@@ -29,6 +29,8 @@ extern "C" __declspec(dllimport) int __stdcall SetProcessDPIAware(void);
 #include "core/SaveManager.hpp"
 #include "render/MainMenuScreen.hpp"
 #include "render/CryptoExchangeModal.hpp"
+#include "core/NewsManager.hpp"
+#include "render/NewsModal.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -56,6 +58,15 @@ int main() {
     SetWindowMinSize(1024, 600);
     SetTargetFPS(60);
     SetExitKey(KEY_NULL); // ESC tuşunun oyunu aniden kapatmasını engelle
+
+    // Direkt Tam Ekran Başlatma (Direct Native Fullscreen Launch - Sıfır Bulanıklık)
+    int initialMonitor = GetCurrentMonitor();
+    int monWidth = GetMonitorWidth(initialMonitor);
+    int monHeight = GetMonitorHeight(initialMonitor);
+    if (monWidth > 0 && monHeight > 0) {
+        SetWindowSize(monWidth, monHeight);
+        ToggleFullscreen();
+    }
 
     // 2. Yüksek Çözünürlüklü Vektör Fontlarını Yükle (Türkçe Genişletilmiş Kod Noktaları ile)
     std::vector<int> codepoints;
@@ -124,6 +135,8 @@ int main() {
     Core::FacilityManager facilityManager;
     Render::WorldMapModal worldMapModal;
     Render::CryptoExchangeModal cryptoExchangeModal;
+    Core::NewsManager newsManager;
+    Render::NewsModal newsModal;
 
     // 4. Çekirdek Simülasyon Nesneleri (Clean Code / SRP)
     Core::EconomyManager economy(1500.0, 2.40, "TEX");
@@ -195,6 +208,7 @@ int main() {
     Render::UIButton btnOpenSettings(Rectangle{}, "AYARLAR", "", Color{35, 42, 56, 255}, Color{0, 220, 255, 255});
     Render::UIButton btnQuickSave(Rectangle{}, "KAYDET", "F5", Color{20, 50, 36, 255}, Color{0, 255, 140, 255});
     Render::UIButton btnOpenTasks(Rectangle{}, "GOREVLER", "", Color{30, 40, 58, 255}, Color{255, 200, 40, 255});
+    Render::UIButton btnOpenNews(Rectangle{}, "HABERLER", "", Color{30, 40, 65, 255}, Color{80, 180, 255, 255});
     Render::UIButton btnOpenWorldMap(Rectangle{}, "HARITA", "", Color{25, 45, 65, 255}, Color{0, 220, 255, 255});
     Render::UIButton btnUpgradePSU(Rectangle{}, "PSU YUKSELT", "", Color{40, 32, 58, 255}, Color{200, 100, 255, 255});
 
@@ -232,7 +246,9 @@ int main() {
 
         // ESC Tuşu: Modal açıksa kapat, değilse tam ekrandan küçük pencereli moda dön!
         if (IsKeyPressed(KEY_ESCAPE)) {
-            if (cryptoExchangeModal.IsOpen()) {
+            if (newsModal.IsOpen()) {
+                newsModal.Close();
+            } else if (cryptoExchangeModal.IsOpen()) {
                 cryptoExchangeModal.Close();
             } else if (worldMapModal.IsOpen()) {
                 worldMapModal.Close();
@@ -385,6 +401,11 @@ int main() {
             cryptoExchangeModal.Update(economy, taskManager);
         }
 
+        // Kripto Haber & Uzman Görüşleri Modalı Açıksa Güncelle
+        if (newsModal.IsOpen()) {
+            newsModal.Update(newsManager, taskManager);
+        }
+
         // Ayarlar Modalı Açıksa Güncelle
         if (settingsModal.IsOpen()) {
             auto sAct = settingsModal.Update(economy);
@@ -405,23 +426,34 @@ int main() {
 
         // Üst Rozetlerin Dinamik Genişliği
         const float badgeGap = 6.0f;
-        const float settingsBtnW = 86.0f;
-        const float saveBtnW = 82.0f;
-        const float taskBtnW = 118.0f;
-        const float worldMapBtnW = 110.0f;
-        const float totalBtnsW = settingsBtnW + saveBtnW + taskBtnW + worldMapBtnW + (badgeGap * 3.0f);
+        const float settingsBtnW = 76.0f;
+        const float saveBtnW = 72.0f;
+        const float taskBtnW = 106.0f;
+        const float newsBtnW = 112.0f;
+        const float worldMapBtnW = 98.0f;
+        const float totalBtnsW = settingsBtnW + saveBtnW + taskBtnW + newsBtnW + worldMapBtnW + (badgeGap * 4.0f);
         const float availBadgeSpace = screenW - (pad * 2.0f) - totalBtnsW - (badgeGap * 5.0f);
-        const float badgeW = std::clamp(availBadgeSpace / 5.0f, 80.0f, 215.0f);
+        const float badgeW = std::clamp(availBadgeSpace / 5.0f, 75.0f, 215.0f);
         const float badgeH = 56.0f;
         const float badgeY = (headerH - badgeH) / 2.0f;
 
-        btnOpenSettings.SetBounds(Rectangle{screenW - pad - settingsBtnW, badgeY, settingsBtnW, badgeH});
-        btnQuickSave.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - saveBtnW, badgeY, saveBtnW, badgeH});
-        btnOpenTasks.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - saveBtnW - badgeGap - taskBtnW, badgeY, taskBtnW, badgeH});
-        btnOpenWorldMap.SetBounds(Rectangle{screenW - pad - settingsBtnW - badgeGap - saveBtnW - badgeGap - taskBtnW - badgeGap - worldMapBtnW, badgeY, worldMapBtnW, badgeH});
-        btnOpenWorldMap.SetTitle(std::string("[M] ") + Core::LocalizationManager::Tr("BTN_WORLD_MAP"));
+        float curBtnX = screenW - pad - settingsBtnW;
+        btnOpenSettings.SetBounds(Rectangle{curBtnX, badgeY, settingsBtnW, badgeH});
+
+        curBtnX -= (badgeGap + saveBtnW);
+        btnQuickSave.SetBounds(Rectangle{curBtnX, badgeY, saveBtnW, badgeH});
         btnQuickSave.SetTitle(std::string("[S] ") + Core::LocalizationManager::Tr("BTN_SAVE"));
         btnQuickSave.SetSubtitle("F5");
+
+        curBtnX -= (badgeGap + taskBtnW);
+        btnOpenTasks.SetBounds(Rectangle{curBtnX, badgeY, taskBtnW, badgeH});
+
+        curBtnX -= (badgeGap + newsBtnW);
+        btnOpenNews.SetBounds(Rectangle{curBtnX, badgeY, newsBtnW, badgeH});
+
+        curBtnX -= (badgeGap + worldMapBtnW);
+        btnOpenWorldMap.SetBounds(Rectangle{curBtnX, badgeY, worldMapBtnW, badgeH});
+        btnOpenWorldMap.SetTitle(std::string("[M] ") + Core::LocalizationManager::Tr("BTN_WORLD_MAP"));
 
         size_t unclaimedCount = taskManager.GetUnclaimedCompletedCount();
         if (unclaimedCount > 0) {
@@ -432,7 +464,16 @@ int main() {
             btnOpenTasks.SetAccentColor(Color{60, 160, 240, 255});
         }
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
+        size_t unreadNews = newsManager.GetUnreadCount();
+        if (unreadNews > 0) {
+            btnOpenNews.SetTitle(std::string("[N] ") + Core::LocalizationManager::Tr("TOP_HUD_NEWS") + " (" + std::to_string(unreadNews) + ")");
+            btnOpenNews.SetAccentColor(Color{255, 65, 80, 255});
+        } else {
+            btnOpenNews.SetTitle(std::string("[N] ") + Core::LocalizationManager::Tr("TOP_HUD_NEWS"));
+            btnOpenNews.SetAccentColor(Color{60, 180, 255, 255});
+        }
+
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && !newsModal.IsOpen() && !cryptoExchangeModal.IsOpen()) {
             if (btnOpenSettings.UpdateAndCheckClick()) {
                 settingsModal.Open();
             }
@@ -441,6 +482,9 @@ int main() {
             }
             if (btnOpenTasks.UpdateAndCheckClick()) {
                 taskModal.Open();
+            }
+            if (btnOpenNews.UpdateAndCheckClick() || IsKeyPressed(KEY_N)) {
+                newsModal.Open();
             }
             if (btnOpenWorldMap.UpdateAndCheckClick()) {
                 worldMapModal.Open();
@@ -766,7 +810,8 @@ int main() {
         }
 
         economy.UpdateMarket(dt);
-        taskManager.UpdateProgress(warehouse, economy, coolingManager, powerGrid);
+        newsManager.Update(dt, economy);
+        taskManager.UpdateProgress(warehouse, economy, coolingManager, powerGrid, &facilityManager);
 
         // Otomatik Kayıt Zamanlayıcısı (Her 45 saniyede bir kaydet)
         autoSaveTimer += dt;
@@ -998,6 +1043,31 @@ int main() {
         // 10. KRIPTO BORSA VE CANLI GRAFIK MODAL PENCERESI
         if (cryptoExchangeModal.IsOpen()) {
             cryptoExchangeModal.Draw(economy);
+        }
+
+        // 11. KRIPTO UZMANLARI VE HABER AKISI MODAL PENCERESI
+        if (newsModal.IsOpen()) {
+            newsModal.Draw(newsManager);
+        }
+
+        // 12. HABER BILDIRIM TOASTI (En ustte son haber uyarisi)
+        if (newsManager.HasRecentToast() && !newsModal.IsOpen()) {
+            std::string toastStr = newsManager.GetLatestToastMessage(isTR);
+            float toastW = Render::UIFrame::MeasureTextCustom(toastStr.c_str(), 13.0f, true) + 36.0f;
+            toastW = std::clamp(toastW, 280.0f, screenW - 80.0f);
+            float toastH = 32.0f;
+            float toastX = (screenW - toastW) * 0.5f;
+            float toastY = headerH + 10.0f;
+
+            Rectangle toastRec{toastX, toastY, toastW, toastH};
+            DrawRectangleRounded(toastRec, 0.35f, 4, Color{15, 25, 45, 245});
+            DrawRectangleRoundedLines(toastRec, 0.35f, 4, 1.5f, Color{60, 180, 255, 230});
+            Render::UIFrame::DrawTextCustom(toastStr.c_str(), toastRec.x + 16.0f, toastRec.y + 7.0f, 13.0f, Color{240, 248, 255, 255}, true);
+
+            if (CheckCollisionPointRec(GetMousePosition(), toastRec) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                newsModal.Open();
+                newsManager.ClearRecentToast();
+            }
         }
 
         EndDrawing();

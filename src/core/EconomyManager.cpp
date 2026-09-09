@@ -81,7 +81,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         tex.balance = 0.0;
         tex.basePriceUSD = initialTexPrice > 0.0 ? initialTexPrice : 2.40;
         tex.priceUSD = tex.basePriceUSD;
-        tex.baseDifficulty = 120000.0;
+        tex.baseDifficulty = 75000.0;
         tex.difficulty = tex.baseDifficulty;
         tex.blockReward = 5.0;
         tex.high24h = tex.basePriceUSD * 1.08;
@@ -89,6 +89,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         tex.volume24hUSD = 850000.0;
         tex.candles = generateInitialCandles(tex.basePriceUSD, 0.025, tex.priceHistory);
         tex.currentCandle = Candle{static_cast<float>(tex.priceUSD), static_cast<float>(tex.priceUSD), static_cast<float>(tex.priceUSD), static_cast<float>(tex.priceUSD), 0.0f};
+        tex.profitabilityMultiplier = 1.0;
         tex.requiredTier = 1;
         tex.isUnlocked = true;
         m_coins.push_back(std::move(tex));
@@ -105,7 +106,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         rvn.balance = 0.0;
         rvn.basePriceUSD = 0.085;
         rvn.priceUSD = rvn.basePriceUSD;
-        rvn.baseDifficulty = 45000.0;
+        rvn.baseDifficulty = 25000.0;
         rvn.difficulty = rvn.baseDifficulty;
         rvn.blockReward = 2500.0;
         rvn.high24h = 0.092;
@@ -113,6 +114,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         rvn.volume24hUSD = 3450000.0;
         rvn.candles = generateInitialCandles(rvn.basePriceUSD, 0.0015, rvn.priceHistory);
         rvn.currentCandle = Candle{static_cast<float>(rvn.priceUSD), static_cast<float>(rvn.priceUSD), static_cast<float>(rvn.priceUSD), static_cast<float>(rvn.priceUSD), 0.0f};
+        rvn.profitabilityMultiplier = 1.0;
         rvn.requiredTier = 1;
         rvn.isUnlocked = true;
         m_coins.push_back(std::move(rvn));
@@ -129,7 +131,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         etc.balance = 0.0;
         etc.basePriceUSD = 28.50;
         etc.priceUSD = etc.basePriceUSD;
-        etc.baseDifficulty = 450000.0;
+        etc.baseDifficulty = 850000.0;
         etc.difficulty = etc.baseDifficulty;
         etc.blockReward = 2.56;
         etc.high24h = 30.40;
@@ -137,6 +139,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         etc.volume24hUSD = 18200000.0;
         etc.candles = generateInitialCandles(etc.basePriceUSD, 0.35, etc.priceHistory);
         etc.currentCandle = Candle{static_cast<float>(etc.priceUSD), static_cast<float>(etc.priceUSD), static_cast<float>(etc.priceUSD), static_cast<float>(etc.priceUSD), 0.0f};
+        etc.profitabilityMultiplier = 1.0;
         etc.requiredTier = 2;
         etc.isUnlocked = true;
         m_coins.push_back(std::move(etc));
@@ -153,7 +156,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         ethw.balance = 0.0;
         ethw.basePriceUSD = 145.00;
         ethw.priceUSD = ethw.basePriceUSD;
-        ethw.baseDifficulty = 1200000.0;
+        ethw.baseDifficulty = 4200000.0;
         ethw.difficulty = ethw.baseDifficulty;
         ethw.blockReward = 2.0;
         ethw.high24h = 153.20;
@@ -161,6 +164,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         ethw.volume24hUSD = 45000000.0;
         ethw.candles = generateInitialCandles(ethw.basePriceUSD, 1.40, ethw.priceHistory);
         ethw.currentCandle = Candle{static_cast<float>(ethw.priceUSD), static_cast<float>(ethw.priceUSD), static_cast<float>(ethw.priceUSD), static_cast<float>(ethw.priceUSD), 0.0f};
+        ethw.profitabilityMultiplier = 1.0;
         ethw.requiredTier = 3;
         ethw.isUnlocked = true;
         m_coins.push_back(std::move(ethw));
@@ -185,6 +189,7 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         btc.volume24hUSD = 820000000.0;
         btc.candles = generateInitialCandles(btc.basePriceUSD, 240.0, btc.priceHistory);
         btc.currentCandle = Candle{static_cast<float>(btc.priceUSD), static_cast<float>(btc.priceUSD), static_cast<float>(btc.priceUSD), static_cast<float>(btc.priceUSD), 0.0f};
+        btc.profitabilityMultiplier = 1.0;
         btc.requiredTier = 4;
         btc.isUnlocked = true;
         m_coins.push_back(std::move(btc));
@@ -480,6 +485,7 @@ void EconomyManager::TriggerRandomMarketEvent() {
 void EconomyManager::UpdateMarket(double deltaTimeSeconds) {
     m_marketTimer += deltaTimeSeconds;
     m_eventTimer += deltaTimeSeconds;
+    m_rotationTimer += deltaTimeSeconds;
 
     // 1. Piyasa Olayı Zamanlayıcısı
     if (m_activeEvent.type != MarketEventType::NORMAL) {
@@ -493,27 +499,50 @@ void EconomyManager::UpdateMarket(double deltaTimeSeconds) {
         TriggerRandomMarketEvent();
     }
 
-    // 2. Mikro Volatilite ve Mum Güncellemesi (Her saniye)
+    // 2. Dönemsel Kârlılık Rotasyonu (Her 50 saniyede bir coin parlar / altcoin season)
+    if (m_rotationTimer >= 50.0) {
+        m_rotationTimer = 0.0;
+        static std::mt19937 rotRng(std::random_device{}());
+        std::uniform_int_distribution<size_t> coinDist(0, m_coins.size() - 1);
+        size_t luckyIndex = coinDist(rotRng);
+
+        for (size_t i = 0; i < m_coins.size(); ++i) {
+            if (i == luckyIndex) {
+                // Şanslı coin'e %180 - %240 madencilik verim artışı
+                std::uniform_real_distribution<double> boostDist(1.85, 2.35);
+                m_coins[i].profitabilityMultiplier = boostDist(rotRng);
+            } else {
+                // Diğer coinler dengeli seviyede
+                std::uniform_real_distribution<double> normDist(0.92, 1.12);
+                m_coins[i].profitabilityMultiplier = normDist(rotRng);
+            }
+        }
+    }
+
+    // 3. Mikro Volatilite ve Mum Güncellemesi (Her saniye bağımsız yürüyüş)
     if (m_marketTimer >= 1.0) {
         m_marketTimer = 0.0;
 
         static std::mt19937 rng(1337);
-        // Doğal, sakin ve dengeli mikro volatilite (önceki %0.7 yerine %0.08)
-        static std::normal_distribution<double> dist(0.0, 0.0009);
+        static std::normal_distribution<double> dist(0.0, 0.0011);
 
-        for (auto& coin : m_coins) {
+        for (size_t i = 0; i < m_coins.size(); ++i) {
+            auto& coin = m_coins[i];
+            // Her coin için bağımsız rassal değişim
             const double percentageChange = dist(rng);
             coin.priceUSD *= (1.0 + percentageChange);
 
-            // Aktif olay etkisi
+            // Aktif olay etkisi (hedef coin varsa veya genel piyasaysa)
             if (m_activeEvent.type != MarketEventType::NORMAL) {
-                coin.priceUSD *= (1.0 + m_activeEvent.driftFactor);
+                if (m_activeEvent.targetCoinId.empty() || m_activeEvent.targetCoinId == coin.id) {
+                    coin.priceUSD *= (1.0 + m_activeEvent.driftFactor);
+                }
             }
 
             // Ortalama fiyata çekim (Mean Reversion)
-            coin.priceUSD += (coin.basePriceUSD - coin.priceUSD) * 0.012;
+            coin.priceUSD += (coin.basePriceUSD - coin.priceUSD) * 0.010;
 
-            // Kesin Fiyat Koridoru / Bollinger Kanalı (Asla tabanın %70 altına veya %145 üstüne çıkamaz)
+            // Kesin Fiyat Koridoru / Bollinger Kanalı (%70 ile %145 arası)
             const double minAllowed = coin.basePriceUSD * 0.70;
             const double maxAllowed = coin.basePriceUSD * 1.45;
             coin.priceUSD = std::clamp(coin.priceUSD, minAllowed, maxAllowed);
@@ -540,7 +569,7 @@ void EconomyManager::UpdateMarket(double deltaTimeSeconds) {
             coin.currentCandle.high = std::max(coin.currentCandle.high, static_cast<float>(coin.priceUSD));
             coin.currentCandle.low = std::min(coin.currentCandle.low, static_cast<float>(coin.priceUSD));
             coin.currentCandle.close = static_cast<float>(coin.priceUSD);
-            coin.currentCandle.volume += static_cast<float>(coin.priceUSD * 35.0);
+            coin.currentCandle.volume += static_cast<float>(coin.priceUSD * (30.0 + (i * 12.0)));
         }
     }
 
@@ -610,10 +639,13 @@ double EconomyManager::MineCoins(double hashrateMHS, double deltaTimeSeconds) {
     CryptoCoin* active = GetActiveCoin();
     if (!active) return 0.0;
 
-    // Difficulty adjusts smoothly with player's hashrate
-    active->difficulty = active->baseDifficulty + (hashrateMHS * 160.0);
+    // Unit conversion: GH/s coins (like BTC) receive 1/1000 hashrate from MH/s rigs
+    const double effectiveHash = (active->unit == "GH/s" ? (hashrateMHS / 1000.0) : hashrateMHS) * active->profitabilityMultiplier;
 
-    const double mintedCoins = (hashrateMHS * deltaTimeSeconds) / active->difficulty;
+    // Difficulty adjusts smoothly with player's hashrate
+    active->difficulty = active->baseDifficulty + (effectiveHash * 160.0);
+
+    const double mintedCoins = (effectiveHash * deltaTimeSeconds) / active->difficulty;
     active->balance += mintedCoins;
     return mintedCoins;
 }
@@ -625,7 +657,8 @@ bool EconomyManager::SellCrypto(double amount) {
 double EconomyManager::CalculateHourlyCoins(double hashrateMHS) const {
     const CryptoCoin* active = GetActiveCoin();
     if (!active || hashrateMHS <= 0.0 || active->difficulty <= 0.0) return 0.0;
-    return (hashrateMHS * 3600.0) / active->difficulty;
+    const double effectiveHash = (active->unit == "GH/s" ? (hashrateMHS / 1000.0) : hashrateMHS) * active->profitabilityMultiplier;
+    return (effectiveHash * 3600.0) / active->difficulty;
 }
 
 double EconomyManager::CalculateHourlyRevenueUSD(double hashrateMHS) const {
@@ -649,7 +682,8 @@ double EconomyManager::CalculateHourlyNetProfitUSD(double hashrateMHS, double po
 
 double EconomyManager::CalculateDailyYieldCoinsPer100MH(const CryptoCoin& coin) const {
     if (coin.difficulty <= 0.0) return 0.0;
-    return (100.0 * 86400.0) / coin.difficulty;
+    const double effectiveHash = (coin.unit == "GH/s" ? (100.0 / 1000.0) : 100.0) * coin.profitabilityMultiplier;
+    return (effectiveHash * 86400.0) / coin.difficulty;
 }
 
 double EconomyManager::CalculateDailyYieldUSDPer100MH(const CryptoCoin& coin) const {
@@ -658,10 +692,25 @@ double EconomyManager::CalculateDailyYieldUSDPer100MH(const CryptoCoin& coin) co
 
 double EconomyManager::CalculateProfitabilityPercent(const CryptoCoin& coin) const {
     if (coin.basePriceUSD <= 0.00001 || coin.baseDifficulty <= 0.00001) return 100.0;
-    double currentYieldUSD = (100.0 * 86400.0 / coin.difficulty) * coin.priceUSD;
-    double baselineYieldUSD = (100.0 * 86400.0 / coin.baseDifficulty) * coin.basePriceUSD;
+    double currentYieldUSD = CalculateDailyYieldUSDPer100MH(coin);
+    double baseEffective = (coin.unit == "GH/s" ? (100.0 / 1000.0) : 100.0);
+    double baselineYieldUSD = (baseEffective * 86400.0 / coin.baseDifficulty) * coin.basePriceUSD;
     if (baselineYieldUSD <= 0.00001) return 100.0;
     return (currentYieldUSD / baselineYieldUSD) * 100.0;
+}
+
+size_t EconomyManager::GetMostProfitableCoinIndex() const {
+    if (m_coins.empty()) return 0;
+    size_t bestIdx = 0;
+    double bestUSD = -1.0;
+    for (size_t i = 0; i < m_coins.size(); ++i) {
+        double yieldUSD = CalculateDailyYieldUSDPer100MH(m_coins[i]);
+        if (yieldUSD > bestUSD) {
+            bestUSD = yieldUSD;
+            bestIdx = i;
+        }
+    }
+    return bestIdx;
 }
 
 } // namespace Core

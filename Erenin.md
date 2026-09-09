@@ -824,6 +824,93 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   - **100 MH/s Başına Günlük Getiri:** Seçili coinin zorluk ve güncel fiyatına göre 100 MH/s gücün ürettiği nakit (`Verimlilik (100 MH/s): $0.58 / gün`).
   - **Karlılık Endeksi (Profitability Index):** Ağ zorluğu ile taban getiri oranı karşılaştırılarak hesaplanan canlı kârlılık yüzdesi (`Karlılık Endeksi: %108`). Oyuncu hangi coini kazmanın o an daha karlı olduğunu doğrudan görebilir.
 
+---
+
+## 19. SIFIR CMD KONSOLU, DOĞRUDAN TAM EKRAN (NATIVE FULLSCREEN), KRİPTO UZMANLARI HABER AKIŞI, DÖNEMSEL ALTCOİN BOOM VE 20 GÖREV (v2.2.0)
+
+### 19.1. Arka Plandaki CMD Konsol Penceresinin Tamamen Kaldırılması (Zero-Console GUI Launch)
+* **Kullanıcı Talebi:** "Kanki arkada artık cmd açık olmasını istemiyorum bak."
+* **Kök Neden:** Standart konsol alt sistemi (`/SUBSYSTEM:CONSOLE`), `main()` fonksiyonu çalıştırıldığında Windows tarafından otomatik bir `cmd.exe` penceresi tahsis edilmesine yol açıyordu.
+* **Uygulanan Çözüm (`CMakeLists.txt`):**
+  - CMake hedef özelliklerine `WIN32_EXECUTABLE TRUE` ve bağlayıcı parametresi olarak `LINK_FLAGS "/ENTRY:mainCRTStartup"` tanımlandı.
+  - Portable standard `int main()` fonksiyon gövdesi bozulmadan korundu, ancak derlenen `GameOfTex.exe` ikili dosyası saf Windows GUI alt sistemine (`Subsystem = 2`) geçirildi.
+  - Sonuç: Çift tıklandığında veya kısayoldan açıldığında hiçbir siyah konsol/cmd penceresi açılmaz; oyun doğrudan ve sessizce başlar.
+
+---
+
+### 19.2. Doğrudan Yerel Tam Ekran Başlatma (Direct Native Fullscreen Launch - Sıfır Bulanıklık)
+* **Kullanıcı Şikayeti:** "F11 basınca büyüyünce yazı kalitesi çok düşüyor... exe açılınca direkt tam ekran olarak başlasın."
+* **Kök Neden:** Raylib 1280x720 pencere oluşturup sonradan büyütüldüğünde dahili framebuffer ölçeklenerek rasterize metinlerde bulanıklığa yol açabiliyordu.
+* **Uygulanan Çözüm (`main.cpp`):**
+  - `InitWindow` hemen ardından, henüz 0. kare çizilmeden önce `GetCurrentMonitor()`, `GetMonitorWidth()` ve `GetMonitorHeight()` çağrılarak oyuncunun fiziksel monitör çözünürlüğü (örn. 1920x1080) alınır.
+  - `SetWindowSize(monWidth, monHeight);` ile dahili arabellek monitörle 1:1 piksel hizalanır ve ardından `ToggleFullscreen();` çağrılır.
+  - Sonuç: Oyun açılır açılmaz doğrudan tam ekranda ve monitörün doğal çözünürlüğünde başlar; yazılar ve grafikler jilet gibi keskin, pürüzsüz ve sıfır bulanıktır. İstenirse `F11` veya `ESC` ile pencereli moda dönülebilir.
+
+---
+
+### 19.3. Sahte Kripto Uzmanları & Canlı Haber Akışı (`NewsManager` & `NewsModal`)
+* **Kullanıcı Talebi:** "Uzman görüşlerinin haber akışları gelsin sahte bir şekilde, oradan piyasa vs değişsin her zaman doğru olmak durumunda değil... haber için mesaj yeri ekle."
+* **Uygulanan Sistem:**
+  1. **Uzman ve Analist Profilleri:**
+     - `@CryptoWhale` (Balina tüccarı)
+     - `Bloomberg Crypto Desk` (Haber ajansı)
+     - `Elon Byte` (Teknoloji milyarderi spekülatör)
+     - `Satoshi Ghost` (Gizemli OG madenci)
+     - `Altcoin Hunter` (Gem avcısı)
+     - `Fed Crypto Watch` (Makro analiz)
+     - `WallStreet Degen` (Kaldıraç ustası)
+  2. **Ters Köşe / Balina Tuzakları (Contrarian & Fake News Mekaniği):**
+     - Haberlerin bir kısmı gerçeği yansıtırken (Boğa/Ayı), bazıları "Whale Trap" (Balina Tuzağı) olarak üretilir (`isContrarian = true`). Analist "Fiyat aya çıkacak, hemen alın!" derken balinalar gizlice satış yaparak piyasayı düşürür.
+  3. **Canlı Bildirim Toast Şeridi (`HasRecentToast`):**
+     - Yeni bir tweet/haber geldiğinde ekranın üst kısmında parlak siber bildirim şeridi kayar (`[YENİ HABER] @CryptoWhale: ... [N] Oku`). Tıklandığında veya `[N]` tuşuna basıldığında haber terminali açılır.
+  4. **Bloomberg/Twitter Tarzı Haber Terminali (`NewsModal`):**
+     - Üst HUD'da `[N] HABERLER (X)` butonu ve kırmızı okunmamış rozet sayacı.
+     - Okunmamış haberlerde mavi neon ışıma ve parlak nokta göstergesi.
+     - `[TÜMÜNÜ OKUNDU SAY]` butonu ve tek tıkla okuma desteği.
+     - Görev entegrasyonu: Haber okundukça görev yöneticisi otomatik tetiklenir.
+
+---
+
+### 19.4. Ayrıştırılmış Coin Fiyatları ve Dönemsel Altcoin Sezonları (`⭐ GÜNÜN EN KARLI COİNİ`)
+* **Kullanıcı Şikayeti:** "Tüm coinler birbirine korele bir şekilde gidiyor, bir de her zaman btc kazımı çok mantıklı oluyor bunlar dönem dönem farklılık göstermesi gerekiyor mesela ilk coini veya en ucuzu kazmak daha kolay olması lazım ve daha fazla kazmak gerekiyor."
+* **Kök Neden & Dengeleme:**
+  1. **BTC GPU Ölçekleme Hatası Düzeltildi:** BTC algoritması `SHA-256 (GH/s)` olmasına rağmen madencilik hashrate'i `MH/s` olarak doğrudan hesaplanıyordu. Bu durum BTC'yi 1000 kat fazla ödüllendiriyordu. Formül düzeltildi:
+     $$\text{Etkili Hashrate} = (\text{Birim} == \text{"GH/s"} \ ? \ \frac{\text{hashrate}}{1000} : \text{hashrate}) \times \text{profitabilityMultiplier}$$
+  2. **Başlangıç GPU Kazımı Dengelemesi:**
+     - GPU rigleriyle BTC kazıldığında satoshi seviyesinde çok az BTC üretilir ve ASIC olmadan verimsiz kalır.
+     - Buna karşılık TEX ve RVN günde yüzlerce/binlerce adet kazılır; başlangıç rigleri için açık ara en mantıklı ve ödüllendirici seçenek haline gelir.
+  3. **Bağımsız Rastgele Yürüyüş (Decoupled Random Walk):**
+     - Tüm coinlerin aynı anda aynı yöne gitmesi engellendi; her coin bağımsız rassal eğim ve haber etkisiyle ayrışır. Biri düşerken diğeri yükselebilir.
+  4. **Dönemsel Karlılık Rotasyonu (`m_rotationTimer`):**
+     - Her 50 saniyede bir rastgele bir coinde "Mining Boom / Altcoin Sezonu" başlar ve `profitabilityMultiplier` **%185 - %235** seviyesine fırlar!
+     - Borsa sekmesinde ve grafik bilgi panelinde altın sarısı `[⭐] GUNUN EN KARLI COINI` rozeti yanar.
+
+---
+
+### 19.5. 20 Göreve Genişletilmiş Görev ve Başarım Sistemi (`TaskManager`)
+* Görev havuzu 14'ten tam 20'ye genişletildi:
+  1. `TASK_INSPECT`: Donanım Uzmanı (1 GPU İncele - $200)
+  2. `TASK_OVERCLOCK`: Hız Aşırtma (1 GPU Overclock yap - $350)
+  3. `TASK_BUY_GPU`: Pazar Alışverişi (1 GPU Satın al - $400)
+  4. `TASK_FIRST_TRADE`: İlk Kripto Takası (Borsada işlem yap - $300)
+  5. `TASK_READ_NEWS`: **Haber Taktiği (Kripto uzmanlarından 3 haber/analiz oku - $250)**
+  6. `TASK_HASHRATE_50`: Çırak Madenci (50 MH/s üzerine çık - $350)
+  7. `TASK_MINE_TEX_100`: **Yerel Cevher (Cüzdanda 100.0 TEX biriktir - $500)**
+  8. `TASK_MINE_RVN_1000`: **Kuzgun Madenciliği (Cüzdanda 1,000 RVN biriktir - $650)**
+  9. `TASK_SELL_CRYPTO`: Kripto Tüccarı ($500 değerinde kripto sat - $450)
+  10. `TASK_MULTI_RIG`: Büyük Tesis (En az 2 Rig kasası kur - $1,200)
+  11. `TASK_MINE_ETC`: Klasik Vizyon (Cüzdanda 1.0 ETC bulundur - $600)
+  12. `TASK_DIVERSIFY`: **Çeşitli Portföy (En az 3 farklı coin cüzdanında bulundur - $1,000)**
+  13. `TASK_HASHRATE`: Madenci Gücü (150 MH/s üzerine çık - $800)
+  14. `TASK_COOLING`: Termal Kontrol (3,000W soğutma gücü kur - $800)
+  15. `TASK_POWER`: Sanayi Trafosu (7,500W şebeke panosu aç - $1,000)
+  16. `TASK_SOLAR`: Yeşil Enerji (1,000W güneş paneli kur - $1,500)
+  17. `TASK_MINE_ETHW`: İş Kanıtı Üssü (Cüzdanda 1.0 ETHW bulundur - $2,500)
+  18. `TASK_PORTFOLIO_10K`: **Kripto Balinası (Toplam portföy değerini $10,000 üzerine çıkar - $2,000)**
+  19. `TASK_MAX_FACILITY`: **Küresel Ağ (Dünya haritasında en az 2 tesis satın al - $3,500)**
+  20. `TASK_ASIC_KING`: ASIC Kralı (500 MH/s hesaplama gücüne ulaş - $5,000)
+
+
 
 
 

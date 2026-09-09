@@ -77,10 +77,12 @@ void CryptoExchangeModal::Update(Core::EconomyManager& economy, Core::TaskManage
         m_coinTabButtons.resize(coins.size(), UIButton(Rectangle{0, 0, 0, 0}, "", "", Color{22, 30, 45, 255}, Color{50, 170, 240, 255}));
     }
 
+    size_t mostProfitableIndex = economy.GetMostProfitableCoinIndex();
     for (size_t i = 0; i < coins.size(); ++i) {
         float tx = tabStartX + i * (tabW + tabGap);
         m_coinTabButtons[i].SetBounds(Rectangle{tx, tabY, tabW, tabH});
-        std::string tabTitle = coins[i].symbol + "  " + economy.FormatPrice(coins[i].priceUSD);
+        std::string star = (i == mostProfitableIndex) ? "* " : "";
+        std::string tabTitle = star + coins[i].symbol + "  " + economy.FormatPrice(coins[i].priceUSD);
         m_coinTabButtons[i].SetTitle(tabTitle);
 
         if (m_coinTabButtons[i].UpdateAndCheckClick()) {
@@ -238,13 +240,19 @@ void CryptoExchangeModal::DrawHeader(float modalX, float modalY, float modalW, c
 void CryptoExchangeModal::DrawCoinTabs(float modalX, float modalY, float modalW, const Core::EconomyManager& economy) const {
     const auto& coins = economy.GetCoins();
 
+    size_t mostProfitableIndex = economy.GetMostProfitableCoinIndex();
     for (size_t i = 0; i < coins.size() && i < m_coinTabButtons.size(); ++i) {
         const auto& coin = coins[i];
         bool isSelected = (i == m_selectedCoinIndex);
+        bool isBest = (i == mostProfitableIndex);
 
         m_coinTabButtons[i].Draw();
 
         Rectangle b = m_coinTabButtons[i].GetBounds();
+        if (isBest) {
+            DrawRectangleRoundedLines(b, 0.15f, 4, 1.5f, Color{255, 200, 40, 200});
+            DrawCircle(static_cast<int>(b.x + b.width - 10), static_cast<int>(b.y + 9), 3.0f, Color{255, 215, 0, 255});
+        }
         if (isSelected) {
             DrawRectangleRoundedLines(b, 0.15f, 4, 2.0f, Color{255, 215, 50, 255});
             DrawRectangle(static_cast<int>(b.x + 4), static_cast<int>(b.y + b.height - 3), static_cast<int>(b.width - 8), 3, Color{255, 215, 50, 255});
@@ -328,6 +336,16 @@ void CryptoExchangeModal::DrawPriceChart(
     ssProf << "Karlilik Endeksi: %" << std::fixed << std::setprecision(0) << profPct;
     Color profCol = (profPct >= 100.0) ? Color{60, 225, 130, 255} : Color{240, 160, 60, 255};
     UIFrame::DrawTextCustom(ssProf.str(), chartX + 270.0f, statsY, 12.0f, profCol, true);
+
+    if (m_selectedCoinIndex == economy.GetMostProfitableCoinIndex()) {
+        bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
+        const char* starBadge = isTR ? "* GUNUN EN KARLI COINI *" : "* TOP PROFIT COIN TODAY *";
+        float badgeW = UIFrame::MeasureTextCustom(starBadge, 11.0f, true) + 16.0f;
+        Rectangle starRec{chartX + chartW - badgeW - 14.0f, statsY - 2.0f, badgeW, 20.0f};
+        DrawRectangleRounded(starRec, 0.3f, 4, Color{255, 200, 30, 40});
+        DrawRectangleRoundedLines(starRec, 0.3f, 4, 1.0f, Color{255, 215, 50, 230});
+        UIFrame::DrawTextCustom(starBadge, starRec.x + 8.0f, starRec.y + 3.0f, 11.0f, Color{255, 220, 60, 255}, true);
+    }
 
     std::string highLowStr = "24s Y: " + economy.FormatPrice(coin.high24h) + "  D: " + economy.FormatPrice(coin.low24h);
     UIFrame::DrawTextCustom(highLowStr, chartX + 14.0f, statsY + 18.0f, 11.0f, Color{150, 170, 195, 255}, false);

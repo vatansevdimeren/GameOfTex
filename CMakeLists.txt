@@ -74,6 +74,10 @@ add_executable(GameOfTex
     src/render/MainMenuScreen.cpp
     src/render/CryptoExchangeModal.hpp
     src/render/CryptoExchangeModal.cpp
+    src/core/NewsManager.hpp
+    src/core/NewsManager.cpp
+    src/render/NewsModal.hpp
+    src/render/NewsModal.cpp
 )
 
 target_include_directories(GameOfTex PRIVATE
@@ -83,6 +87,17 @@ target_include_directories(GameOfTex PRIVATE
 target_link_libraries(GameOfTex PRIVATE
     raylib
 )
+
+if(WIN32)
+    set_target_properties(GameOfTex PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+    if(MSVC)
+        set_target_properties(GameOfTex PROPERTIES
+            LINK_FLAGS "/ENTRY:mainCRTStartup"
+        )
+    endif()
+endif()
 
 # Shader ve Asset klasörlerini derleme çıktısının yanına kopyala
 add_custom_command(TARGET GameOfTex POST_BUILD

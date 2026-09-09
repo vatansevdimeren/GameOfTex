@@ -3,12 +3,13 @@
 #include "EconomyManager.hpp"
 #include "CoolingManager.hpp"
 #include "PowerGrid.hpp"
+#include "FacilityManager.hpp"
 #include <algorithm>
 
 namespace Core {
 
 TaskManager::TaskManager() {
-    // 14 Dengeli & Katmanlı Görev (Balanced Multi-Tier Quests)
+    // 20 Dengeli & Katmanlı Görev (Balanced Multi-Tier Quests)
     m_tasks = {
         // --- SEVİYE 1: BAŞLANGIÇ & DONANIM ---
         {
@@ -36,10 +37,28 @@ TaskManager::TaskManager() {
             1.0, 0.0, 300.0, 0.0, false, false
         },
         {
+            "TASK_READ_NEWS",
+            "TASK_TITLE_READ_NEWS",
+            "TASK_DESC_READ_NEWS",
+            3.0, 0.0, 250.0, 0.0, false, false
+        },
+        {
             "TASK_HASHRATE_50",
             "TASK_TITLE_HASHRATE_50",
             "TASK_DESC_HASHRATE_50",
             50.0, 0.0, 350.0, 0.0, false, false
+        },
+        {
+            "TASK_MINE_TEX_100",
+            "TASK_TITLE_MINE_TEX_100",
+            "TASK_DESC_MINE_TEX_100",
+            100.0, 0.0, 500.0, 0.0, false, false
+        },
+        {
+            "TASK_MINE_RVN_1000",
+            "TASK_TITLE_MINE_RVN_1000",
+            "TASK_DESC_MINE_RVN_1000",
+            1000.0, 0.0, 650.0, 0.0, false, false
         },
 
         // --- SEVİYE 2: TİCARET & GELİŞİM ---
@@ -60,6 +79,12 @@ TaskManager::TaskManager() {
             "TASK_TITLE_MINE_ETC",
             "TASK_DESC_MINE_ETC",
             1.0, 0.0, 600.0, 0.0, false, false
+        },
+        {
+            "TASK_DIVERSIFY",
+            "TASK_TITLE_DIVERSIFY",
+            "TASK_DESC_DIVERSIFY",
+            3.0, 0.0, 1000.0, 0.0, false, false
         },
         {
             "TASK_HASHRATE",
@@ -94,6 +119,18 @@ TaskManager::TaskManager() {
             1.0, 0.0, 2500.0, 0.0, false, false
         },
         {
+            "TASK_PORTFOLIO_10K",
+            "TASK_TITLE_PORTFOLIO_10K",
+            "TASK_DESC_PORTFOLIO_10K",
+            10000.0, 0.0, 2000.0, 0.0, false, false
+        },
+        {
+            "TASK_MAX_FACILITY",
+            "TASK_TITLE_MAX_FACILITY",
+            "TASK_DESC_MAX_FACILITY",
+            2.0, 0.0, 3500.0, 0.0, false, false
+        },
+        {
             "TASK_ASIC_KING",
             "TASK_TITLE_ASIC_KING",
             "TASK_DESC_ASIC_KING",
@@ -122,10 +159,15 @@ void TaskManager::NotifyTradeExecuted() {
     m_tradesExecutedCount++;
 }
 
+void TaskManager::NotifyNewsRead() {
+    m_newsReadCount++;
+}
+
 void TaskManager::UpdateProgress(const Warehouse& warehouse,
                                 const EconomyManager& economy,
                                 const CoolingManager& cooling,
-                                const PowerGrid& powerGrid) {
+                                const PowerGrid& powerGrid,
+                                const FacilityManager* facilityManager) {
     for (auto& task : m_tasks) {
         if (task.isCompleted) continue;
 
@@ -137,8 +179,16 @@ void TaskManager::UpdateProgress(const Warehouse& warehouse,
             task.currentProgress = static_cast<double>(m_gpusPurchasedCount);
         } else if (task.id == "TASK_FIRST_TRADE") {
             task.currentProgress = static_cast<double>(m_tradesExecutedCount);
+        } else if (task.id == "TASK_READ_NEWS") {
+            task.currentProgress = static_cast<double>(m_newsReadCount);
         } else if (task.id == "TASK_HASHRATE_50") {
             task.currentProgress = warehouse.CalculateTotalHashrate();
+        } else if (task.id == "TASK_MINE_TEX_100") {
+            const auto* texCoin = economy.GetCoinById("TEX");
+            task.currentProgress = texCoin ? texCoin->balance : 0.0;
+        } else if (task.id == "TASK_MINE_RVN_1000") {
+            const auto* rvnCoin = economy.GetCoinById("RVN");
+            task.currentProgress = rvnCoin ? rvnCoin->balance : 0.0;
         } else if (task.id == "TASK_SELL_CRYPTO") {
             task.currentProgress = m_totalCryptoSoldUsd;
         } else if (task.id == "TASK_MULTI_RIG") {
@@ -146,6 +196,12 @@ void TaskManager::UpdateProgress(const Warehouse& warehouse,
         } else if (task.id == "TASK_MINE_ETC") {
             const auto* etcCoin = economy.GetCoinById("ETC");
             task.currentProgress = etcCoin ? etcCoin->balance : 0.0;
+        } else if (task.id == "TASK_DIVERSIFY") {
+            double heldCount = 0.0;
+            for (const auto& c : economy.GetCoins()) {
+                if (c.balance > 0.0001) heldCount += 1.0;
+            }
+            task.currentProgress = heldCount;
         } else if (task.id == "TASK_HASHRATE") {
             task.currentProgress = warehouse.CalculateTotalHashrate();
         } else if (task.id == "TASK_COOLING") {
@@ -157,6 +213,16 @@ void TaskManager::UpdateProgress(const Warehouse& warehouse,
         } else if (task.id == "TASK_MINE_ETHW") {
             const auto* ethwCoin = economy.GetCoinById("ETHW");
             task.currentProgress = ethwCoin ? ethwCoin->balance : 0.0;
+        } else if (task.id == "TASK_PORTFOLIO_10K") {
+            task.currentProgress = economy.GetTotalPortfolioValueUSD();
+        } else if (task.id == "TASK_MAX_FACILITY") {
+            if (facilityManager) {
+                double purchasedCount = 0.0;
+                for (const auto& fac : facilityManager->GetAllFacilities()) {
+                    if (fac.isPurchased) purchasedCount += 1.0;
+                }
+                task.currentProgress = purchasedCount;
+            }
         } else if (task.id == "TASK_ASIC_KING") {
             task.currentProgress = warehouse.CalculateTotalHashrate();
         }

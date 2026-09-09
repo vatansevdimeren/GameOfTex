@@ -76,6 +76,7 @@ struct CryptoCoin {
     std::vector<Candle> candles;     // Candlestick OHLC series (30 bars)
     Candle currentCandle;            // Active building candlestick
     float candleTimer{0.0f};         // Timer for active candle duration (4 seconds/bar)
+    double profitabilityMultiplier{1.0}; // Dynamic rotation boost (0.8x - 2.5x)
     int requiredTier{1};             // 1: Starter, 2: Pro, 3: Server, 4: Industrial ASIC
     bool isUnlocked{true};
 };
@@ -167,6 +168,7 @@ public:
     [[nodiscard]] double CalculateDailyYieldCoinsPer100MH(const CryptoCoin& coin) const;
     [[nodiscard]] double CalculateDailyYieldUSDPer100MH(const CryptoCoin& coin) const;
     [[nodiscard]] double CalculateProfitabilityPercent(const CryptoCoin& coin) const;
+    [[nodiscard]] size_t GetMostProfitableCoinIndex() const;
 
 private:
     void InitCoins(double initialTexPrice);
@@ -176,6 +178,7 @@ private:
     CurrencyType m_currency{CurrencyType::USD};
     double m_marketTimer{0.0};
     double m_eventTimer{0.0};
+    double m_rotationTimer{0.0};
     double m_nextEventInterval{80.0}; // seconds between events
 
     MarketEvent m_activeEvent;

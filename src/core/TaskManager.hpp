@@ -9,6 +9,7 @@ class Warehouse;
 class EconomyManager;
 class CoolingManager;
 class PowerGrid;
+class FacilityManager;
 
 /**
  * @struct GameTask
@@ -42,7 +43,8 @@ public:
     void UpdateProgress(const Warehouse& warehouse,
                         const EconomyManager& economy,
                         const CoolingManager& cooling,
-                        const PowerGrid& powerGrid);
+                        const PowerGrid& powerGrid,
+                        const FacilityManager* facilityManager = nullptr);
 
     // Event hooks
     void NotifyCardInspected();
@@ -50,6 +52,7 @@ public:
     void NotifyCryptoSold(double usdAmount);
     void NotifyGpuPurchased();
     void NotifyTradeExecuted();
+    void NotifyNewsRead();
 
     [[nodiscard]] const std::vector<GameTask>& GetTasks() const;
     [[nodiscard]] size_t GetUnclaimedCompletedCount() const;
@@ -68,6 +71,7 @@ private:
     double m_totalCryptoSoldUsd{0.0};
     int m_gpusPurchasedCount{0};
     int m_tradesExecutedCount{0};
+    int m_newsReadCount{0};
 };
 
 } // namespace Core
