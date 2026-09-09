@@ -174,7 +174,81 @@ void MarketCatalog::InitCatalog() {
         }
     };
 
-    // 2. Trafo & Elektrik Şebekesi Yükseltmeleri
+    // 2. CPU Madenciliği Donanım Kataloğu (RandomX & GhostRider)
+    m_cpuModels = {
+        {
+            "r5_3600",
+            "AMD Ryzen 5 3600",
+            "6C / 12T (3.6-4.2GHz)",
+            7.2,
+            65.0,
+            120.0,
+            Color{100, 210, 140, 255},
+            1
+        },
+        {
+            "i5_12400",
+            "Intel Core i5-12400",
+            "6C / 12T (2.5-4.4GHz)",
+            8.8,
+            65.0,
+            170.0,
+            Color{80, 180, 250, 255},
+            1
+        },
+        {
+            "r7_5800x",
+            "AMD Ryzen 7 5800X",
+            "8C / 16T (3.8-4.7GHz)",
+            14.5,
+            105.0,
+            260.0,
+            Color{50, 200, 255, 255},
+            2
+        },
+        {
+            "r9_5950x",
+            "AMD Ryzen 9 5950X",
+            "16C / 32T (3.4-4.9GHz)",
+            24.0,
+            105.0,
+            480.0,
+            Color{170, 110, 255, 255},
+            2
+        },
+        {
+            "r9_7950x",
+            "AMD Ryzen 9 7950X Zen4",
+            "16C / 32T (4.5-5.7GHz)",
+            36.0,
+            170.0,
+            690.0,
+            Color{230, 90, 255, 255},
+            3
+        },
+        {
+            "tr_3990x",
+            "AMD Threadripper 3990X",
+            "64C / 128T HEDT Monster",
+            72.0,
+            280.0,
+            1800.0,
+            Color{255, 140, 40, 255},
+            4
+        },
+        {
+            "epyc_9654",
+            "AMD EPYC 9654 Server",
+            "96C / 192T Zen4 Enterprise",
+            130.0,
+            360.0,
+            3600.0,
+            Color{255, 50, 90, 255},
+            4
+        }
+    };
+
+    // 3. Trafo & Elektrik Şebekesi Yükseltmeleri
     m_powerUpgrades = {
         {"psu_base", "POWER_TIER_1", 15000.0, 0.0, true},
         {"psu_industrial", "POWER_TIER_2", 30000.0, 2500.0, false},
@@ -182,7 +256,7 @@ void MarketCatalog::InitCatalog() {
         {"psu_grid_line", "POWER_TIER_4", 120000.0, 15000.0, false}
     };
 
-    // 3. Tesis & Depo Geliştirmeleri
+    // 4. Tesis & Depo Geliştirmeleri
     m_facilityUpgrades = {
         {"solar_1", "FACILITY_SOLAR_1", "FACILITY_SOLAR_1_DESC", 1800.0, false, 1000.0, false},
         {"solar_2", "FACILITY_SOLAR_2", "FACILITY_SOLAR_2_DESC", 3600.0, false, 2500.0, false},
@@ -197,6 +271,17 @@ const std::vector<GPUModelItem>& MarketCatalog::GetGPUModels() const {
 const GPUModelItem* MarketCatalog::GetGPUModel(size_t index) const {
     if (index < m_gpuModels.size()) {
         return &m_gpuModels[index];
+    }
+    return nullptr;
+}
+
+const std::vector<CPUModelItem>& MarketCatalog::GetCPUModels() const {
+    return m_cpuModels;
+}
+
+const CPUModelItem* MarketCatalog::GetCPUModel(size_t index) const {
+    if (index < m_cpuModels.size()) {
+        return &m_cpuModels[index];
     }
     return nullptr;
 }

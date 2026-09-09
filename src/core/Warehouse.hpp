@@ -59,6 +59,7 @@ public:
 
     // Facility-wide aggregated calculations
     [[nodiscard]] double CalculateTotalHashrate() const;
+    [[nodiscard]] double CalculateTotalCPUHashrateKH() const;
     [[nodiscard]] double CalculateTotalPowerWatts() const;
 
     [[nodiscard]] const std::vector<std::unique_ptr<MiningRig>>& GetAllRigs() const;

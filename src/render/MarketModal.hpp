@@ -14,6 +14,7 @@ namespace Render {
 
 enum class MarketCategory {
     GPUS,
+    CPUS,
     POWER,
     COOLING,
     FACILITIES
@@ -23,6 +24,7 @@ struct MarketPurchaseAction {
     enum class ActionType {
         NONE,
         BUY_GPU,
+        BUY_CPU,
         BUY_POWER,
         BUY_COOLING,
         BUY_FACILITY
@@ -74,6 +76,13 @@ private:
         const Core::MarketCatalog& catalog
     );
 
+    void DrawCPUsCategory(
+        float startX, float startY, float width, float height,
+        const Core::EconomyManager& economy,
+        const Core::Warehouse& warehouse,
+        const Core::MarketCatalog& catalog
+    );
+
     void DrawPowerCategory(
         float startX, float startY, float width, float height,
         const Core::EconomyManager& economy,
@@ -103,6 +112,7 @@ private:
     MarketCategory m_currentCategory;
 
     UIButton m_btnTabGPUs;
+    UIButton m_btnTabCPUs;
     UIButton m_btnTabPower;
     UIButton m_btnTabCooling;
     UIButton m_btnTabFacilities;
@@ -116,8 +126,10 @@ private:
     UIButton m_btnTier3;
     UIButton m_btnTier4;
     float m_gpuScrollOffset{0.0f};
+    float m_cpuScrollOffset{0.0f};
 
     std::vector<UIButton> m_gpuBuyButtons;
+    std::vector<UIButton> m_cpuBuyButtons;
     std::vector<UIButton> m_powerBuyButtons;
     std::vector<UIButton> m_coolingBuyButtons;
     std::vector<UIButton> m_facilityBuyButtons;

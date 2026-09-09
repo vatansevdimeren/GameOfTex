@@ -80,13 +80,33 @@ public:
     // Temperature metrics
     [[nodiscard]] double CalculateAverageTemperature(const class ThermalModel& thermalModel) const;
 
+    // Rig Frame Level / Tier System (1: Ahşap 2-slot, 2: Alüminyum 4-slot, 3: Çelik 6-slot, 4: Server Rack 8-slot, 5: Kriyojenik 10-slot)
+    [[nodiscard]] int GetRigLevel() const;
+    void SetRigLevel(int level);
+    [[nodiscard]] std::string GetRigLevelName() const;
+    [[nodiscard]] std::string GetNextRigLevelName() const;
+    [[nodiscard]] double GetNextRigUpgradeCost() const;
+    [[nodiscard]] bool CanUpgradeRigFrame() const;
+    bool UpgradeRigFrame();
+
+    // CPU Madenciliği Sistemi
+    void InstallCPU(const std::string& name, double hashrateKH, double powerWatts);
+    [[nodiscard]] const std::string& GetCPUName() const;
+    [[nodiscard]] double GetCPUHashrateKH() const;
+    [[nodiscard]] double GetCPUPowerWatts() const;
+    [[nodiscard]] double CalculateTotalCPUHashrateKH() const;
+
 private:
     std::string m_name;
-    size_t m_maxCapacity;
+    size_t m_maxCapacity{6};
     double m_motherboardBaseWatts;
     bool m_isPoweredOn{true};
     double m_startupSurgeTimer{0.0};
     size_t m_psuTier{0}; // 0: 850W, 1: 1300W, 2: 1800W, 3: 2600W
+    int m_rigLevel{1};   // 1 to 5
+    std::string m_cpuName{"AMD Ryzen 5 3600"};
+    double m_cpuHashrateKH{7.2};
+    double m_cpuPowerWatts{65.0};
     std::vector<std::unique_ptr<GPU>> m_gpus;
 };
 

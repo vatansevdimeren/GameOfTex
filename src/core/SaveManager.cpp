@@ -222,6 +222,10 @@ bool SaveManager::SaveGame(const std::string& filepath,
                 std::string rPrefix = "rig_" + std::to_string(rIdx) + "_";
                 file << rPrefix << "name=" << rig->GetName() << "\n";
                 file << rPrefix << "maxCapacity=" << rig->GetMaxCapacity() << "\n";
+                file << rPrefix << "rigLevel=" << rig->GetRigLevel() << "\n";
+                file << rPrefix << "cpuName=" << rig->GetCPUName() << "\n";
+                file << rPrefix << "cpuHash=" << rig->GetCPUHashrateKH() << "\n";
+                file << rPrefix << "cpuWatts=" << rig->GetCPUPowerWatts() << "\n";
                 file << rPrefix << "psuTier=" << rig->GetPSUTier() << "\n";
                 file << rPrefix << "isPowered=" << (rig->IsPoweredOn() ? "1" : "0") << "\n";
                 file << rPrefix << "gpuCount=" << rig->GetGPUCount() << "\n";
@@ -371,11 +375,19 @@ bool SaveManager::LoadGame(const std::string& filepath,
                     std::string rPrefix = fSec + "rig_" + std::to_string(rIdx) + "_";
                     std::string rName = GetVal(kv, rPrefix + "name", "Rig " + std::to_string(rIdx + 1));
                     size_t maxCap = static_cast<size_t>(GetValInt(kv, rPrefix + "maxCapacity", 6));
+                    int rigLevel = GetValInt(kv, rPrefix + "rigLevel", 0);
+                    std::string cpuName = GetVal(kv, rPrefix + "cpuName", "AMD Ryzen 5 3600");
+                    double cpuHash = GetValDouble(kv, rPrefix + "cpuHash", 7.2);
+                    double cpuWatts = GetValDouble(kv, rPrefix + "cpuWatts", 65.0);
                     size_t psuTier = static_cast<size_t>(GetValInt(kv, rPrefix + "psuTier", 0));
                     bool isPowered = GetValBool(kv, rPrefix + "isPowered", true);
                     size_t gpuCount = static_cast<size_t>(GetValInt(kv, rPrefix + "gpuCount", 0));
 
                     auto newRig = std::make_unique<MiningRig>(rName, maxCap);
+                    if (rigLevel >= 1 && rigLevel <= 5) {
+                        newRig->SetRigLevel(rigLevel);
+                    }
+                    newRig->InstallCPU(cpuName, cpuHash, cpuWatts);
                     newRig->SetPSUTier(psuTier);
                     newRig->SetPoweredOn(isPowered);
 

@@ -68,9 +68,11 @@ void RigRenderer::DrawSmokeAndSparks(int centerX, int centerY, double animTime) 
 }
 
 void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x, int y, double animTime,
-                                bool rigPoweredOn, bool isBreakerTripped, const TextureManager* textureManager) const {
-    constexpr int gpuWidth = 90;
+                                bool rigPoweredOn, bool isBreakerTripped, const TextureManager* textureManager,
+                                int customWidth) const {
+    const int gpuWidth = customWidth;
     constexpr int gpuHeight = 220;
+    const float fanRadius = (gpuWidth >= 80) ? 32.0f : ((gpuWidth >= 65) ? 25.0f : 20.0f);
 
     bool isBurnt = gpu && gpu->IsBurnt();
     bool hasActivePower = rigPoweredOn && !isBreakerTripped && !isBurnt;
@@ -114,30 +116,31 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
 
     // 2. Donen RGB Fanlar (Elektrik varsa ve yanmadiysa doner)
     if (hasActivePower) {
-        DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, currentAngle, fanRgb);
-        DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, -currentAngle, fanRgb);
+        DrawSpinningFan(x + gpuWidth / 2, y + 60, fanRadius, currentAngle, fanRgb);
+        DrawSpinningFan(x + gpuWidth / 2, y + 145, fanRadius, -currentAngle, fanRgb);
     } else if (isBurnt) {
         // Yanmis kartin ustune alev/ariza etiketi
-        DrawRectangle(x + 6, y + 90, gpuWidth - 12, 40, Color{180, 20, 20, 230});
-        UIFrame::DrawTextCustom("YANDI!", static_cast<float>(x + 18), static_cast<float>(y + 100), 16.0f, WHITE, true);
+        DrawRectangle(x + 4, y + 90, gpuWidth - 8, 40, Color{180, 20, 20, 230});
+        UIFrame::DrawTextCustom("YANDI!", static_cast<float>(x + (gpuWidth - 54) / 2), static_cast<float>(y + 100), 15.0f, WHITE, true);
         // Duman ve kor kivilcim efektleri
         DrawSmokeAndSparks(x + gpuWidth / 2, y + 30, animTime);
     } else {
         // Rig kapaliyken veya sigorta attiginda duragan duran fanlar
-        DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, 0.0f, Color{60, 65, 75, 255});
-        DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, 0.0f, Color{60, 65, 75, 255});
+        DrawSpinningFan(x + gpuWidth / 2, y + 60, fanRadius, 0.0f, Color{60, 65, 75, 255});
+        DrawSpinningFan(x + gpuWidth / 2, y + 145, fanRadius, 0.0f, Color{60, 65, 75, 255});
     }
 
     // Status LED
     Color ledColor = !hasActivePower ? Color{50, 55, 65, 255} : (isBurnt ? RED : ((tempCelsius >= 85.0) ? RED : ((tempCelsius >= 70.0) ? ORANGE : GREEN)));
-    DrawCircle(x + gpuWidth - 12, y + 12, 4.0f, ledColor);
+    DrawCircle(x + gpuWidth - 10, y + 12, 3.5f, ledColor);
 
     // Fare kartın üzerindeyse inceleme çerçevesi
     Vector2 mousePos = GetMousePosition();
     if (CheckCollisionPointRec(mousePos, Rectangle{static_cast<float>(x), static_cast<float>(y), static_cast<float>(gpuWidth), static_cast<float>(gpuHeight)})) {
         DrawRectangleLinesEx(Rectangle{static_cast<float>(x - 2), static_cast<float>(y - 2), static_cast<float>(gpuWidth + 4), static_cast<float>(gpuHeight + 4)}, 2.0f, Color{0, 240, 255, 220});
-        DrawRectangle(x + 10, y + 4, gpuWidth - 20, 18, Color{0, 200, 255, 220});
-        UIFrame::DrawTextCustom("INCELE", static_cast<float>(x + 20), static_cast<float>(y + 5), 11.0f, BLACK, true);
+        DrawRectangle(x + 4, y + 4, gpuWidth - 8, 18, Color{0, 200, 255, 220});
+        float tW = UIFrame::MeasureTextCustom("INCELE", 11.0f, true);
+        UIFrame::DrawTextCustom("INCELE", static_cast<float>(x + (gpuWidth - tW) / 2.0f), static_cast<float>(y + 5), 11.0f, BLACK, true);
     }
 }
 
@@ -148,11 +151,42 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
     constexpr int rigHeight = 320;
 
     bool isPowered = rig.IsPoweredOn() && !isBreakerTripped;
+    int rigLevel = rig.GetRigLevel();
+    size_t capacity = rig.GetMaxCapacity();
 
-    // Aluminum frame (metallic open-air rig)
-    Color frameBg = isPowered ? Color{20, 22, 26, 240} : Color{14, 15, 18, 240};
-    Color frameBorder = isPowered ? Color{100, 110, 130, 255} : (isBreakerTripped ? Color{140, 30, 30, 255} : Color{60, 65, 75, 255});
+    // 1. Kasa Seviyesine (Level 1-5) Göre Özel Şasi Tasarımı
+    Color frameBg;
+    Color frameBorder;
+    Color barColor;
 
+    if (rigLevel == 1) {
+        // LEVEL 1: Ahşap Garaj Kasası (Doğal Meşe & Pirinç Köşebentler)
+        frameBg = Color{38, 26, 16, 245};
+        frameBorder = isBreakerTripped ? Color{160, 40, 40, 255} : (isPowered ? Color{195, 130, 50, 255} : Color{110, 75, 40, 255});
+        barColor = Color{145, 95, 45, 255};
+    } else if (rigLevel == 2) {
+        // LEVEL 2: Alüminyum Açık Kasa (Mavi-Gri Eloksallı Profiller)
+        frameBg = Color{22, 27, 36, 245};
+        frameBorder = isBreakerTripped ? Color{160, 40, 40, 255} : (isPowered ? Color{90, 145, 195, 255} : Color{60, 75, 95, 255});
+        barColor = Color{85, 115, 150, 255};
+    } else if (rigLevel == 3) {
+        // LEVEL 3: Çelik Endüstriyel Pro Şasi (Mat Karbon & Neon Mavi Çizgiler)
+        frameBg = Color{18, 20, 26, 250};
+        frameBorder = isBreakerTripped ? Color{180, 30, 30, 255} : (isPowered ? Color{0, 210, 255, 255} : Color{50, 65, 80, 255});
+        barColor = Color{45, 55, 70, 255};
+    } else if (rigLevel == 4) {
+        // LEVEL 4: 4U Sunucu Kabini (Endüstriyel Grafit, Turuncu Raylar & Delta Fanlar)
+        frameBg = Color{14, 16, 20, 255};
+        frameBorder = isBreakerTripped ? Color{200, 40, 40, 255} : (isPowered ? Color{255, 140, 30, 255} : Color{80, 60, 40, 255});
+        barColor = Color{35, 38, 48, 255};
+    } else {
+        // LEVEL 5: Kriyojenik Sıvı Daldırma Tankı (Dielektrik Sıvı & Neon Aqua Ultraviyole)
+        frameBg = Color{10, 30, 46, 235};
+        frameBorder = isBreakerTripped ? Color{220, 50, 50, 255} : (isPowered ? Color{0, 255, 220, 255} : Color{40, 90, 105, 255});
+        barColor = Color{0, 190, 220, 255};
+    }
+
+    // Ana Şasi Dikdörtgeni
     DrawRectangleRounded(Rectangle{static_cast<float>(posX), static_cast<float>(posY),
                                    static_cast<float>(rigWidth), static_cast<float>(rigHeight)},
                          0.04f, 6, frameBg);
@@ -160,27 +194,58 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
                                         static_cast<float>(rigWidth), static_cast<float>(rigHeight)},
                               0.04f, 6, 2.0f, frameBorder);
 
-    // Top and bottom aluminum support bars
-    DrawRectangle(posX + 10, posY + 15, rigWidth - 20, 8, Color{80, 85, 95, 255});
-    DrawRectangle(posX + 10, posY + rigHeight - 25, rigWidth - 20, 8, Color{80, 85, 95, 255});
+    // Seviye 1 (Ahşap) için Ahşap Damar Hatları ve Pirinç Köşe Vidaları
+    if (rigLevel == 1) {
+        for (int yLine = posY + 35; yLine < posY + rigHeight - 35; yLine += 18) {
+            DrawLine(posX + 12, yLine, posX + rigWidth - 12, yLine, Color{54, 38, 24, 120});
+        }
+        // Pirinç köşebentler
+        DrawRectangle(posX + 4, posY + 4, 14, 14, Color{195, 140, 60, 255});
+        DrawRectangle(posX + rigWidth - 18, posY + 4, 14, 14, Color{195, 140, 60, 255});
+        DrawRectangle(posX + 4, posY + rigHeight - 18, 14, 14, Color{195, 140, 60, 255});
+        DrawRectangle(posX + rigWidth - 18, posY + rigHeight - 18, 14, 14, Color{195, 140, 60, 255});
+    }
 
-    // Rig header label & status badge
+    // Seviye 5 (Kriyojenik Daldırma Tankı) için Yükselen Sıvı Kabarcıkları
+    if (rigLevel == 5 && isPowered) {
+        for (int b = 0; b < 12; ++b) {
+            float phase = std::fmod(static_cast<float>(animTime * 0.8 + b * 0.18), 1.0f);
+            float bx = posX + 40.0f + (b * 56.0f);
+            float by = posY + rigHeight - 40.0f - (phase * 220.0f);
+            float r = 2.5f + (b % 3) * 1.5f;
+            unsigned char alpha = static_cast<unsigned char>((1.0f - phase) * 180.0f);
+            DrawCircle(static_cast<int>(bx), static_cast<int>(by), r, Color{0, 255, 230, alpha});
+        }
+    }
+
+    // Üst ve alt destek çubukları / montaj rayları
+    DrawRectangle(posX + 10, posY + 15, rigWidth - 20, 8, barColor);
+    DrawRectangle(posX + 10, posY + rigHeight - 25, rigWidth - 20, 8, barColor);
+
+    // Seviye 4 (Server Rack) Yan Delta Fan Izgaraları
+    if (rigLevel == 4) {
+        float fanSpin = isPowered ? std::fmod(static_cast<float>(animTime * 3600.0), 360.0f) : 0.0f;
+        DrawSpinningFan(posX + rigWidth - 24, posY + 70, 16.0f, fanSpin, Color{255, 120, 20, 255});
+        DrawSpinningFan(posX + rigWidth - 24, posY + 110, 16.0f, -fanSpin, Color{255, 120, 20, 255});
+    }
+
+    // Rig başlık etiketi & seviye rozeti
     std::string title = rig.GetName();
     Color titleColor;
     if (isBreakerTripped) {
-        title += "  [! SEBEKE KESILDI - SALTER ATTI !]";
+        title += "  [! SALTER ATTI !]";
         titleColor = Color{255, 60, 60, 255};
     } else if (rig.IsPSUOverloaded()) {
-        title += "  [! PSU ASIRI YUKLENDI - YUKSELTIN !]";
+        title += "  [! PSU ASIRI YUK !]";
         titleColor = Color{255, 120, 20, 255};
     } else if (isPowered) {
-        title += "  [AKTIF / CALISIYOR]";
-        titleColor = Color{0, 240, 160, 255};
+        title += "  [" + rig.GetRigLevelName() + "]";
+        titleColor = (rigLevel == 5) ? Color{0, 255, 230, 255} : ((rigLevel == 4) ? Color{255, 160, 40, 255} : Color{0, 240, 160, 255});
     } else {
-        title += "  [KAPALI / DEVRE DISI]";
+        title += "  [KAPALI]";
         titleColor = Color{200, 70, 70, 255};
     }
-    UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 16.0f, titleColor, true);
+    UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 15.0f, titleColor, true);
 
     // Sağ Üst: Ortalama Sıcaklık ve PSU Güç Rozetleri
     double avgTemp = rig.CalculateAverageTemperature(thermalModel);
@@ -206,43 +271,93 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
     DrawRectangleRoundedLines(badgePsuRec, 0.3f, 4, 1.0f, psuCol);
     UIFrame::DrawTextCustom(psuBuf, badgePsuRec.x + 10.0f, badgePsuRec.y + 4.0f, 13.0f, psuCol, true);
 
-    // Draw installed GPUs
-    const auto& gpus = rig.GetGPUs();
-    constexpr int slotSpacing = 112;
-    const int startX = posX + 30;
+    // 2. Dinamik Slot Yerleşimi (Kapasiteye göre kart genişliği ve aralığı)
+    int cardW = (capacity <= 2) ? 90 : ((capacity <= 4) ? 90 : ((capacity <= 6) ? 90 : ((capacity <= 8) ? 74 : 60)));
+    int startX = posX + 30;
+    int slotSpacing = 112;
+    if (capacity <= 2) {
+        startX = posX + 160;
+        slotSpacing = 220;
+    } else if (capacity <= 4) {
+        startX = posX + 70;
+        slotSpacing = 150;
+    } else if (capacity <= 6) {
+        startX = posX + 30;
+        slotSpacing = 112;
+    } else if (capacity <= 8) {
+        startX = posX + 24;
+        slotSpacing = 84;
+    } else {
+        startX = posX + 20;
+        slotSpacing = 68;
+    }
     const int gpuY = posY + 55;
 
-    for (size_t i = 0; i < rig.GetMaxCapacity(); ++i) {
+    const auto& gpus = rig.GetGPUs();
+    for (size_t i = 0; i < capacity; ++i) {
         int cardX = startX + static_cast<int>(i * slotSpacing);
 
         if (i < gpus.size() && gpus[i]) {
             double temp = isPowered ? thermalModel.CalculateGPUTemperature(gpus[i]->GetEffectivePowerWatts(), gpus[i]->GetFanSpeedPercent() / 100.0) : thermalModel.GetAmbientTemperature();
-            DrawSingleGPU(gpus[i].get(), temp, cardX, gpuY, animTime, rig.IsPoweredOn(), isBreakerTripped, textureManager);
+            DrawSingleGPU(gpus[i].get(), temp, cardX, gpuY, animTime, rig.IsPoweredOn(), isBreakerTripped, textureManager, cardW);
         } else {
-            // Empty PCIe slot placeholder
-            DrawRectangleLines(cardX, gpuY, 90, 220, Color{45, 50, 60, 180});
-            UIFrame::DrawTextCustom("EMPTY", static_cast<float>(cardX + 22), static_cast<float>(gpuY + 100), 14.0f, Color{80, 90, 105, 255}, false);
+            // Boş PCIe Yuvası
+            DrawRectangleLines(cardX, gpuY, cardW, 220, Color{45, 50, 60, 180});
+            float emptyTW = UIFrame::MeasureTextCustom("BOS", 13.0f, false);
+            UIFrame::DrawTextCustom("BOS", static_cast<float>(cardX + (cardW - emptyTW) / 2), static_cast<float>(gpuY + 100), 13.0f, Color{80, 90, 105, 255}, false);
         }
     }
 
-    // Kasa Sinerji ve Kombo Rozeti (Synergy Badges)
+    // 3. Kasa Sinerji ve Kombo Rozeti
     if (!synergyLabel.empty()) {
-        float synW = UIFrame::MeasureTextCustom(synergyLabel, 12.5f, true) + 16.0f;
-        Rectangle synRec{static_cast<float>(posX + 24), static_cast<float>(posY + rigHeight - 20), synW, 20.0f};
+        float synW = UIFrame::MeasureTextCustom(synergyLabel, 12.0f, true) + 16.0f;
+        Rectangle synRec{static_cast<float>(posX + 24), static_cast<float>(posY + rigHeight - 24), synW, 20.0f};
         DrawRectangleRounded(synRec, 0.3f, 4, Color{36, 30, 10, 230});
         DrawRectangleRoundedLines(synRec, 0.3f, 4, 1.2f, Color{255, 215, 0, 255});
-        UIFrame::DrawTextCustom(synergyLabel, synRec.x + 8.0f, synRec.y + 3.0f, 12.5f, Color{255, 225, 60, 255}, true);
+        UIFrame::DrawTextCustom(synergyLabel, synRec.x + 8.0f, synRec.y + 3.0f, 12.0f, Color{255, 225, 60, 255}, true);
     }
+
+    // 4. CPU Madenciliği ve Anakart Soket Alanı (Sol/Orta Alt Çerçeve)
+    int cpuX = posX + rigWidth - 285;
+    int cpuY = posY + rigHeight - 25;
+    Rectangle cpuRec{static_cast<float>(cpuX), static_cast<float>(cpuY), 268.0f, 22.0f};
+    DrawRectangleRounded(cpuRec, 0.35f, 4, Color{18, 30, 24, 235});
+    DrawRectangleRoundedLines(cpuRec, 0.35f, 4, 1.0f, isPowered ? Color{0, 230, 160, 255} : Color{80, 90, 85, 255});
+
+    // Küçük Dönen İşlemci Fanı
+    float cpuAngle = isPowered ? std::fmod(static_cast<float>(animTime * 1800.0), 360.0f) : 0.0f;
+    DrawSpinningFan(cpuX + 13, cpuY + 11, 8.0f, cpuAngle, isPowered ? Color{0, 255, 180, 255} : Color{70, 80, 75, 255});
+
+    std::ostringstream ssCpu;
+    ssCpu << "CPU: " << rig.GetCPUName() << " | " << std::fixed << std::setprecision(1) << (isPowered ? rig.GetCPUHashrateKH() : 0.0) << " KH/s";
+    UIFrame::DrawTextCustom(ssCpu.str(), static_cast<float>(cpuX + 26), static_cast<float>(cpuY + 4), 11.0f, isPowered ? Color{180, 255, 215, 255} : Color{140, 150, 145, 255}, true);
 }
 
-int RigRenderer::GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2 mousePos) const {
-    constexpr int slotSpacing = 112;
-    const int startX = posX + 30;
+int RigRenderer::GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2 mousePos, size_t capacity) const {
+    int cardW = (capacity <= 2) ? 90 : ((capacity <= 4) ? 90 : ((capacity <= 6) ? 90 : ((capacity <= 8) ? 74 : 60)));
+    int startX = posX + 30;
+    int slotSpacing = 112;
+    if (capacity <= 2) {
+        startX = posX + 160;
+        slotSpacing = 220;
+    } else if (capacity <= 4) {
+        startX = posX + 70;
+        slotSpacing = 150;
+    } else if (capacity <= 6) {
+        startX = posX + 30;
+        slotSpacing = 112;
+    } else if (capacity <= 8) {
+        startX = posX + 24;
+        slotSpacing = 84;
+    } else {
+        startX = posX + 20;
+        slotSpacing = 68;
+    }
     const int gpuY = posY + 55;
 
     for (size_t i = 0; i < gpuCount; ++i) {
         int cardX = startX + static_cast<int>(i * slotSpacing);
-        Rectangle cardRect{static_cast<float>(cardX), static_cast<float>(gpuY), 90.0f, 220.0f};
+        Rectangle cardRect{static_cast<float>(cardX), static_cast<float>(gpuY), static_cast<float>(cardW), 220.0f};
 
         if (CheckCollisionPointRec(mousePos, cardRect)) {
             return static_cast<int>(i);

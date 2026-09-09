@@ -194,6 +194,58 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         btc.isUnlocked = true;
         m_coins.push_back(std::move(btc));
     }
+
+    // 6. XMR - Monero (CPU RandomX)
+    {
+        CryptoCoin xmr;
+        xmr.id = "XMR";
+        xmr.name = "Monero (CPU)";
+        xmr.symbol = "XMR";
+        xmr.algorithm = "RandomX";
+        xmr.unit = "KH/s";
+        xmr.balance = 0.0;
+        xmr.basePriceUSD = 168.50;
+        xmr.priceUSD = xmr.basePriceUSD;
+        xmr.baseDifficulty = 42000.0;
+        xmr.difficulty = xmr.baseDifficulty;
+        xmr.blockReward = 0.60;
+        xmr.high24h = 174.20;
+        xmr.low24h = 162.80;
+        xmr.volume24hUSD = 12500000.0;
+        xmr.candles = generateInitialCandles(xmr.basePriceUSD, 1.20, xmr.priceHistory);
+        xmr.currentCandle = Candle{static_cast<float>(xmr.priceUSD), static_cast<float>(xmr.priceUSD), static_cast<float>(xmr.priceUSD), static_cast<float>(xmr.priceUSD), 0.0f};
+        xmr.profitabilityMultiplier = 1.0;
+        xmr.requiredTier = 1;
+        xmr.isUnlocked = true;
+        xmr.isCPUCoin = true;
+        m_coins.push_back(std::move(xmr));
+    }
+
+    // 7. RTM - Raptoreum (CPU GhostRider)
+    {
+        CryptoCoin rtm;
+        rtm.id = "RTM";
+        rtm.name = "Raptoreum (CPU)";
+        rtm.symbol = "RTM";
+        rtm.algorithm = "GhostRider";
+        rtm.unit = "KH/s";
+        rtm.balance = 0.0;
+        rtm.basePriceUSD = 0.0022;
+        rtm.priceUSD = rtm.basePriceUSD;
+        rtm.baseDifficulty = 1800.0;
+        rtm.difficulty = rtm.baseDifficulty;
+        rtm.blockReward = 750.0;
+        rtm.high24h = 0.0025;
+        rtm.low24h = 0.0019;
+        rtm.volume24hUSD = 1450000.0;
+        rtm.candles = generateInitialCandles(rtm.basePriceUSD, 0.00005, rtm.priceHistory);
+        rtm.currentCandle = Candle{static_cast<float>(rtm.priceUSD), static_cast<float>(rtm.priceUSD), static_cast<float>(rtm.priceUSD), static_cast<float>(rtm.priceUSD), 0.0f};
+        rtm.profitabilityMultiplier = 1.0;
+        rtm.requiredTier = 1;
+        rtm.isUnlocked = true;
+        rtm.isCPUCoin = true;
+        m_coins.push_back(std::move(rtm));
+    }
 }
 
 double EconomyManager::GetFiatBalance() const {
@@ -648,6 +700,46 @@ double EconomyManager::MineCoins(double hashrateMHS, double deltaTimeSeconds) {
     const double mintedCoins = (effectiveHash * deltaTimeSeconds) / active->difficulty;
     active->balance += mintedCoins;
     return mintedCoins;
+}
+
+double EconomyManager::MineCPUShare(double cpuHashrateKH, double deltaTimeSeconds) {
+    if (cpuHashrateKH <= 0.0 || deltaTimeSeconds <= 0.0) {
+        return 0.0;
+    }
+
+    // Hedef CPU coini: Aktif coin bir CPU coini ise onu kaz, değilse otomatik olarak Monero (XMR) kaz!
+    CryptoCoin* target = nullptr;
+    CryptoCoin* active = GetActiveCoin();
+    if (active && active->isCPUCoin) {
+        target = active;
+    } else {
+        for (auto& c : m_coins) {
+            if (c.symbol == "XMR") {
+                target = &c;
+                break;
+            }
+        }
+    }
+
+    if (!target) return 0.0;
+
+    const double effectiveHash = cpuHashrateKH * target->profitabilityMultiplier;
+    target->difficulty = target->baseDifficulty + (effectiveHash * 45.0);
+
+    const double minted = (effectiveHash * deltaTimeSeconds) / target->difficulty;
+    target->balance += minted;
+    return minted;
+}
+
+double EconomyManager::GetCPUCoinBalance() const {
+    for (const auto& c : m_coins) {
+        if (c.symbol == "XMR") return c.balance;
+    }
+    return 0.0;
+}
+
+std::string EconomyManager::GetCPUCoinSymbol() const {
+    return "XMR";
 }
 
 bool EconomyManager::SellCrypto(double amount) {

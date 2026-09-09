@@ -1,5 +1,6 @@
 #include "MiningRig.hpp"
 #include "ThermalModel.hpp"
+#include <algorithm>
 
 namespace Core {
 
@@ -8,6 +9,12 @@ MiningRig::MiningRig(const std::string& rigName, size_t maxGpuCapacity, double m
     , m_maxCapacity(maxGpuCapacity)
     , m_motherboardBaseWatts(motherboardBaseWatts)
 {
+    if (maxGpuCapacity <= 2) m_rigLevel = 1;
+    else if (maxGpuCapacity <= 4) m_rigLevel = 2;
+    else if (maxGpuCapacity <= 6) m_rigLevel = 3;
+    else if (maxGpuCapacity <= 8) m_rigLevel = 4;
+    else m_rigLevel = 5;
+
     m_gpus.reserve(maxGpuCapacity);
 }
 
@@ -16,7 +23,14 @@ const std::string& MiningRig::GetName() const {
 }
 
 size_t MiningRig::GetMaxCapacity() const {
-    return m_maxCapacity;
+    switch (m_rigLevel) {
+        case 1: return 2;
+        case 2: return 4;
+        case 3: return 6;
+        case 4: return 8;
+        case 5: return 10;
+        default: return m_maxCapacity;
+    }
 }
 
 size_t MiningRig::GetGPUCount() const {
@@ -104,8 +118,8 @@ double MiningRig::CalculateTotalPowerWatts() const {
     if (!m_isPoweredOn) {
         return 2.0; // Bekleme modu (Standby / LEDs)
     }
-    // Anakart ve sistemin taban tüketimi
-    double total = m_motherboardBaseWatts;
+    // Anakart, CPU ve sistemin taban tüketimi
+    double total = m_motherboardBaseWatts + m_cpuPowerWatts;
     for (const auto& gpu : m_gpus) {
         if (gpu) {
             total += gpu->GetEffectivePowerWatts();
@@ -186,6 +200,82 @@ double MiningRig::CalculateAverageTemperature(const ThermalModel& thermalModel) 
         }
     }
     return (count > 0) ? (sum / static_cast<double>(count)) : thermalModel.GetAmbientTemperature();
+}
+
+int MiningRig::GetRigLevel() const {
+    return m_rigLevel;
+}
+
+void MiningRig::SetRigLevel(int level) {
+    m_rigLevel = std::clamp(level, 1, 5);
+    m_maxCapacity = GetMaxCapacity();
+}
+
+std::string MiningRig::GetRigLevelName() const {
+    switch (m_rigLevel) {
+        case 1: return "Ahsap Garaj Kasasi (2 Slot)";
+        case 2: return "Aluminyum Acik Kasa (4 Slot)";
+        case 3: return "Celik Pro Sasi (6 Slot)";
+        case 4: return "4U Sunucu Kabini (8 Slot)";
+        case 5: return "Kriyojenik Daldırma Tanki (10 Slot)";
+        default: return "Standart Kasa";
+    }
+}
+
+std::string MiningRig::GetNextRigLevelName() const {
+    switch (m_rigLevel) {
+        case 1: return "Aluminyum Acik Kasa (4 Slot)";
+        case 2: return "Celik Pro Sasi (6 Slot)";
+        case 3: return "4U Sunucu Kabini (8 Slot)";
+        case 4: return "Kriyojenik Daldırma Tanki (10 Slot)";
+        default: return "MAKSIMUM SEVIYE";
+    }
+}
+
+double MiningRig::GetNextRigUpgradeCost() const {
+    switch (m_rigLevel) {
+        case 1: return 180.0;
+        case 2: return 450.0;
+        case 3: return 950.0;
+        case 4: return 1800.0;
+        default: return 0.0;
+    }
+}
+
+bool MiningRig::CanUpgradeRigFrame() const {
+    return m_rigLevel < 5;
+}
+
+bool MiningRig::UpgradeRigFrame() {
+    if (m_rigLevel < 5) {
+        m_rigLevel++;
+        m_maxCapacity = GetMaxCapacity();
+        return true;
+    }
+    return false;
+}
+
+void MiningRig::InstallCPU(const std::string& name, double hashrateKH, double powerWatts) {
+    m_cpuName = name;
+    m_cpuHashrateKH = hashrateKH;
+    m_cpuPowerWatts = powerWatts;
+}
+
+const std::string& MiningRig::GetCPUName() const {
+    return m_cpuName;
+}
+
+double MiningRig::GetCPUHashrateKH() const {
+    return m_cpuHashrateKH;
+}
+
+double MiningRig::GetCPUPowerWatts() const {
+    return m_cpuPowerWatts;
+}
+
+double MiningRig::CalculateTotalCPUHashrateKH() const {
+    if (!m_isPoweredOn) return 0.0;
+    return m_cpuHashrateKH;
 }
 
 } // namespace Core

@@ -1091,4 +1091,69 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
      - Sahip olunan her hisse, sonraki tüm oyunlarda **kalıcı +%5 kazım hızı ve +%5 borsa kazanç çarpanı** sağlar (katlanarak büyüyen Idle Tycoon döngüsü).
   4. **Disk Kaydı:** AR-GE seviyeleri ve Girişim Hisseleri `savegame.dat` dosyasına `[RESEARCH]` başlığı altında kaydedilir ve oyundan çıkıp girildiğinde korunur.
 
+---
+
+## 25. İŞLEMCİ (CPU) MADENCİLİĞİ & KADEMELİ KASA (RİG FRAME) YÜKSELTME SİSTEMİ (v2.4.0)
+
+### 25.1. Problem ve Tasarım Amacı
+* **Kullanıcı Talebi:**
+  *"projede sıkıntılar var istersen söyle yapabiliriz suan market kazım sisteminini daha fazla güncellememiz geekiyor ilk basta kullanıcıları işlkemcilerle mi baslatsak işlemciler içerisinde mining oluyor mudur bunlara ait coinler farklı crypto paralar cıkartalım bunları kazsın birde her levele göre güzel design edilmiş rigler olsun bu rigleri upgrade edelim yoısa yeni rig almak icin cok fazla beklememiz geerkeicek bunları ayarlamamız lazım"*
+* **Çözülen Oynanış Sorunları:**
+  1. **Başlangıç Kilitlenmesini Önleme:** Yeni bir oyuncu GPU alacak nakiti yokken bile anakart üzerinde takılı gelen hazır CPU sayesinde ilk saniyeden itibaren kripto para (XMR, RTM) kazmaya başlar; oyunda tıkanıp bekleme devri kapandı.
+  2. **Yüksek Yeni Rig Maliyeti ($2,500) Bariyerini Aşma:** Bir rig dolduğunda yeni rig almak için $2,500 biriktirme zorunluluğu kaldırıldı. Artık mevcut kasa şasisi adım adım (2 -> 4 -> 6 -> 8 -> 10 slot) çok uygun maliyetlerle ($180, $450, $950, $1800) yerinde büyütülebilir.
+
+---
+
+### 25.2. Kademeli Kasa (Rig Frame Tier) Yükseltme Sistemi
+* **Mimari ve İşleyiş (`MiningRig.hpp`, `MiningRig.cpp`, `main.cpp`):**
+  - Kasalara 5 kademeli şasi seviyesi (`m_rigLevel`, 1 ila 5) entegre edildi:
+    * **Tier 1 - Ahşap Garaj Kasası:** 2 GPU Slotu. Başlangıç kasasıdır. Marangoz ahşap çıtalar ve pirinç köşe braketleriyle çizilir.
+    * **Tier 2 - Alüminyum Açık Kasa:** 4 GPU Slotu. Yükseltme: **$180**. Hafif metalik mavi-gri eloksallı açık hava madencilik şasisi.
+    * **Tier 3 - Çelik Pro Miner Şasi:** 6 GPU Slotu. Yükseltme: **$450**. Endüstriyel mat koyu çelik yapı ve siyan neon raylar.
+    * **Tier 4 - 4U Server Kabineti:** 8 GPU Slotu. Yükseltme: **$950**. Turuncu endüstriyel sunucu kabini ve yan panellerde dönen Delta yüksek devirli fan ızgaraları.
+    * **Tier 5 - Kriyojenik Sıvı Daldırma Tankı:** 10 GPU Slotu. Yükseltme: **$1,800**. Cam pencereli dielektrik sıvı daldırma tankı, floresan turkuaz sıvı parıltısı ve yüzeye yükselen dinamik kabarcık animasyonları.
+  - **Kasa Yükseltme Butonu (`[KASAYI YÜKSELT]`):** `RIG_DETAIL` modunda şasi kontrol paneline eklendi. Oyuncunun mevcut seviyesine, sonraki kademe adına ve yükseltme maliyetine göre dinamik olarak güncellenir. Tıklandığında nakit düşülerek kasa şasisi anında genişletilir.
+  - **Kapasite ve Culling:** GPU slot genişlikleri kasanın 2, 4, 6, 8 veya 10'luk kapasitesine göre dinamik olarak ölçeklenir; boş slotlar havalandırma ızgarasıyla şık bir şekilde görselleştirilir.
+
+---
+
+### 25.3. İşlemci (CPU) Madenciliği & Özel Kripto Paralar
+* **Mimari ve Algoritma (`EconomyManager.hpp`, `EconomyManager.cpp`):**
+  - **İşlemciye Özel Kripto Paralar Eklendi:**
+    1. **Monero (XMR):** *RandomX Algoritması* - ASIC ve GPU dirençli, saf CPU gücüyle kazılan öncü gizlilik coini ($168.50 taban fiyat).
+    2. **Raptoreum (RTM):** *GhostRider Algoritması* - İşlemci L3 önbellek boyutuna göre optimize edilmiş dinamik proof-of-work coini ($0.0022 taban fiyat).
+  - **CPU Kazım Motoru (`MineCPUShare`):**
+    - Tüm çalışan rig'lerdeki CPU'ların KH/s (KiloHash/saniye) güçleri toplanır.
+    - Şirketin AR-GE ve çılgınlık çarpanlarıyla birleştirilerek XMR ve RTM cüzdanlarına düzenli madencilik geliri akar.
+
+---
+
+### 25.4. Donanım Marketi: [İŞLEMCİ (CPU)] Sekmesi & Satın Alma Kataloğu
+* **Arayüz ve Katalog (`MarketCatalog.hpp`, `MarketCatalog.cpp`, `MarketModal.hpp`, `MarketModal.cpp`):**
+  - Donanım Marketine 5. ana kategori olarak **`[ISLEMCI (CPU)]`** sekmesi eklendi.
+  - 7 Farklı Gerçekçi Masaüstü ve Sunucu İşlemcisi Listelendi:
+    1. **AMD Ryzen 5 3600 (Giriş/Başlangıç):** 6C/12T, 7.2 KH/s, 65W TDP - *$95* (Tüm başlangıç kasalarında hazır takılı gelir).
+    2. **Intel Core i5-12400 (F/P):** 6C/12T, 9.5 KH/s, 75W TDP - *$140*.
+    3. **AMD Ryzen 7 5800X (Hızlı Orta Segment):** 8C/16T, 14.8 KH/s, 105W TDP - *$240*.
+    4. **AMD Ryzen 9 5950X (Pro Miner):** 16C/32T, 28.5 KH/s, 142W TDP - *$480*.
+    5. **AMD Ryzen 9 7950X (Zen 4 Canavarı):** 16C/32T, 38.0 KH/s, 170W TDP - *$650*.
+    6. **AMD Threadripper 3990X (HEDT İş İstasyonu):** 64C/128T, 82.0 KH/s, 280W TDP - *$1,850*.
+    7. **AMD EPYC 9654 Zen4 Server (Endüstriyel Veri Merkezi):** 96C/192T, 115.0 KH/s, 360W TDP - *$3,200*.
+  - **Canlı Performans Göstergeleri:** Her CPU kartı üzerinde RandomX KH/s gücü barı, TDP tüketim barı ve satın alıp aktif kasaya takma butonu bulunur.
+
+---
+
+### 25.5. Anakart Üzerinde Dönen CPU Soğutucu Fanı & Canlı KH/s Rozeti
+* **Görselleştirme (`RigRenderer.cpp`):**
+  - Kasa çizimlerinin sol alt kısmında gerçek bir anakart CPU soketi çizilir:
+    * Koyu entegre devre yolları, montaj vidaları ve soket çerçevesi.
+    * CPU hava/sıvı soğutucu bloğu ve rig açıkken gerçek zamanlı dönen neon fan pervanesi.
+    * Canlı CPU modeli etiketi ve anlık RandomX KH/s hız rozeti (`AMD Ryzen 5 3600 - 7.2 KH/s`).
+
+---
+
+### 25.6. Kayıt ve Yükleme Geriye Uyumluluğu (`SaveManager.cpp`)
+* Disk kayıt formatına `rigLevel`, `cpuName`, `cpuHash` ve `cpuWatts` alanları eklendi.
+* Eski kayıtlar yüklendiğinde varsayılan değerlerle (Tier 1 ahşap kasa, Ryzen 5 3600) sorunsuz ve geriye uyumlu şekilde açılması sağlandı.
+
 

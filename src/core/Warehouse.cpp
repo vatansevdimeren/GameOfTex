@@ -7,8 +7,8 @@ Warehouse::Warehouse(std::string facilityName)
     : m_facilityName(std::move(facilityName))
     , m_activeRigIndex(0)
 {
-    // Varsayılan olarak 1 adet başlangıç rig'i ile başla
-    AddNewRig("Rig 01 - Starter Frame", 6);
+    // Varsayılan olarak 1 adet başlangıç rig'i ile başla (Level 1: Ahşap Garaj Kasası, 2 Slot, CPU Madencisi)
+    AddNewRig("Rig 01 - Ahsap Garaj Kasasi", 2);
 }
 
 const std::string& Warehouse::GetFacilityName() const {
@@ -116,6 +116,16 @@ double Warehouse::CalculateTotalHashrate() const {
     for (const auto& rig : m_rigs) {
         if (rig) {
             total += rig->CalculateTotalHashrate();
+        }
+    }
+    return total;
+}
+
+double Warehouse::CalculateTotalCPUHashrateKH() const {
+    double total = 0.0;
+    for (const auto& rig : m_rigs) {
+        if (rig && rig->IsPoweredOn()) {
+            total += rig->CalculateTotalCPUHashrateKH();
         }
     }
     return total;

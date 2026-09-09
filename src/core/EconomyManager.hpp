@@ -79,6 +79,7 @@ struct CryptoCoin {
     double profitabilityMultiplier{1.0}; // Dynamic rotation boost (0.8x - 2.5x)
     int requiredTier{1};             // 1: Starter, 2: Pro, 3: Server, 4: Industrial ASIC
     bool isUnlocked{true};
+    bool isCPUCoin{false};           // True for CPU-mineable coins (XMR, RTM)
 };
 
 /**
@@ -154,6 +155,16 @@ public:
      * @return Number of newly minted coins credited to the wallet.
      */
     double MineCoins(double hashrateMHS, double deltaTimeSeconds);
+
+    /**
+     * @brief Mines CPU coins (Monero XMR / Raptoreum RTM) based on CPU KH/s.
+     * @param cpuHashrateKH Total CPU hashrate in Kilohashes per second.
+     * @param deltaTimeSeconds Elapsed simulation time.
+     * @return Number of newly minted CPU coins credited to the wallet.
+     */
+    double MineCPUShare(double cpuHashrateKH, double deltaTimeSeconds);
+    [[nodiscard]] double GetCPUCoinBalance() const;
+    [[nodiscard]] std::string GetCPUCoinSymbol() const;
 
     bool SellCrypto(double amount);
 

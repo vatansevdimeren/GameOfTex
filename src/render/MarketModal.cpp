@@ -11,6 +11,7 @@ MarketModal::MarketModal()
     : m_isOpen(false),
       m_currentCategory(MarketCategory::GPUS),
       m_btnTabGPUs(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{60, 180, 240, 255}),
+      m_btnTabCPUs(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{0, 230, 160, 255}),
       m_btnTabPower(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{255, 190, 40, 255}),
       m_btnTabCooling(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{40, 220, 200, 255}),
       m_btnTabFacilities(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{140, 100, 240, 255}),
@@ -24,6 +25,11 @@ MarketModal::MarketModal()
     // 16 GPU Satın Alma Butonu (Tüm modeller için)
     for (int i = 0; i < 16; ++i) {
         m_gpuBuyButtons.emplace_back(Rectangle{0, 0, 0, 0}, "SATIN AL", "", Color{20, 70, 50, 255}, Color{40, 210, 120, 255});
+    }
+
+    // 8 CPU Satın Alma Butonu
+    for (int i = 0; i < 8; ++i) {
+        m_cpuBuyButtons.emplace_back(Rectangle{0, 0, 0, 0}, "SATIN AL & TAK", "", Color{20, 70, 50, 255}, Color{0, 230, 160, 255});
     }
 
     // 4 Elektrik & Trafo Butonu
@@ -79,23 +85,27 @@ MarketPurchaseAction MarketModal::Update(
         return action;
     }
 
-    // Kategori Sekmeleri
+    // Kategori Sekmeleri (5 Sekme: GPU, CPU, GUC, SOGUTMA, TESIS)
+    bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
     const float tabY = modalY + 54.0f;
     const float tabGap = 8.0f;
-    const float tabW = (modalW - 40.0f - (3.0f * tabGap)) / 4.0f;
+    const float tabW = (modalW - 40.0f - (4.0f * tabGap)) / 5.0f;
     const float tabH = 38.0f;
 
     m_btnTabGPUs.SetBounds(Rectangle{modalX + 20.0f + 0 * (tabW + tabGap), tabY, tabW, tabH});
-    m_btnTabPower.SetBounds(Rectangle{modalX + 20.0f + 1 * (tabW + tabGap), tabY, tabW, tabH});
-    m_btnTabCooling.SetBounds(Rectangle{modalX + 20.0f + 2 * (tabW + tabGap), tabY, tabW, tabH});
-    m_btnTabFacilities.SetBounds(Rectangle{modalX + 20.0f + 3 * (tabW + tabGap), tabY, tabW, tabH});
+    m_btnTabCPUs.SetBounds(Rectangle{modalX + 20.0f + 1 * (tabW + tabGap), tabY, tabW, tabH});
+    m_btnTabPower.SetBounds(Rectangle{modalX + 20.0f + 2 * (tabW + tabGap), tabY, tabW, tabH});
+    m_btnTabCooling.SetBounds(Rectangle{modalX + 20.0f + 3 * (tabW + tabGap), tabY, tabW, tabH});
+    m_btnTabFacilities.SetBounds(Rectangle{modalX + 20.0f + 4 * (tabW + tabGap), tabY, tabW, tabH});
 
     m_btnTabGPUs.SetTitle(Core::LocalizationManager::Tr("MARKET_TAB_GPUS"));
+    m_btnTabCPUs.SetTitle(isTR ? "ISLEMCI (CPU)" : "CPU MINING");
     m_btnTabPower.SetTitle(Core::LocalizationManager::Tr("MARKET_TAB_POWER"));
     m_btnTabCooling.SetTitle(Core::LocalizationManager::Tr("MARKET_TAB_COOLING"));
     m_btnTabFacilities.SetTitle(Core::LocalizationManager::Tr("MARKET_TAB_FACILITIES"));
 
     if (m_btnTabGPUs.UpdateAndCheckClick()) m_currentCategory = MarketCategory::GPUS;
+    if (m_btnTabCPUs.UpdateAndCheckClick()) m_currentCategory = MarketCategory::CPUS;
     if (m_btnTabPower.UpdateAndCheckClick()) m_currentCategory = MarketCategory::POWER;
     if (m_btnTabCooling.UpdateAndCheckClick()) m_currentCategory = MarketCategory::COOLING;
     if (m_btnTabFacilities.UpdateAndCheckClick()) m_currentCategory = MarketCategory::FACILITIES;
@@ -200,6 +210,60 @@ MarketPurchaseAction MarketModal::Update(
             }
 
             displayIdx++;
+        }
+    } else if (m_currentCategory == MarketCategory::CPUS) {
+        const auto& cpuModels = catalog.GetCPUModels();
+        if (m_cpuBuyButtons.size() < cpuModels.size()) {
+            m_cpuBuyButtons.resize(cpuModels.size(), UIButton(Rectangle{0, 0, 0, 0}, "SATIN AL & TAK", "", Color{20, 70, 50, 255}, Color{0, 230, 160, 255}));
+        }
+
+        const float cardsAreaY = contentY + 22.0f;
+        const float cardsAreaH = contentH - 30.0f;
+        Rectangle cardsAreaRec{contentX, cardsAreaY, contentW, cardsAreaH};
+
+        if (CheckCollisionPointRec(GetMousePosition(), cardsAreaRec)) {
+            m_cpuScrollOffset += GetMouseWheelMove() * 38.0f;
+        }
+
+        const float cardH = 76.0f;
+        const float gap = 6.0f;
+        const float totalCardsH = cpuModels.size() * (cardH + gap);
+        const float maxScroll = std::max(0.0f, totalCardsH - cardsAreaH);
+        m_cpuScrollOffset = std::clamp(m_cpuScrollOffset, -maxScroll, 0.0f);
+
+        const auto* activeRig = warehouse.GetActiveRig();
+        const float buyBtnW = 160.0f;
+        const float buyBtnH = 38.0f;
+
+        for (size_t i = 0; i < cpuModels.size(); ++i) {
+            const auto& cpu = cpuModels[i];
+            const float itemY = cardsAreaY + m_cpuScrollOffset + (i * (cardH + gap));
+            const float btnX = contentX + contentW - buyBtnW - 14.0f;
+            const float btnY = itemY + 19.0f;
+            m_cpuBuyButtons[i].SetBounds(Rectangle{btnX, btnY, buyBtnW, buyBtnH});
+
+            bool alreadyInstalled = (activeRig && activeRig->GetCPUName() == cpu.name);
+            bool canAfford = economy.GetFiatBalance() >= cpu.priceUSD;
+
+            if (alreadyInstalled) {
+                m_cpuBuyButtons[i].SetTitle(isTR ? "TAKILI" : "INSTALLED");
+                m_cpuBuyButtons[i].SetDisabled(true);
+            } else if (!canAfford) {
+                m_cpuBuyButtons[i].SetTitle(Core::LocalizationManager::Tr("MARKET_NO_MONEY"));
+                m_cpuBuyButtons[i].SetDisabled(true);
+            } else {
+                m_cpuBuyButtons[i].SetTitle(isTR ? "SATIN AL & TAK" : "BUY & INSTALL");
+                m_cpuBuyButtons[i].SetDisabled(false);
+            }
+
+            if (itemY + cardH >= cardsAreaY && itemY <= cardsAreaY + cardsAreaH) {
+                if (m_cpuBuyButtons[i].UpdateAndCheckClick()) {
+                    action.type = MarketPurchaseAction::ActionType::BUY_CPU;
+                    action.itemIndex = i;
+                    action.targetRigIndex = static_cast<int>(warehouse.GetActiveRigIndex());
+                    return action;
+                }
+            }
         }
     } else if (m_currentCategory == MarketCategory::POWER) {
         const auto& powerUpgrades = catalog.GetPowerUpgrades();
@@ -332,6 +396,9 @@ void MarketModal::Draw(
         case MarketCategory::GPUS:
             DrawGPUsCategory(contentX, contentY, contentW, contentH, economy, warehouse, catalog);
             break;
+        case MarketCategory::CPUS:
+            DrawCPUsCategory(contentX, contentY, contentW, contentH, economy, warehouse, catalog);
+            break;
         case MarketCategory::POWER:
             DrawPowerCategory(contentX, contentY, contentW, contentH, economy, catalog, powerGrid);
             break;
@@ -356,6 +423,7 @@ void MarketModal::DrawHeader(float modalX, float modalY, float modalW) {
 
 void MarketModal::DrawTabs(float modalX, float modalY, float modalW) {
     m_btnTabGPUs.Draw();
+    m_btnTabCPUs.Draw();
     m_btnTabPower.Draw();
     m_btnTabCooling.Draw();
     m_btnTabFacilities.Draw();
@@ -366,6 +434,9 @@ void MarketModal::DrawTabs(float modalX, float modalY, float modalW) {
     if (m_currentCategory == MarketCategory::GPUS) {
         activeBtn = &m_btnTabGPUs;
         accentColor = Color{60, 180, 240, 255};
+    } else if (m_currentCategory == MarketCategory::CPUS) {
+        activeBtn = &m_btnTabCPUs;
+        accentColor = Color{0, 230, 160, 255};
     } else if (m_currentCategory == MarketCategory::POWER) {
         activeBtn = &m_btnTabPower;
         accentColor = Color{255, 190, 40, 255};
@@ -544,6 +615,94 @@ void MarketModal::DrawGPUsCategory(
         }
 
         displayIdx++;
+    }
+
+    EndScissorMode();
+}
+
+void MarketModal::DrawCPUsCategory(
+    float startX, float startY, float width, float height,
+    const Core::EconomyManager& economy,
+    const Core::Warehouse& warehouse,
+    const Core::MarketCatalog& catalog)
+{
+    const auto* activeRig = warehouse.GetActiveRig();
+    const auto& cpuModels = catalog.GetCPUModels();
+
+    // 1. Üst Bilgi Rozeti (Aktif Rig ve Takılı CPU)
+    std::string rigInfo = "Hedef Kasa: ";
+    if (activeRig) {
+        rigInfo += activeRig->GetName() + " | Takili Islemci: " + activeRig->GetCPUName() + 
+                   " (" + std::to_string(static_cast<int>(activeRig->GetCPUHashrateKH())) + " KH/s, " +
+                   std::to_string(static_cast<int>(activeRig->GetCPUPowerWatts())) + "W)";
+    } else {
+        rigInfo += "Kasa Bulunamadi";
+    }
+    UIFrame::DrawTextCustom(rigInfo, startX + 8.0f, startY - 2.0f, 14.0f, Color{0, 230, 160, 255}, true);
+
+    // 2. Scissor Mode ile Kaydırılabilir CPU Kart Alanı
+    const float cardsAreaY = startY + 22.0f;
+    const float cardsAreaH = height - 30.0f;
+    Rectangle cardsAreaRec{startX, cardsAreaY, width, cardsAreaH};
+
+    BeginScissorMode((int)cardsAreaRec.x, (int)cardsAreaRec.y, (int)cardsAreaRec.width, (int)cardsAreaRec.height);
+
+    const float cardH = 76.0f;
+    const float gap = 6.0f;
+    const float buyBtnW = 160.0f;
+
+    for (size_t i = 0; i < cpuModels.size(); ++i) {
+        const auto& cpu = cpuModels[i];
+        const float itemY = cardsAreaY + m_cpuScrollOffset + (i * (cardH + gap));
+
+        // Ekran dışı kartları culling
+        if (itemY + cardH < cardsAreaY || itemY > cardsAreaY + cardsAreaH) {
+            continue;
+        }
+
+        // Kart Arka Planı
+        DrawRectangleRounded(Rectangle{startX, itemY, width, cardH}, 0.12f, 4, Color{18, 25, 38, 230});
+        DrawRectangleRoundedLines(Rectangle{startX, itemY, width, cardH}, 0.12f, 4, 1.5f, cpu.accentColor);
+
+        // Sol Kısım: CPU Adı, Çekirdek/İzlek Bilgisi ve Algoritma Rozeti
+        UIFrame::DrawTextCustom(cpu.name, startX + 16.0f, itemY + 10.0f, 16.0f, Color{245, 250, 255, 255}, true);
+
+        std::string subInfo = "[" + cpu.cores + "] - RandomX / GhostRider Algoritmasi (Monero & Raptoreum)";
+        UIFrame::DrawTextCustom(subInfo, startX + 16.0f, itemY + 32.0f, 11.0f, cpu.accentColor, false);
+
+        bool isCurrent = (activeRig && activeRig->GetCPUName() == cpu.name);
+        if (isCurrent) {
+            UIFrame::DrawTextCustom("[BU KASADA TAKILI]", startX + 16.0f, itemY + 52.0f, 11.0f, Color{50, 230, 140, 255}, true);
+        }
+
+        // Orta Kısım: Performans Barları (KH/s ve TDP Watt)
+        const float barX = startX + 320.0f;
+        const float barW = width - 320.0f - buyBtnW - 140.0f;
+        const float barH = 15.0f;
+        const float barGap = 6.0f;
+
+        // 1. RandomX KH/s Barı (Max 120 KH/s ölçeği)
+        std::ostringstream ssHash;
+        ssHash << std::fixed << std::setprecision(1) << cpu.hashrateKH << " KH/s";
+        float hashRatio = static_cast<float>(cpu.hashrateKH / 120.0);
+        DrawStatBar(barX, itemY + 12.0f, barW, barH, hashRatio, Color{0, 220, 160, 220},
+                    "CPU Kazimi (RandomX):", ssHash.str().c_str());
+
+        // 2. Güç Tüketimi Barı (Max 400 W ölçeği)
+        std::ostringstream ssPower;
+        ssPower << std::fixed << std::setprecision(0) << cpu.powerWatts << " W";
+        float powerRatio = static_cast<float>(cpu.powerWatts / 400.0);
+        DrawStatBar(barX, itemY + 12.0f + barH + barGap, barW, barH, powerRatio, Color{255, 160, 40, 220},
+                    "TDP Gucu:", ssPower.str().c_str());
+
+        // Sağ Kısım: Fiyat ve Buton
+        const float priceX = barX + barW + 16.0f;
+        std::string priceStr = economy.FormatFiat(cpu.priceUSD);
+        UIFrame::DrawTextCustom(priceStr, priceX, itemY + 24.0f, 17.0f, Color{100, 255, 160, 255}, true);
+
+        if (i < m_cpuBuyButtons.size()) {
+            m_cpuBuyButtons[i].Draw();
+        }
     }
 
     EndScissorMode();

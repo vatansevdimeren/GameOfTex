@@ -209,6 +209,7 @@ int main() {
 
     Render::UIButton btnToggleRigPower(Rectangle{}, "RIG'I KAPAT", "", Color{60, 25, 25, 255}, Color{255, 70, 70, 255});
     Render::UIButton btnSellRig(Rectangle{}, "RIG'I SAT", "+$1,200", Color{50, 40, 20, 255}, Color{255, 160, 0, 255});
+    Render::UIButton btnUpgradeRigFrame(Rectangle{}, "KASAYI YUKSELT", "", Color{25, 45, 65, 255}, Color{60, 200, 255, 255});
 
     Render::UIButton btnTabRigDetail(Rectangle{}, "DETAYLI RIG", "", Color{30, 50, 75, 255}, Color{0, 220, 255, 255});
     Render::UIButton btnTabOverview(Rectangle{}, "DEPO GENEL BAKIS", "", Color{25, 30, 42, 255}, Color{0, 220, 255, 255});
@@ -384,6 +385,21 @@ int main() {
                         if (economy.DeductFiat(model->priceUSD)) {
                             targetRig->InstallGPU(std::make_unique<Core::GPU>(model->name, model->hashrate, model->powerWatts, 1.0));
                             taskManager.NotifyGpuPurchased();
+                        }
+                    }
+                }
+            } else if (action.type == Render::MarketPurchaseAction::ActionType::BUY_CPU) {
+                const auto* model = marketCatalog.GetCPUModel(action.itemIndex);
+                if (model) {
+                    Core::MiningRig* targetRig = nullptr;
+                    if (action.targetRigIndex >= 0 && action.targetRigIndex < static_cast<int>(warehouse.GetRigCount())) {
+                        targetRig = warehouse.GetRig(action.targetRigIndex);
+                    } else if (activeRig) {
+                        targetRig = activeRig;
+                    }
+                    if (targetRig && targetRig->GetCPUName() != model->name) {
+                        if (economy.DeductFiat(model->priceUSD)) {
+                            targetRig->InstallCPU(model->name, model->hashrateKH, model->powerWatts);
                         }
                     }
                 }
@@ -577,10 +593,24 @@ int main() {
 
         // Rig Yonetim Butonlari (Yalnizca RIG_DETAIL modunda, 2. satirda konumlandirilir, asla baslik veya sekmelerle cakismaz)
         if (currentViewMode == WarehouseViewMode::RIG_DETAIL) {
+            btnUpgradeRigFrame.SetBounds(Rectangle{pad + leftW - 470.0f, contentY + 45.0f, 206.0f, 32.0f});
             btnToggleRigPower.SetBounds(Rectangle{pad + leftW - 256.0f, contentY + 45.0f, 136.0f, 32.0f});
             btnSellRig.SetBounds(Rectangle{pad + leftW - 112.0f, contentY + 45.0f, 96.0f, 32.0f});
 
             if (activeRig) {
+                if (activeRig->CanUpgradeRigFrame()) {
+                    double upgCost = activeRig->GetNextRigUpgradeCost();
+                    int nextTier = activeRig->GetRigLevel() + 1;
+                    int nextCap = (nextTier == 2) ? 4 : (nextTier == 3) ? 6 : (nextTier == 4) ? 8 : 10;
+                    btnUpgradeRigFrame.SetTitle(isTR ? ("KASAYI YUKSELT (T" + std::to_string(nextTier) + ")") : ("UPGRADE FRAME (T" + std::to_string(nextTier) + ")"));
+                    btnUpgradeRigFrame.SetSubtitle(economy.FormatFiat(upgCost) + " (" + std::to_string(nextCap) + (isTR ? " Slot)" : " Slots)"));
+                    btnUpgradeRigFrame.SetDisabled(economy.GetFiatBalance() < upgCost);
+                } else {
+                    btnUpgradeRigFrame.SetTitle(isTR ? "KASA MAKS (TIER 5)" : "FRAME MAX (TIER 5)");
+                    btnUpgradeRigFrame.SetSubtitle(isTR ? "Daldırma Tank (10 Slot)" : "Immersion (10 Slots)");
+                    btnUpgradeRigFrame.SetDisabled(true);
+                }
+
                 btnToggleRigPower.SetTitle(activeRig->IsPoweredOn() ? Core::LocalizationManager::Tr("RIG_POWER_OFF") : Core::LocalizationManager::Tr("RIG_POWER_ON"));
                 btnToggleRigPower.SetSubtitle(activeRig->IsPoweredOn() ? Core::LocalizationManager::Tr("RIG_POWER_OFF_SUB") : Core::LocalizationManager::Tr("RIG_POWER_ON_SUB"));
             }
@@ -598,6 +628,12 @@ int main() {
             }
 
             if (!isAnyModalOpen) {
+                if (activeRig && btnUpgradeRigFrame.UpdateAndCheckClick() && activeRig->CanUpgradeRigFrame()) {
+                    double upgCost = activeRig->GetNextRigUpgradeCost();
+                    if (economy.DeductFiat(upgCost)) {
+                        activeRig->UpgradeRigFrame();
+                    }
+                }
                 if (activeRig && btnToggleRigPower.UpdateAndCheckClick()) {
                     activeRig->TogglePower();
                 }
@@ -637,7 +673,7 @@ int main() {
         if (!isAnyModalOpen && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
             Vector2 mouse = GetMousePosition();
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse);
+                int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse, activeRig->GetMaxCapacity());
                 if (clickedIndex >= 0 && clickedIndex < static_cast<int>(activeRig->GetGPUCount())) {
                     auto* targetCard = activeRig->GetGPU(static_cast<size_t>(clickedIndex));
                     double cardTemp = activeRig->IsPoweredOn() ? thermalModel.CalculateGPUTemperature(targetCard->GetEffectivePowerWatts(), 0.85) : thermalModel.GetAmbientTemperature();
@@ -795,6 +831,7 @@ int main() {
         // --- SİMÜLASYON MOTORU: TÜM SATIN ALINAN TESİSLER EŞZAMANLI ÇALIŞIR ---
         double activeMaxCardTemp = 0.0;
         double companyTotalMinedHashrate = 0.0;
+        double companyTotalCPUHashrateKH = 0.0;
 
         for (size_t fIdx = 0; fIdx < facilityManager.GetFacilityCount(); ++fIdx) {
             auto* fac = facilityManager.GetFacility(fIdx);
@@ -892,14 +929,17 @@ int main() {
                     }
 
                     double facilityHash = 0.0;
+                    double facilityCPUHash = 0.0;
                     for (const auto& rigPtr : fWarehouse.GetAllRigs()) {
                         if (rigPtr && rigPtr->IsPoweredOn() && !fPowerGrid.IsBreakerTripped()) {
                             double rigBase = rigPtr->CalculateTotalHashrate();
                             auto synergy = multiplierManager.CalculateRigSynergy(*rigPtr, fThermal);
                             facilityHash += rigBase * synergy.totalMultiplier;
+                            facilityCPUHash += rigPtr->CalculateTotalCPUHashrateKH();
                         }
                     }
                     companyTotalMinedHashrate += facilityHash * fPowerGrid.GetHashrateSurgeMultiplier() * multiplierManager.GetGlobalHashMultiplier() * researchManager.GetHashrateMultiplier();
+                    companyTotalCPUHashrateKH += facilityCPUHash * multiplierManager.GetGlobalHashMultiplier() * researchManager.GetHashrateMultiplier();
                 }
             }
         }
@@ -908,9 +948,12 @@ int main() {
         float normTemp = static_cast<float>((activeMaxCardTemp - 20.0) / 70.0);
         shaderManager.SetThermalState(shaderManager.IsThermalActive(), normTemp);
 
-        // Tüm aktif tesislerden toplanan net kazım gücü ile coin madenciliği
+        // Tüm aktif tesislerden toplanan net kazım gücü ile coin madenciliği (GPU & CPU)
         if (companyTotalMinedHashrate > 0.0) {
             economy.MineCoins(companyTotalMinedHashrate, dt * researchManager.GetProfitMultiplier());
+        }
+        if (companyTotalCPUHashrateKH > 0.0) {
+            economy.MineCPUShare(companyTotalCPUHashrateKH, dt * researchManager.GetProfitMultiplier());
         }
 
         economy.UpdateMarket(dt);
@@ -1040,6 +1083,7 @@ int main() {
         btnTabOverview.Draw();
 
         if (currentViewMode == WarehouseViewMode::RIG_DETAIL) {
+            btnUpgradeRigFrame.Draw();
             btnToggleRigPower.Draw();
             btnSellRig.Draw();
 

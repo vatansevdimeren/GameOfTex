@@ -36,7 +36,7 @@ public:
      * @brief Detects if mouse clicked on an installed GPU card slot.
      * @return Slot index (0 to N-1) or -1 if none clicked.
      */
-    [[nodiscard]] int GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2 mousePos) const;
+    [[nodiscard]] int GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2 mousePos, size_t capacity = 6) const;
 
     /**
      * @brief Draws an overview grid of all rigs in the facility with smooth scrolling.
@@ -58,7 +58,8 @@ private:
      */
     void DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x, int y, double animTime,
                        bool rigPoweredOn, bool isBreakerTripped = false,
-                       const TextureManager* textureManager = nullptr) const;
+                       const TextureManager* textureManager = nullptr,
+                       int customWidth = 90) const;
 
     /**
      * @brief Draws animated smoke and ember sparks rising from a burnt card.

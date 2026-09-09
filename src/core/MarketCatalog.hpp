@@ -24,6 +24,21 @@ struct GPUModelItem {
 };
 
 /**
+ * @struct CPUModelItem
+ * @brief Represents a processor product for CPU mining (RandomX / GhostRider).
+ */
+struct CPUModelItem {
+    std::string id;
+    std::string name;
+    std::string cores;        // e.g. "6C / 12T"
+    double hashrateKH;        // Base KH/s
+    double powerWatts;        // Base Watts
+    double priceUSD;          // Purchase cost in USD
+    Color accentColor;        // Visual highlight color
+    int tier{1};              // 1: Entry, 2: Mid, 3: High, 4: Server/HEDT
+};
+
+/**
  * @struct PowerUpgradeItem
  * @brief Represents an electrical substation or breaker panel upgrade.
  */
@@ -63,6 +78,9 @@ public:
     [[nodiscard]] const std::vector<GPUModelItem>& GetGPUModels() const;
     [[nodiscard]] const GPUModelItem* GetGPUModel(size_t index) const;
 
+    [[nodiscard]] const std::vector<CPUModelItem>& GetCPUModels() const;
+    [[nodiscard]] const CPUModelItem* GetCPUModel(size_t index) const;
+
     [[nodiscard]] std::vector<PowerUpgradeItem>& GetPowerUpgrades();
     [[nodiscard]] const std::vector<PowerUpgradeItem>& GetPowerUpgrades() const;
 
@@ -81,6 +99,7 @@ private:
     void InitCatalog();
 
     std::vector<GPUModelItem> m_gpuModels;
+    std::vector<CPUModelItem> m_cpuModels;
     std::vector<PowerUpgradeItem> m_powerUpgrades;
     std::vector<FacilityUpgradeItem> m_facilityUpgrades;
 };
