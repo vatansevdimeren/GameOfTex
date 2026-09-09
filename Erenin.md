@@ -686,6 +686,97 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * **GPU Kıvılcım Taşıntısı Düzeltmesi:** Yanmış kartlardan çıkan kıvılcımların rig başlığının (`Rig 01 - Starter Frame`) üstüne uçması engellendi; kıvılcımlar kart çerçevesi içinde sınırlandırıldı.
 * **Üst HUD Sağ Panel Kırpılma Koruması:** Buton genişlikleri optimize edildi (`settingsBtnW = 86px`, `saveBtnW = 82px`, `taskBtnW = 118px`, `worldMapBtnW = 110px`). 1024px gibi dar çözünürlüklerde bile `AYARLAR` butonu sağ kenardan 16px içeride kalır; asla kırpılmaz.
 
+---
+
+## 17. ÇOKLU COİN MADENCİLİĞİ, CANLI KRİPTO BORSASI VE GELİŞMİŞ DONANIM KATALOĞU (v2.0.0)
+
+### 17.1. 5 Farklı Kripto Para Birimi ve Algoritmik Ağ Zorluğu (`CryptoCoin`)
+* Oyunda tek bir coin yerine 5 farklı kripto para birimi ve madencilik algoritması entegre edildi:
+  1. **TEX (TexCoin):**
+     * *Algoritma:* KawPow | *Birim:* MH/s | *Taban Fiyat:* $2.40 | *Taban Zorluk:* 120,000 | *Blok Ödülü:* 5.0 TEX
+     * *Gereken Tier:* Seviye 1 (Başlangıç madencilik coini).
+  2. **RVN (Ravencoin):**
+     * *Algoritma:* X16R | *Birim:* MH/s | *Taban Fiyat:* $0.085 | *Taban Zorluk:* 45,000 | *Blok Ödülü:* 2,500 RVN
+     * *Gereken Tier:* Seviye 1 (Hızlı kazılan yüksek hacimli altcoin).
+  3. **ETC (Ethereum Classic):**
+     * *Algoritma:* ETChash | *Birim:* MH/s | *Taban Fiyat:* $28.50 | *Taban Zorluk:* 450,000 | *Blok Ödülü:* 2.56 ETC
+     * *Gereken Tier:* Seviye 2 (Profesyonel GPU madenciliği).
+  4. **ETHW (Ethereum PoW):**
+     * *Algoritma:* Ethash | *Birim:* MH/s | *Taban Fiyat:* $145.00 | *Taban Zorluk:* 1,200,000 | *Blok Ödülü:* 2.0 ETHW
+     * *Gereken Tier:* Seviye 3 (Yüksek bellekli sunucu kartları).
+  5. **BTC (Bitcoin):**
+     * *Algoritma:* SHA-256 | *Birim:* GH/s | *Taban Fiyat:* $64,250.00 | *Taban Zorluk:* 85,000,000 | *Blok Ödülü:* 3.125 BTC
+     * *Gereken Tier:* Seviye 4 (Endüstriyel veri merkezi ve devasa ASIC çipleri).
+* **Dinamik Piyasa Simülasyonu (`EconomyManager::UpdateMarket`):**
+  * Tüm coinler için saniyelik mikro dalgalanmalar (volatilite), ortalamaya dönüş (mean-reversion) ve 60 periyotluk canlı fiyat geçmişi (`priceHistory`) üretilir.
+  * 24 saatlik en yüksek (`high24h`), en düşük (`low24h`), yüzde değişim (`priceChange24hPercent`) ve işlem hacmi canlı hesaplanır.
+
+---
+
+### 17.2. İnteraktif Kripto Borsası & Canlı Grafik Deski (`CryptoExchangeModal`)
+* **Açılış Yolları:** Sağ paneldeki `[BORSA] KRIPTO AL / SAT` butonuna basılarak, üst HUD'daki `[WALLET]` veya `[MARKET]` rozetlerine tıklanarak ya da klavyeden `[B]` / `[E]` kısayollarıyla açılır.
+* **Canlı Neon Fiyat Grafiği:**
+  * 60 periyotluk fiyat geçmişini dinamik Min/Max ölçekleme ile çizen alan grafiği (Area Chart).
+  * Fiyat artışında neon zümrüt yeşili, düşüşünde siber kırmızı degrade dolgu ve parlak çizgi.
+  * Arka planda ızgara çizgileri ve dinamik fiyat ekseni etiketleri.
+  * Grafik üzerinde fare gezdirildiğinde (hover) dikey crosshair çizgisi ve anlık fiyat kutucuğu (tooltip).
+* **Kazım Hedefi Değiştirici (`[BU COİNİ KAZ]` Butonu):**
+  * Oyuncu tek bir tıkla riglerinin hangi coini kazacağını seçebilir.
+  * Seçili coin aktif kazılıyorsa `[ŞU AN KAZILIYOR]` rozetiyle belirtilir.
+* **Hızlı Alım-Satım Deski:**
+  * `%25`, `%50`, `%75`, `%100 (MAX)` hacim butonları.
+  * Anlık harcanacak nakit / alınacak coin tahmini (Alım Deski).
+  * Bozdurulacak coin miktarı / kazanılacak fiat nakit tahmini (Satım Deski).
+  * Toplam portföy değeri özeti (Nakit + 5 Coinin güncel piyasa değeri).
+
+---
+
+### 17.3. 4 Kademeli Donanım & ASIC Kataloğu (`MarketCatalog` & `MarketModal`)
+* Market modalına **[TÜM MODELLER] [TIER 1] [TIER 2] [TIER 3] [TIER 4]** filtreleme butonları ve akıcı fare tekerleği kaydırma (scrolling) eklendi:
+  1. **Tier 1 (Giriş / Ev):**
+     * *RX 580 8GB:* 28 MH/s | 95W | $180
+     * *GTX 1660 Super:* 31 MH/s | 75W | $240
+     * *RTX 2060 Super:* 42 MH/s | 110W | $340
+  2. **Tier 2 (Pro / Atölye):**
+     * *RX 6800 XT:* 64 MH/s | 140W | $520
+     * *RTX 3070 Ti:* 68 MH/s | 145W | $590
+     * *RTX 3080 Trinity:* 98 MH/s | 210W | $820 (Tesis Seviye 2)
+  3. **Tier 3 (Sunucu / Veri Merkezi):**
+     * *RTX 4070 Ti Super:* 92 MH/s | 180W | $890 (Tesis Seviye 2)
+     * *RTX 4080 Super OC:* 115 MH/s | 220W | $1,150 (Tesis Seviye 2)
+     * *RTX 4090 Monster 24GB:* 180 MH/s | 360W | $2,100 (Tesis Seviye 3)
+  4. **Tier 4 (Endüstriyel & ASIC Çipleri):**
+     * *RTX 6000 Ada DataCenter:* 240 MH/s | 300W | $3,600 (Tesis Seviye 3)
+     * *Antminer S19 Pro+ Hydro:* 280 MH/s | 460W | $4,100 (Tesis Seviye 3)
+     * *Cryptonex Titan ASIC 400:* 350 MH/s | 540W | $4,800 (Tesis Seviye 4)
+     * *Quantum Hash Matrix X1:* 520 MH/s | 720W | $7,500 (Tesis Seviye 4)
+
+---
+
+### 17.4. 14 Kademeli Dengeli Görev Sistemi (`TaskManager`)
+* Görev havuzu genişletilerek oyuncuyu sıkmayan, hem erken aşamayı hem de ileri madencilik hedeflerini ödüllendiren 14 göreve çıkarıldı:
+  1. `TASK_INSPECT`: Donanım Uzmanı (1 GPU İncele - $200)
+  2. `TASK_OVERCLOCK`: Hız Aşırtma (1 GPU Overclock yap - $350)
+  3. `TASK_BUY_GPU`: Pazar Alışverişi (1 GPU Satın al - $400)
+  4. `TASK_FIRST_TRADE`: İlk Kripto Takası (Borsada işlem yap - $300)
+  5. `TASK_HASHRATE_50`: Çırak Madenci (50 MH/s üzerine çık - $350)
+  6. `TASK_SELL_CRYPTO`: Kripto Tüccarı ($500 değerinde kripto sat - $450)
+  7. `TASK_MULTI_RIG`: Büyük Tesis (En az 2 Rig kasası kur - $1,200)
+  8. `TASK_MINE_ETC`: Klasik Vizyon (Cüzdanda 1.0 ETC bulundur - $600)
+  9. `TASK_HASHRATE`: Madenci Gücü (150 MH/s üzerine çık - $800)
+  10. `TASK_COOLING`: Termal Kontrol (3,000W soğutma gücü kur - $800)
+  11. `TASK_POWER`: Sanayi Trafosu (7,500W şebeke panosu aç - $1,000)
+  12. `TASK_SOLAR`: Yeşil Enerji (1,000W güneş paneli kur - $1,500)
+  13. `TASK_MINE_ETHW`: İş Kanıtı Üssü (Cüzdanda 1.0 ETHW bulundur - $2,500)
+  14. `TASK_ASIC_KING`: ASIC Kralı (500 MH/s hesaplama gücüne ulaş - $5,000)
+
+---
+
+### 17.5. Çoklu Coin Kayıt ve Yükleme Entegrasyonu (`SaveManager`)
+* `savegame.dat` dosyasına `[ECONOMY]` altında `activeCoinIndex`, `coinCount` ve her coinin bakiyesi (`coin_i_balance`) ile fiyatı (`coin_i_price`) yazılır.
+* Eski kayıt dosyalarıyla tam geriye dönük uyumluluk (backward compatibility) korunmuştur; eski sürümlerden kalan kayıtlar hatasız açılır.
+
+
 
 
 

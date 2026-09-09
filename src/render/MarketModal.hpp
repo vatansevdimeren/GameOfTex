@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <raylib.h>
 #include <vector>
@@ -106,6 +106,15 @@ private:
     UIButton m_btnTabCooling;
     UIButton m_btnTabFacilities;
     UIButton m_btnClose;
+
+    // GPU Tier filtreleri ve kaydırma
+    int m_gpuTierFilter{0}; // 0: All, 1: Tier 1, 2: Tier 2, 3: Tier 3, 4: Tier 4
+    UIButton m_btnTierAll;
+    UIButton m_btnTier1;
+    UIButton m_btnTier2;
+    UIButton m_btnTier3;
+    UIButton m_btnTier4;
+    float m_gpuScrollOffset{0.0f};
 
     std::vector<UIButton> m_gpuBuyButtons;
     std::vector<UIButton> m_powerBuyButtons;

@@ -49,6 +49,7 @@ public:
     void NotifyCardOverclocked();
     void NotifyCryptoSold(double usdAmount);
     void NotifyGpuPurchased();
+    void NotifyTradeExecuted();
 
     [[nodiscard]] const std::vector<GameTask>& GetTasks() const;
     [[nodiscard]] size_t GetUnclaimedCompletedCount() const;
@@ -66,6 +67,7 @@ private:
     bool m_cardOverclocked{false};
     double m_totalCryptoSoldUsd{0.0};
     int m_gpusPurchasedCount{0};
+    int m_tradesExecutedCount{0};
 };
 
 } // namespace Core

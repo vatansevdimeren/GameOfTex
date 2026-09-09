@@ -9,13 +9,153 @@ namespace Core {
 
 EconomyManager::EconomyManager(double initialFiat, double initialCryptoPrice, std::string coinSymbol)
     : m_fiatBalance(initialFiat)
-    , m_cryptoBalance(0.0)
-    , m_coinSymbol(std::move(coinSymbol))
-    , m_cryptoPrice(initialCryptoPrice)
-    , m_baseDifficulty(350000.0) // 350k MH per coin base rate
-    , m_networkDifficulty(350000.0)
+    , m_currency(CurrencyType::USD)
     , m_marketTimer(0.0)
+    , m_activeCoinIndex(0)
 {
+    InitCoins(initialCryptoPrice);
+    if (!coinSymbol.empty()) {
+        for (size_t i = 0; i < m_coins.size(); ++i) {
+            if (m_coins[i].symbol == coinSymbol) {
+                m_activeCoinIndex = i;
+                break;
+            }
+        }
+    }
+}
+
+void EconomyManager::InitCoins(double initialTexPrice) {
+    m_coins.clear();
+
+    auto generateHistory = [](double basePrice, double variance) {
+        std::vector<float> hist;
+        hist.reserve(60);
+        std::mt19937 rng(1337 + static_cast<unsigned int>(basePrice * 10.0));
+        std::normal_distribution<double> dist(0.0, variance);
+        double curr = basePrice;
+        for (int i = 0; i < 60; ++i) {
+            curr += dist(rng);
+            curr += (basePrice - curr) * 0.08; // mean-reversion
+            if (curr < basePrice * 0.2) curr = basePrice * 0.2;
+            hist.push_back(static_cast<float>(curr));
+        }
+        return hist;
+    };
+
+    // 1. TEX - TexCoin (Starter GPU coin)
+    {
+        CryptoCoin tex;
+        tex.id = "TEX";
+        tex.name = "TexCoin";
+        tex.symbol = "TEX";
+        tex.algorithm = "KawPow";
+        tex.unit = "MH/s";
+        tex.balance = 0.0;
+        tex.basePriceUSD = initialTexPrice > 0.0 ? initialTexPrice : 2.40;
+        tex.priceUSD = tex.basePriceUSD;
+        tex.baseDifficulty = 120000.0;
+        tex.difficulty = tex.baseDifficulty;
+        tex.blockReward = 5.0;
+        tex.high24h = tex.basePriceUSD * 1.08;
+        tex.low24h = tex.basePriceUSD * 0.92;
+        tex.volume24hUSD = 850000.0;
+        tex.priceHistory = generateHistory(tex.basePriceUSD, 0.035);
+        tex.requiredTier = 1;
+        tex.isUnlocked = true;
+        m_coins.push_back(std::move(tex));
+    }
+
+    // 2. RVN - Ravencoin
+    {
+        CryptoCoin rvn;
+        rvn.id = "RVN";
+        rvn.name = "Ravencoin";
+        rvn.symbol = "RVN";
+        rvn.algorithm = "X16R";
+        rvn.unit = "MH/s";
+        rvn.balance = 0.0;
+        rvn.basePriceUSD = 0.085;
+        rvn.priceUSD = rvn.basePriceUSD;
+        rvn.baseDifficulty = 45000.0;
+        rvn.difficulty = rvn.baseDifficulty;
+        rvn.blockReward = 2500.0;
+        rvn.high24h = 0.092;
+        rvn.low24h = 0.078;
+        rvn.volume24hUSD = 3450000.0;
+        rvn.priceHistory = generateHistory(rvn.basePriceUSD, 0.002);
+        rvn.requiredTier = 1;
+        rvn.isUnlocked = true;
+        m_coins.push_back(std::move(rvn));
+    }
+
+    // 3. ETC - Ethereum Classic
+    {
+        CryptoCoin etc;
+        etc.id = "ETC";
+        etc.name = "Ethereum Classic";
+        etc.symbol = "ETC";
+        etc.algorithm = "ETChash";
+        etc.unit = "MH/s";
+        etc.balance = 0.0;
+        etc.basePriceUSD = 28.50;
+        etc.priceUSD = etc.basePriceUSD;
+        etc.baseDifficulty = 450000.0;
+        etc.difficulty = etc.baseDifficulty;
+        etc.blockReward = 2.56;
+        etc.high24h = 30.40;
+        etc.low24h = 26.80;
+        etc.volume24hUSD = 18200000.0;
+        etc.priceHistory = generateHistory(etc.basePriceUSD, 0.45);
+        etc.requiredTier = 2;
+        etc.isUnlocked = true;
+        m_coins.push_back(std::move(etc));
+    }
+
+    // 4. ETHW - Ethereum PoW
+    {
+        CryptoCoin ethw;
+        ethw.id = "ETHW";
+        ethw.name = "Ethereum PoW";
+        ethw.symbol = "ETHW";
+        ethw.algorithm = "Ethash";
+        ethw.unit = "MH/s";
+        ethw.balance = 0.0;
+        ethw.basePriceUSD = 145.00;
+        ethw.priceUSD = ethw.basePriceUSD;
+        ethw.baseDifficulty = 1200000.0;
+        ethw.difficulty = ethw.baseDifficulty;
+        ethw.blockReward = 2.0;
+        ethw.high24h = 153.20;
+        ethw.low24h = 138.50;
+        ethw.volume24hUSD = 45000000.0;
+        ethw.priceHistory = generateHistory(ethw.basePriceUSD, 1.80);
+        ethw.requiredTier = 3;
+        ethw.isUnlocked = true;
+        m_coins.push_back(std::move(ethw));
+    }
+
+    // 5. BTC - Bitcoin (Industrial ASIC mining)
+    {
+        CryptoCoin btc;
+        btc.id = "BTC";
+        btc.name = "Bitcoin";
+        btc.symbol = "BTC";
+        btc.algorithm = "SHA-256";
+        btc.unit = "GH/s";
+        btc.balance = 0.0;
+        btc.basePriceUSD = 64250.00;
+        btc.priceUSD = btc.basePriceUSD;
+        btc.baseDifficulty = 85000000.0;
+        btc.difficulty = btc.baseDifficulty;
+        btc.blockReward = 3.125;
+        btc.high24h = 65800.00;
+        btc.low24h = 63200.00;
+        btc.volume24hUSD = 820000000.0;
+        btc.priceHistory = generateHistory(btc.basePriceUSD, 320.0);
+        btc.requiredTier = 4;
+        btc.isUnlocked = true;
+        m_coins.push_back(std::move(btc));
+    }
 }
 
 double EconomyManager::GetFiatBalance() const {
@@ -23,11 +163,78 @@ double EconomyManager::GetFiatBalance() const {
 }
 
 double EconomyManager::GetCryptoBalance() const {
-    return m_cryptoBalance;
+    const CryptoCoin* active = GetActiveCoin();
+    return active ? active->balance : 0.0;
 }
 
 const std::string& EconomyManager::GetCoinSymbol() const {
-    return m_coinSymbol;
+    static const std::string fallback = "TEX";
+    const CryptoCoin* active = GetActiveCoin();
+    return active ? active->symbol : fallback;
+}
+
+std::vector<CryptoCoin>& EconomyManager::GetCoins() {
+    return m_coins;
+}
+
+const std::vector<CryptoCoin>& EconomyManager::GetCoins() const {
+    return m_coins;
+}
+
+size_t EconomyManager::GetActiveCoinIndex() const {
+    return m_activeCoinIndex;
+}
+
+void EconomyManager::SetActiveCoinIndex(size_t index) {
+    if (index < m_coins.size()) {
+        m_activeCoinIndex = index;
+    }
+}
+
+CryptoCoin* EconomyManager::GetActiveCoin() {
+    if (m_activeCoinIndex < m_coins.size()) {
+        return &m_coins[m_activeCoinIndex];
+    }
+    return m_coins.empty() ? nullptr : &m_coins[0];
+}
+
+const CryptoCoin* EconomyManager::GetActiveCoin() const {
+    if (m_activeCoinIndex < m_coins.size()) {
+        return &m_coins[m_activeCoinIndex];
+    }
+    return m_coins.empty() ? nullptr : &m_coins[0];
+}
+
+CryptoCoin* EconomyManager::GetCoin(size_t index) {
+    if (index < m_coins.size()) {
+        return &m_coins[index];
+    }
+    return nullptr;
+}
+
+const CryptoCoin* EconomyManager::GetCoin(size_t index) const {
+    if (index < m_coins.size()) {
+        return &m_coins[index];
+    }
+    return nullptr;
+}
+
+CryptoCoin* EconomyManager::GetCoinById(const std::string& id) {
+    for (auto& coin : m_coins) {
+        if (coin.id == id) {
+            return &coin;
+        }
+    }
+    return nullptr;
+}
+
+const CryptoCoin* EconomyManager::GetCoinById(const std::string& id) const {
+    for (const auto& coin : m_coins) {
+        if (coin.id == id) {
+            return &coin;
+        }
+    }
+    return nullptr;
 }
 
 void EconomyManager::SetCurrency(CurrencyType curr) {
@@ -101,7 +308,14 @@ std::string EconomyManager::FormatFiat(double usdAmount) const {
 std::string EconomyManager::FormatPrice(double usdPrice) const {
     double converted = usdPrice * GetExchangeRate();
     std::ostringstream ss;
-    ss << std::fixed << std::setprecision(0);
+    if (usdPrice < 1.0) {
+        ss << std::fixed << std::setprecision(4);
+    } else if (usdPrice < 100.0) {
+        ss << std::fixed << std::setprecision(2);
+    } else {
+        ss << std::fixed << std::setprecision(0);
+    }
+
     switch (m_currency) {
         case CurrencyType::USD:
             ss << "$" << converted;
@@ -138,39 +352,117 @@ void EconomyManager::SetFiatBalance(double balance) {
 }
 
 void EconomyManager::SetCryptoBalance(double balance) {
-    m_cryptoBalance = std::max(0.0, balance);
+    CryptoCoin* active = GetActiveCoin();
+    if (active) {
+        active->balance = std::max(0.0, balance);
+    }
 }
 
 void EconomyManager::SetCryptoPrice(double price) {
-    if (price > 0.0) {
-        m_cryptoPrice = price;
+    CryptoCoin* active = GetActiveCoin();
+    if (active && price > 0.0) {
+        active->priceUSD = price;
+    }
+}
+
+void EconomyManager::SetCoinBalance(const std::string& coinId, double balance) {
+    CryptoCoin* coin = GetCoinById(coinId);
+    if (coin) {
+        coin->balance = std::max(0.0, balance);
+    }
+}
+
+void EconomyManager::SetCoinPrice(const std::string& coinId, double price) {
+    CryptoCoin* coin = GetCoinById(coinId);
+    if (coin && price > 0.0) {
+        coin->priceUSD = price;
     }
 }
 
 double EconomyManager::GetCryptoPrice() const {
-    return m_cryptoPrice;
+    const CryptoCoin* active = GetActiveCoin();
+    return active ? active->priceUSD : 2.40;
 }
 
 double EconomyManager::GetNetworkDifficulty() const {
-    return m_networkDifficulty;
+    const CryptoCoin* active = GetActiveCoin();
+    return active ? active->difficulty : 150000.0;
 }
 
 void EconomyManager::UpdateMarket(double deltaTimeSeconds) {
     m_marketTimer += deltaTimeSeconds;
 
-    // Piyasa fiyatını her saniye ufak bir rastgele yürüyüş (random walk / volatilite) ile sars
     if (m_marketTimer >= 1.0) {
         m_marketTimer = 0.0;
 
-        static std::mt19937 rng(42); // Deterministik/öngörülebilir tohum
-        static std::normal_distribution<double> dist(0.0, 0.005); // %0.5 ortalama sapma
+        static std::mt19937 rng(42);
+        static std::normal_distribution<double> dist(0.0, 0.007); // %0.7 volatility
 
-        const double percentageChange = dist(rng);
-        m_cryptoPrice *= (1.0 + percentageChange);
+        for (auto& coin : m_coins) {
+            const double percentageChange = dist(rng);
+            coin.priceUSD *= (1.0 + percentageChange);
 
-        // Fiyat 100 doların altına düşmesin
-        m_cryptoPrice = std::max(100.0, m_cryptoPrice);
+            // Mean-reversion pull towards base price so it stays realistic
+            coin.priceUSD += (coin.basePriceUSD - coin.priceUSD) * 0.015;
+
+            // Strict floor
+            double floorPrice = coin.basePriceUSD * 0.20;
+            coin.priceUSD = std::max(floorPrice, coin.priceUSD);
+
+            // Update high / low
+            if (coin.priceUSD > coin.high24h) coin.high24h = coin.priceUSD;
+            if (coin.priceUSD < coin.low24h) coin.low24h = coin.priceUSD;
+
+            // Push to history
+            coin.priceHistory.push_back(static_cast<float>(coin.priceUSD));
+            if (coin.priceHistory.size() > 60) {
+                coin.priceHistory.erase(coin.priceHistory.begin());
+            }
+
+            // 24h change calculation
+            if (!coin.priceHistory.empty()) {
+                double firstPrice = coin.priceHistory.front();
+                if (firstPrice > 0.00001) {
+                    coin.priceChange24hPercent = ((coin.priceUSD - firstPrice) / firstPrice) * 100.0;
+                }
+            }
+        }
     }
+}
+
+bool EconomyManager::BuyCoin(size_t coinIndex, double usdAmount) {
+    if (coinIndex >= m_coins.size() || usdAmount <= 0.0 || m_fiatBalance < usdAmount) {
+        return false;
+    }
+    CryptoCoin& coin = m_coins[coinIndex];
+    if (coin.priceUSD <= 0.0) return false;
+
+    double coinsBought = usdAmount / coin.priceUSD;
+    m_fiatBalance -= usdAmount;
+    coin.balance += coinsBought;
+    return true;
+}
+
+bool EconomyManager::SellCoin(size_t coinIndex, double coinAmount) {
+    if (coinIndex >= m_coins.size() || coinAmount <= 0.0) {
+        return false;
+    }
+    CryptoCoin& coin = m_coins[coinIndex];
+    if (coin.balance < coinAmount || coin.priceUSD <= 0.0) {
+        return false;
+    }
+    coin.balance -= coinAmount;
+    double revenueUSD = coinAmount * coin.priceUSD;
+    m_fiatBalance += revenueUSD;
+    return true;
+}
+
+double EconomyManager::GetTotalPortfolioValueUSD() const {
+    double total = m_fiatBalance;
+    for (const auto& coin : m_coins) {
+        total += coin.balance * coin.priceUSD;
+    }
+    return total;
 }
 
 double EconomyManager::MineCoins(double hashrateMHS, double deltaTimeSeconds) {
@@ -178,34 +470,31 @@ double EconomyManager::MineCoins(double hashrateMHS, double deltaTimeSeconds) {
         return 0.0;
     }
 
-    // Gerçekçi Kripto Dinamik Ağ Zorluğu (Mining Difficulty Adjustment):
-    // Oyuncunun kazım gücü büyüdükçe küresel ağ zorluğu da dinamik adapte olur.
-    m_networkDifficulty = m_baseDifficulty + (hashrateMHS * 180.0);
+    CryptoCoin* active = GetActiveCoin();
+    if (!active) return 0.0;
 
-    // Kazılan coin formülü: (Hashrate * saniye) / Ağ Zorluğu
-    const double mintedCoins = (hashrateMHS * deltaTimeSeconds) / m_networkDifficulty;
-    m_cryptoBalance += mintedCoins;
+    // Difficulty adjusts smoothly with player's hashrate
+    active->difficulty = active->baseDifficulty + (hashrateMHS * 160.0);
+
+    const double mintedCoins = (hashrateMHS * deltaTimeSeconds) / active->difficulty;
+    active->balance += mintedCoins;
     return mintedCoins;
 }
 
 bool EconomyManager::SellCrypto(double amount) {
-    if (amount <= 0.0 || m_cryptoBalance < amount) {
-        return false;
-    }
-
-    m_cryptoBalance -= amount;
-    const double revenue = amount * m_cryptoPrice;
-    m_fiatBalance += revenue;
-    return true;
+    return SellCoin(m_activeCoinIndex, amount);
 }
 
 double EconomyManager::CalculateHourlyCoins(double hashrateMHS) const {
-    if (hashrateMHS <= 0.0 || m_networkDifficulty <= 0.0) return 0.0;
-    return (hashrateMHS * 3600.0) / m_networkDifficulty;
+    const CryptoCoin* active = GetActiveCoin();
+    if (!active || hashrateMHS <= 0.0 || active->difficulty <= 0.0) return 0.0;
+    return (hashrateMHS * 3600.0) / active->difficulty;
 }
 
 double EconomyManager::CalculateHourlyRevenueUSD(double hashrateMHS) const {
-    return CalculateHourlyCoins(hashrateMHS) * m_cryptoPrice;
+    const CryptoCoin* active = GetActiveCoin();
+    if (!active) return 0.0;
+    return CalculateHourlyCoins(hashrateMHS) * active->priceUSD;
 }
 
 double EconomyManager::CalculateDailyRevenueUSD(double hashrateMHS) const {

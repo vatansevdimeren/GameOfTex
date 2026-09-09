@@ -72,6 +72,8 @@ add_executable(GameOfTex
     src/core/SaveManager.cpp
     src/render/MainMenuScreen.hpp
     src/render/MainMenuScreen.cpp
+    src/render/CryptoExchangeModal.hpp
+    src/render/CryptoExchangeModal.cpp
 )
 
 target_include_directories(GameOfTex PRIVATE

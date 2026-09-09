@@ -172,7 +172,16 @@ bool SaveManager::SaveGame(const std::string& filepath,
     file << "fiat=" << std::fixed << std::setprecision(2) << economy.GetFiatBalance() << "\n";
     file << "crypto=" << std::fixed << std::setprecision(6) << economy.GetCryptoBalance() << "\n";
     file << "price=" << std::fixed << std::setprecision(2) << economy.GetCryptoPrice() << "\n";
-    file << "currency=" << static_cast<int>(economy.GetCurrency()) << "\n\n";
+    file << "currency=" << static_cast<int>(economy.GetCurrency()) << "\n";
+    file << "activeCoinIndex=" << economy.GetActiveCoinIndex() << "\n";
+    file << "coinCount=" << economy.GetCoins().size() << "\n";
+    for (size_t i = 0; i < economy.GetCoins().size(); ++i) {
+        const auto& c = economy.GetCoins()[i];
+        file << "coin_" << i << "_id=" << c.id << "\n";
+        file << "coin_" << i << "_balance=" << std::fixed << std::setprecision(8) << c.balance << "\n";
+        file << "coin_" << i << "_price=" << std::fixed << std::setprecision(4) << c.priceUSD << "\n";
+    }
+    file << "\n";
 
     // 3. FACILITIES
     file << "[FACILITIES]\n";
@@ -286,10 +295,25 @@ bool SaveManager::LoadGame(const std::string& filepath,
     // 2. ECONOMY
     economy.SetFiatBalance(GetValDouble(kv, "ECONOMY.fiat", 1500.0));
     economy.SetCryptoBalance(GetValDouble(kv, "ECONOMY.crypto", 0.0));
-    economy.SetCryptoPrice(GetValDouble(kv, "ECONOMY.price", 2500.0));
+    economy.SetCryptoPrice(GetValDouble(kv, "ECONOMY.price", 2.40));
     int currVal = GetValInt(kv, "ECONOMY.currency", 0);
     if (currVal >= 0 && currVal <= 3) {
         economy.SetCurrency(static_cast<CurrencyType>(currVal));
+    }
+    size_t activeCoin = static_cast<size_t>(GetValInt(kv, "ECONOMY.activeCoinIndex", 0));
+    economy.SetActiveCoinIndex(activeCoin);
+
+    size_t coinCount = static_cast<size_t>(GetValInt(kv, "ECONOMY.coinCount", 0));
+    for (size_t i = 0; i < coinCount; ++i) {
+        std::string cId = GetVal(kv, "ECONOMY.coin_" + std::to_string(i) + "_id", "");
+        if (!cId.empty()) {
+            double bal = GetValDouble(kv, "ECONOMY.coin_" + std::to_string(i) + "_balance", 0.0);
+            double prc = GetValDouble(kv, "ECONOMY.coin_" + std::to_string(i) + "_price", 0.0);
+            economy.SetCoinBalance(cId, bal);
+            if (prc > 0.0) {
+                economy.SetCoinPrice(cId, prc);
+            }
+        }
     }
 
     // 3. FACILITIES

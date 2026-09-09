@@ -14,10 +14,15 @@ MarketModal::MarketModal()
       m_btnTabPower(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{255, 190, 40, 255}),
       m_btnTabCooling(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{40, 220, 200, 255}),
       m_btnTabFacilities(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{140, 100, 240, 255}),
-      m_btnClose(Rectangle{0, 0, 0, 0}, "X", "", Color{180, 40, 40, 255}, Color{255, 80, 80, 255})
+      m_btnClose(Rectangle{0, 0, 0, 0}, "X", "", Color{180, 40, 40, 255}, Color{255, 80, 80, 255}),
+      m_btnTierAll(Rectangle{0, 0, 0, 0}, "TUM MODELLER", "", Color{30, 42, 60, 255}, Color{80, 180, 255, 255}),
+      m_btnTier1(Rectangle{0, 0, 0, 0}, "TIER 1 (GIRIS)", "", Color{25, 36, 45, 255}, Color{60, 220, 150, 255}),
+      m_btnTier2(Rectangle{0, 0, 0, 0}, "TIER 2 (PRO)", "", Color{20, 36, 55, 255}, Color{50, 180, 255, 255}),
+      m_btnTier3(Rectangle{0, 0, 0, 0}, "TIER 3 (SERVER)", "", Color{35, 25, 55, 255}, Color{180, 100, 255, 255}),
+      m_btnTier4(Rectangle{0, 0, 0, 0}, "TIER 4 (ASIC)", "", Color{45, 25, 30, 255}, Color{255, 60, 100, 255})
 {
-    // 5 GPU Satın Alma Butonu
-    for (int i = 0; i < 5; ++i) {
+    // 16 GPU Satın Alma Butonu (Tüm modeller için)
+    for (int i = 0; i < 16; ++i) {
         m_gpuBuyButtons.emplace_back(Rectangle{0, 0, 0, 0}, "SATIN AL", "", Color{20, 70, 50, 255}, Color{40, 210, 120, 255});
     }
 
@@ -102,20 +107,62 @@ MarketPurchaseAction MarketModal::Update(
 
     // Kategoriye Göre Satın Alma İşlemleri
     if (m_currentCategory == MarketCategory::GPUS) {
+        const float filterY = contentY + 22.0f;
+        const float filterH = 26.0f;
+        const float filterW = (contentW - 32.0f) / 5.0f;
+
+        m_btnTierAll.SetBounds(Rectangle{contentX, filterY, filterW, filterH});
+        m_btnTier1.SetBounds(Rectangle{contentX + (filterW + 8.0f) * 1, filterY, filterW, filterH});
+        m_btnTier2.SetBounds(Rectangle{contentX + (filterW + 8.0f) * 2, filterY, filterW, filterH});
+        m_btnTier3.SetBounds(Rectangle{contentX + (filterW + 8.0f) * 3, filterY, filterW, filterH});
+        m_btnTier4.SetBounds(Rectangle{contentX + (filterW + 8.0f) * 4, filterY, filterW, filterH});
+
+        if (m_btnTierAll.UpdateAndCheckClick()) { m_gpuTierFilter = 0; m_gpuScrollOffset = 0.0f; }
+        if (m_btnTier1.UpdateAndCheckClick()) { m_gpuTierFilter = 1; m_gpuScrollOffset = 0.0f; }
+        if (m_btnTier2.UpdateAndCheckClick()) { m_gpuTierFilter = 2; m_gpuScrollOffset = 0.0f; }
+        if (m_btnTier3.UpdateAndCheckClick()) { m_gpuTierFilter = 3; m_gpuScrollOffset = 0.0f; }
+        if (m_btnTier4.UpdateAndCheckClick()) { m_gpuTierFilter = 4; m_gpuScrollOffset = 0.0f; }
+
+        const float cardsAreaY = filterY + filterH + 8.0f;
+        const float cardsAreaH = contentH - (cardsAreaY - contentY);
+        Rectangle cardsAreaRec{contentX, cardsAreaY, contentW, cardsAreaH};
+
+        if (CheckCollisionPointRec(GetMousePosition(), cardsAreaRec)) {
+            m_gpuScrollOffset += GetMouseWheelMove() * 38.0f;
+        }
+
+        const auto& gpuModels = catalog.GetGPUModels();
+        int visibleCount = 0;
+        for (const auto& m : gpuModels) {
+            if (m_gpuTierFilter == 0 || m.tier == m_gpuTierFilter) visibleCount++;
+        }
+
+        const float cardH = 74.0f;
+        const float gap = 6.0f;
+        const float totalCardsH = visibleCount * (cardH + gap);
+        const float maxScroll = std::max(0.0f, totalCardsH - cardsAreaH);
+        m_gpuScrollOffset = std::clamp(m_gpuScrollOffset, -maxScroll, 0.0f);
+
         const auto* activeRig = warehouse.GetActiveRig();
         const bool hasRigSpace = activeRig && (activeRig->GetGPUCount() < activeRig->GetMaxCapacity());
-        const auto& gpuModels = catalog.GetGPUModels();
+        const float buyBtnW = 145.0f;
+        const float buyBtnH = 36.0f;
 
-        const float cardH = (contentH - 24.0f) / 5.0f;
-        const float buyBtnW = 150.0f;
-        const float buyBtnH = cardH - 18.0f;
+        if (m_gpuBuyButtons.size() < gpuModels.size()) {
+            m_gpuBuyButtons.resize(gpuModels.size(), UIButton(Rectangle{0, 0, 0, 0}, "SATIN AL", "", Color{20, 70, 50, 255}, Color{40, 210, 120, 255}));
+        }
 
-        for (size_t i = 0; i < gpuModels.size() && i < m_gpuBuyButtons.size(); ++i) {
+        int displayIdx = 0;
+        for (size_t i = 0; i < gpuModels.size(); ++i) {
             const auto& model = gpuModels[i];
-            const float itemY = contentY + 10.0f + (static_cast<float>(i) * cardH);
-            const float btnX = contentX + contentW - buyBtnW - 14.0f;
-            const float btnY = itemY + 9.0f;
+            if (m_gpuTierFilter != 0 && model.tier != m_gpuTierFilter) {
+                m_gpuBuyButtons[i].SetBounds(Rectangle{-1000, -1000, 0, 0});
+                continue;
+            }
 
+            const float itemY = cardsAreaY + m_gpuScrollOffset + (displayIdx * (cardH + gap));
+            const float btnX = contentX + contentW - buyBtnW - 14.0f;
+            const float btnY = itemY + 19.0f;
             m_gpuBuyButtons[i].SetBounds(Rectangle{btnX, btnY, buyBtnW, buyBtnH});
 
             bool canAfford = economy.GetFiatBalance() >= model.priceUSD;
@@ -130,11 +177,15 @@ MarketPurchaseAction MarketModal::Update(
                 m_gpuBuyButtons[i].SetDisabled(false);
             }
 
-            if (m_gpuBuyButtons[i].UpdateAndCheckClick()) {
-                action.type = MarketPurchaseAction::ActionType::BUY_GPU;
-                action.itemIndex = i;
-                return action;
+            if (itemY + cardH >= cardsAreaY && itemY <= cardsAreaY + cardsAreaH) {
+                if (m_gpuBuyButtons[i].UpdateAndCheckClick()) {
+                    action.type = MarketPurchaseAction::ActionType::BUY_GPU;
+                    action.itemIndex = i;
+                    return action;
+                }
             }
+
+            displayIdx++;
         }
     } else if (m_currentCategory == MarketCategory::POWER) {
         const auto& powerUpgrades = catalog.GetPowerUpgrades();
@@ -350,7 +401,7 @@ void MarketModal::DrawGPUsCategory(
     const auto* activeRig = warehouse.GetActiveRig();
     const auto& gpuModels = catalog.GetGPUModels();
 
-    // Üst Bilgi Rozeti (Aktif Seçili Rig ve Boş Slot Durumu)
+    // 1. Üst Bilgi Rozeti (Aktif Seçili Rig ve Boş Slot Durumu)
     std::string rigInfo = Core::LocalizationManager::Tr("MARKET_ACTIVE_RIG");
     if (activeRig) {
         rigInfo += activeRig->GetName() + " [" + std::to_string(activeRig->GetGPUCount()) + "/" + std::to_string(activeRig->GetMaxCapacity()) + " Slot]";
@@ -359,60 +410,110 @@ void MarketModal::DrawGPUsCategory(
     }
     UIFrame::DrawTextCustom(rigInfo, startX + 8.0f, startY - 2.0f, 14.0f, Color{140, 180, 220, 255}, true);
 
-    const float cardH = (height - 24.0f) / 5.0f;
-    const float buyBtnW = 150.0f;
+    // 2. Tier Filtre Butonları
+    m_btnTierAll.Draw();
+    m_btnTier1.Draw();
+    m_btnTier2.Draw();
+    m_btnTier3.Draw();
+    m_btnTier4.Draw();
 
+    // Aktif filtre butonuna parlama efekti
+    UIButton* activeFilterBtn = nullptr;
+    if (m_gpuTierFilter == 0) activeFilterBtn = &m_btnTierAll;
+    else if (m_gpuTierFilter == 1) activeFilterBtn = &m_btnTier1;
+    else if (m_gpuTierFilter == 2) activeFilterBtn = &m_btnTier2;
+    else if (m_gpuTierFilter == 3) activeFilterBtn = &m_btnTier3;
+    else if (m_gpuTierFilter == 4) activeFilterBtn = &m_btnTier4;
+
+    if (activeFilterBtn) {
+        Rectangle fb = activeFilterBtn->GetBounds();
+        DrawRectangleRoundedLines(fb, 0.2f, 4, 2.0f, Color{255, 220, 80, 255});
+    }
+
+    // 3. Scissor Mode ile Kaydırılabilir Kart Alanı
+    const float filterY = startY + 22.0f;
+    const float filterH = 26.0f;
+    const float cardsAreaY = filterY + filterH + 8.0f;
+    const float cardsAreaH = height - (cardsAreaY - startY);
+    Rectangle cardsAreaRec{startX, cardsAreaY, width, cardsAreaH};
+
+    BeginScissorMode((int)cardsAreaRec.x, (int)cardsAreaRec.y, (int)cardsAreaRec.width, (int)cardsAreaRec.height);
+
+    const float cardH = 74.0f;
+    const float gap = 6.0f;
+    const float buyBtnW = 145.0f;
+
+    int displayIdx = 0;
     for (size_t i = 0; i < gpuModels.size(); ++i) {
         const auto& model = gpuModels[i];
-        const float itemY = startY + 18.0f + (static_cast<float>(i) * cardH);
-        const float itemH = cardH - 6.0f;
+        if (m_gpuTierFilter != 0 && model.tier != m_gpuTierFilter) {
+            continue;
+        }
+
+        const float itemY = cardsAreaY + m_gpuScrollOffset + (displayIdx * (cardH + gap));
+
+        // Ekran dışı kartları çizme (culling)
+        if (itemY + cardH < cardsAreaY || itemY > cardsAreaY + cardsAreaH) {
+            displayIdx++;
+            continue;
+        }
 
         // Kart Arka Planı
-        DrawRectangleRounded(Rectangle{startX, itemY, width, itemH}, 0.12f, 4, Color{18, 25, 38, 230});
-        DrawRectangleRoundedLines(Rectangle{startX, itemY, width, itemH}, 0.12f, 4, 1.5f, model.accentColor);
+        DrawRectangleRounded(Rectangle{startX, itemY, width, cardH}, 0.12f, 4, Color{18, 25, 38, 230});
+        DrawRectangleRoundedLines(Rectangle{startX, itemY, width, cardH}, 0.12f, 4, 1.5f, model.accentColor);
 
         // Sol Kısım: GPU Adı ve Tier Rozeti
-        UIFrame::DrawTextCustom(model.name, startX + 16.0f, itemY + 12.0f, 18.0f, Color{245, 250, 255, 255}, true);
+        UIFrame::DrawTextCustom(model.name, startX + 16.0f, itemY + 10.0f, 16.0f, Color{245, 250, 255, 255}, true);
 
-        std::string tierText = "[" + std::string(Core::LocalizationManager::Tr(model.tierKey)) + "]";
-        UIFrame::DrawTextCustom(tierText, startX + 16.0f, itemY + 34.0f, 12.0f, model.accentColor, false);
+        std::string tierText = "[" + std::string(Core::LocalizationManager::Tr(model.tierKey)) + " - Tier " + std::to_string(model.tier) + "]";
+        UIFrame::DrawTextCustom(tierText, startX + 16.0f, itemY + 30.0f, 11.0f, model.accentColor, false);
+
+        // Gerekli Tesis Seviyesi
+        if (model.minFacilityTier > 1) {
+            std::string facReq = "Gereken Tesis: Seviye " + std::to_string(model.minFacilityTier);
+            UIFrame::DrawTextCustom(facReq, startX + 16.0f, itemY + 48.0f, 11.0f, Color{160, 175, 195, 220}, false);
+        }
 
         // Orta Kısım: 3 Adet Performans Barı
-        const float barX = startX + 260.0f;
-        const float barW = width - 260.0f - buyBtnW - 140.0f;
-        const float barH = 14.0f;
+        const float barX = startX + 270.0f;
+        const float barW = width - 270.0f - buyBtnW - 140.0f;
+        const float barH = 13.0f;
         const float barGap = 4.0f;
 
-        // 1. Kazım Gücü Barı (Max 350 MH/s ölçeği)
+        // 1. Kazım Gücü Barı (Max 550 MH/s ölçeği)
         std::ostringstream ssHash;
         ssHash << std::fixed << std::setprecision(0) << model.hashrate << " MH/s";
-        float hashRatio = static_cast<float>(model.hashrate / 350.0);
+        float hashRatio = static_cast<float>(model.hashrate / 550.0);
         DrawStatBar(barX, itemY + 8.0f, barW, barH, hashRatio, Color{45, 200, 240, 220},
                     Core::LocalizationManager::Tr("MARKET_HASH_BAR"), ssHash.str().c_str());
 
-        // 2. Güç Çekişi Barı (Max 600 W ölçeği)
+        // 2. Güç Çekişi Barı (Max 750 W ölçeği)
         std::ostringstream ssPower;
         ssPower << std::fixed << std::setprecision(0) << model.powerWatts << " W";
-        float powerRatio = static_cast<float>(model.powerWatts / 600.0);
+        float powerRatio = static_cast<float>(model.powerWatts / 750.0);
         DrawStatBar(barX, itemY + 8.0f + barH + barGap, barW, barH, powerRatio, Color{255, 175, 45, 220},
                     Core::LocalizationManager::Tr("MARKET_POWER_BAR"), ssPower.str().c_str());
 
-        // 3. Verimlilik Barı (Max 0.60 MH/W ölçeği)
+        // 3. Verimlilik Barı (Max 0.75 MH/W ölçeği)
         std::ostringstream ssEff;
         ssEff << std::fixed << std::setprecision(2) << model.efficiency << " MH/W";
-        float effRatio = static_cast<float>(model.efficiency / 0.60);
+        float effRatio = static_cast<float>(model.efficiency / 0.75);
         DrawStatBar(barX, itemY + 8.0f + (2 * (barH + barGap)), barW, barH, effRatio, Color{50, 225, 140, 220},
                     Core::LocalizationManager::Tr("MARKET_EFF_BAR"), ssEff.str().c_str());
 
         // Sağ Kısım: Fiyat ve Satın Al Butonu
         const float priceX = barX + barW + 16.0f;
         std::string priceStr = economy.FormatFiat(model.priceUSD);
-        UIFrame::DrawTextCustom(priceStr, priceX, itemY + 24.0f, 18.0f, Color{100, 255, 160, 255}, true);
+        UIFrame::DrawTextCustom(priceStr, priceX, itemY + 24.0f, 17.0f, Color{100, 255, 160, 255}, true);
 
         if (i < m_gpuBuyButtons.size()) {
             m_gpuBuyButtons[i].Draw();
         }
+
+        displayIdx++;
     }
+
+    EndScissorMode();
 }
 
 void MarketModal::DrawPowerCategory(

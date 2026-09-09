@@ -19,6 +19,8 @@ struct GPUModelItem {
     double priceUSD;          // Purchase cost in USD
     double efficiency;        // hashrate / powerWatts
     Color accentColor;        // Visual tier highlight color
+    int tier{1};              // 1: Entry, 2: Mid, 3: High, 4: ASIC/Industrial
+    int minFacilityTier{1};   // Minimum required facility tier to install
 };
 
 /**

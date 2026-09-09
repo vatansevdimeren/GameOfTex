@@ -28,6 +28,7 @@ extern "C" __declspec(dllimport) int __stdcall SetProcessDPIAware(void);
 #include "render/WorldMapModal.hpp"
 #include "core/SaveManager.hpp"
 #include "render/MainMenuScreen.hpp"
+#include "render/CryptoExchangeModal.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -122,9 +123,10 @@ int main() {
     Render::TaskModal taskModal;
     Core::FacilityManager facilityManager;
     Render::WorldMapModal worldMapModal;
+    Render::CryptoExchangeModal cryptoExchangeModal;
 
     // 4. Çekirdek Simülasyon Nesneleri (Clean Code / SRP)
-    Core::EconomyManager economy(1500.0, 2400.0, "TEX");
+    Core::EconomyManager economy(1500.0, 2.40, "TEX");
 
     // Kayıt Bildirimi ve Otomatik Kayıt Durumu
     float saveToastTimer = 0.0f;
@@ -230,7 +232,9 @@ int main() {
 
         // ESC Tuşu: Modal açıksa kapat, değilse tam ekrandan küçük pencereli moda dön!
         if (IsKeyPressed(KEY_ESCAPE)) {
-            if (worldMapModal.IsOpen()) {
+            if (cryptoExchangeModal.IsOpen()) {
+                cryptoExchangeModal.Close();
+            } else if (worldMapModal.IsOpen()) {
                 worldMapModal.Close();
             } else if (taskModal.IsOpen()) {
                 taskModal.Close();
@@ -374,6 +378,11 @@ int main() {
         // Dünya Haritası Modalı Açıksa Güncelle
         if (worldMapModal.IsOpen()) {
             worldMapModal.Update(facilityManager, economy);
+        }
+
+        // Kripto Borsası ve Grafik Modalı Açıksa Güncelle
+        if (cryptoExchangeModal.IsOpen()) {
+            cryptoExchangeModal.Update(economy, taskManager);
         }
 
         // Ayarlar Modalı Açıksa Güncelle
@@ -528,7 +537,7 @@ int main() {
         const float rigX = pad + (leftW - rigBaseW) / 2.0f;
         const float rigY = contentY + 84.0f;
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && !cryptoExchangeModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
             Vector2 mouse = GetMousePosition();
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse);
@@ -541,7 +550,12 @@ int main() {
             }
         }
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
+        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && !cryptoExchangeModal.IsOpen()) {
+            // [B] veya [E] kısayolu ile Borsayı aç
+            if (IsKeyPressed(KEY_B) || IsKeyPressed(KEY_E)) {
+                cryptoExchangeModal.Open();
+            }
+
             // 1. Donanım ve Tesis Marketi
             btnBuyGPU.SetTitle(isTR ? "[MARKET] DONANIM VE TESIS" : "[STORE] HARDWARE & SITES");
             std::string gpuSub = isTR ? "Farkli Modeller, Trafo ve Tesis" : "Different Models, Power & Facilities";
@@ -591,16 +605,14 @@ int main() {
                 }
             }
 
-            // 4. Kripto Sat
-            btnSellCrypto.SetTitle(Core::LocalizationManager::Tr("BTN_SELL_CRYPTO"));
-            const double cryptoValue = economy.GetCryptoBalance() * economy.GetCryptoPrice();
-            std::string cryptoSub = (isTR ? "Bozdurulacak: " : "To Liquidate: ") + economy.FormatFiat(cryptoValue);
+            // 4. Kripto Borsa & Canlı Grafik Masası
+            btnSellCrypto.SetTitle(isTR ? "[BORSA] KRIPTO AL / SAT" : "[EXCHANGE] TRADE & CHARTS");
+            const double totalPortfolioUSD = economy.GetTotalPortfolioValueUSD();
+            std::string cryptoSub = (isTR ? "Portfoy: " : "Portfolio: ") + economy.FormatFiat(totalPortfolioUSD) + (isTR ? " (5 Coin)" : " (5 Coins)");
             btnSellCrypto.SetSubtitle(cryptoSub);
-            btnSellCrypto.SetDisabled(economy.GetCryptoBalance() <= 0.0001);
+            btnSellCrypto.SetDisabled(false);
             if (btnSellCrypto.UpdateAndCheckClick()) {
-                double soldAmountUsd = economy.GetCryptoBalance() * economy.GetCryptoPrice();
-                economy.SellCrypto(economy.GetCryptoBalance());
-                taskManager.NotifyCryptoSold(soldAmountUsd);
+                cryptoExchangeModal.Open();
             }
 
             // 4. Soğutmayı Kademeli Yükselt
@@ -797,6 +809,16 @@ int main() {
         Render::UIFrame::DrawStatBadge(pad + (3 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[MARKET]", std::string("1 ") + economy.GetCoinSymbol(), economy.FormatPrice(economy.GetCryptoPrice()), Color{170, 200, 255, 255});
         Render::UIFrame::DrawStatBadge(pad + (4 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[SPEED]", Core::LocalizationManager::Tr("BADGE_SPEED"), ssHash.str(), Color{100, 230, 255, 255});
 
+        // Wallet veya Market rozetine tıklayarak doğrudan Borsayı açma
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !settingsModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
+            Rectangle walletBadgeRec{pad + (2 * (badgeW + badgeGap)), badgeY, badgeW, badgeH};
+            Rectangle marketBadgeRec{pad + (3 * (badgeW + badgeGap)), badgeY, badgeW, badgeH};
+            Vector2 mPos = GetMousePosition();
+            if (CheckCollisionPointRec(mPos, walletBadgeRec) || CheckCollisionPointRec(mPos, marketBadgeRec)) {
+                cryptoExchangeModal.Open();
+            }
+        }
+
         btnOpenSettings.Draw();
         btnQuickSave.Draw();
         btnOpenTasks.Draw();
@@ -971,6 +993,11 @@ int main() {
         // 9. DUNYA HARITASI MODAL PENCERESI
         if (worldMapModal.IsOpen()) {
             worldMapModal.Draw(facilityManager, economy);
+        }
+
+        // 10. KRIPTO BORSA VE CANLI GRAFIK MODAL PENCERESI
+        if (cryptoExchangeModal.IsOpen()) {
+            cryptoExchangeModal.Draw(economy);
         }
 
         EndDrawing();
