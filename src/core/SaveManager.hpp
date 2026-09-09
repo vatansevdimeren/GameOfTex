@@ -10,6 +10,7 @@ class EconomyManager;
 class FacilityManager;
 class TaskManager;
 class MarketCatalog;
+class ResearchManager;
 
 struct SaveMetadata {
     std::string companyName{"Eren Mining Co."};
@@ -53,7 +54,8 @@ public:
                          const EconomyManager& economy,
                          const FacilityManager& facilityManager,
                          const TaskManager& taskManager,
-                         const MarketCatalog& marketCatalog);
+                         const MarketCatalog& marketCatalog,
+                         const ResearchManager* researchManager = nullptr);
 
     /**
      * @brief Loads the full game state from disk into live objects.
@@ -64,7 +66,8 @@ public:
                          EconomyManager& economy,
                          FacilityManager& facilityManager,
                          TaskManager& taskManager,
-                         MarketCatalog& marketCatalog);
+                         MarketCatalog& marketCatalog,
+                         ResearchManager* researchManager = nullptr);
 
     /**
      * @brief Deletes the save file for starting completely fresh.

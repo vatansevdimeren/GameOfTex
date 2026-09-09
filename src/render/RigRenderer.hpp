@@ -30,7 +30,7 @@ public:
      */
     void DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& thermalModel,
                  int posX, int posY, double animTime, const TextureManager* textureManager = nullptr,
-                 bool isBreakerTripped = false) const;
+                 bool isBreakerTripped = false, const std::string& synergyLabel = "") const;
 
     /**
      * @brief Detects if mouse clicked on an installed GPU card slot.

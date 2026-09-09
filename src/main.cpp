@@ -34,6 +34,9 @@ extern "C" __declspec(dllimport) int __stdcall GetSystemMetrics(int nIndex);
 #include "render/CryptoExchangeModal.hpp"
 #include "core/NewsManager.hpp"
 #include "render/NewsModal.hpp"
+#include "core/MultiplierManager.hpp"
+#include "core/ResearchManager.hpp"
+#include "render/ResearchModal.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -168,10 +171,13 @@ int main() {
     float autoSaveTimer = 0.0f;
     constexpr float AUTO_SAVE_INTERVAL = 45.0f;
 
+    Core::ResearchManager researchManager;
+    Render::ResearchModal researchModal;
+
     auto triggerSave = [&](const std::string& customMsg = "") {
         bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
         if (Core::SaveManager::SaveGame(Core::SaveManager::DEFAULT_SAVE_PATH,
-                                        userProfile, economy, facilityManager, taskManager, marketCatalog)) {
+                                        userProfile, economy, facilityManager, taskManager, marketCatalog, &researchManager)) {
             saveToastMessage = customMsg.empty() ? (isTR ? "[OK] OYUN BASARIYLA KAYDEDILDI" : "[OK] GAME SAVED SUCCESSFULLY") : customMsg;
             saveToastTimer = 2.5f;
             mainMenuScreen.RefreshSaveState();
@@ -191,6 +197,7 @@ int main() {
     textureManager.LoadTextures("assets/textures");
 
     Render::RigRenderer rigRenderer;
+    Render::MultiplierManager multiplierManager;
     double animTime = 0.0;
 
     // 6. İnteraktif Butonlar
@@ -226,6 +233,7 @@ int main() {
 
     Render::UIButton btnOpenSettings(Rectangle{}, "AYARLAR", "", Color{35, 42, 56, 255}, Color{0, 220, 255, 255});
     Render::UIButton btnQuickSave(Rectangle{}, "KAYDET", "F5", Color{20, 50, 36, 255}, Color{0, 255, 140, 255});
+    Render::UIButton btnOpenResearch(Rectangle{}, "[R] AR-GE", "Teknoloji & IPO", Color{30, 45, 68, 255}, Color{0, 230, 255, 255});
     Render::UIButton btnOpenTasks(Rectangle{}, "GOREVLER", "", Color{30, 40, 58, 255}, Color{255, 200, 40, 255});
     Render::UIButton btnOpenNews(Rectangle{}, "HABERLER", "", Color{30, 40, 65, 255}, Color{80, 180, 255, 255});
     Render::UIButton btnOpenWorldMap(Rectangle{}, "HARITA", "", Color{25, 45, 65, 255}, Color{0, 220, 255, 255});
@@ -253,7 +261,9 @@ int main() {
 
         // ESC Tusu: Acik modal varsa kapat (Tam ekrandan cikmak icin F11 kullanilir)
         if (IsKeyPressed(KEY_ESCAPE)) {
-            if (newsModal.IsOpen()) {
+            if (researchModal.IsOpen()) {
+                researchModal.Close();
+            } else if (newsModal.IsOpen()) {
                 newsModal.Close();
             } else if (cryptoExchangeModal.IsOpen()) {
                 cryptoExchangeModal.Close();
@@ -284,7 +294,7 @@ int main() {
                 auto action = mainMenuScreen.Update(dt);
                 if (action == Render::MainMenuAction::CONTINUE_GAME) {
                     bool ok = Core::SaveManager::LoadGame(Core::SaveManager::DEFAULT_SAVE_PATH,
-                                                          userProfile, economy, facilityManager, taskManager, marketCatalog);
+                                                          userProfile, economy, facilityManager, taskManager, marketCatalog, &researchManager);
                     if (ok) {
                         bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
                         triggerSaveToast(isTR ? "[OK] OYUN BASARIYLA YUKLENDI" : "[OK] GAME LOADED SUCCESSFULLY");
@@ -426,6 +436,11 @@ int main() {
             newsModal.Update(newsManager, taskManager);
         }
 
+        // AR-GE ve Venture IPO Modalı Açıksa Güncelle
+        if (researchModal.IsOpen()) {
+            researchModal.Update(researchManager, economy, warehouse);
+        }
+
         // Ayarlar Modalı Açıksa Güncelle
         if (settingsModal.IsOpen()) {
             auto sAct = settingsModal.Update(economy);
@@ -448,11 +463,12 @@ int main() {
         const float badgeGap = 6.0f;
         const float settingsBtnW = 76.0f;
         const float saveBtnW = 72.0f;
+        const float researchBtnW = 98.0f;
         const float taskBtnW = 106.0f;
         const float newsBtnW = 112.0f;
         const float worldMapBtnW = 98.0f;
-        const float totalBtnsW = settingsBtnW + saveBtnW + taskBtnW + newsBtnW + worldMapBtnW + (badgeGap * 4.0f);
-        const float availBadgeSpace = screenW - (pad * 2.0f) - totalBtnsW - (badgeGap * 5.0f);
+        const float totalBtnsW = settingsBtnW + saveBtnW + researchBtnW + taskBtnW + newsBtnW + worldMapBtnW + (badgeGap * 5.0f);
+        const float availBadgeSpace = screenW - (pad * 2.0f) - totalBtnsW - (badgeGap * 6.0f);
         const float badgeW = std::clamp(availBadgeSpace / 5.0f, 75.0f, 215.0f);
         const float badgeH = 56.0f;
         const float badgeY = (headerH - badgeH) / 2.0f;
@@ -464,6 +480,11 @@ int main() {
         btnQuickSave.SetBounds(Rectangle{curBtnX, badgeY, saveBtnW, badgeH});
         btnQuickSave.SetTitle(std::string("[S] ") + Core::LocalizationManager::Tr("BTN_SAVE"));
         btnQuickSave.SetSubtitle("F5");
+
+        curBtnX -= (badgeGap + researchBtnW);
+        btnOpenResearch.SetBounds(Rectangle{curBtnX, badgeY, researchBtnW, badgeH});
+        btnOpenResearch.SetTitle("[R] AR-GE");
+        btnOpenResearch.SetSubtitle("Tekno & IPO");
 
         curBtnX -= (badgeGap + taskBtnW);
         btnOpenTasks.SetBounds(Rectangle{curBtnX, badgeY, taskBtnW, badgeH});
@@ -493,12 +514,20 @@ int main() {
             btnOpenNews.SetAccentColor(Color{60, 180, 255, 255});
         }
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && !newsModal.IsOpen() && !cryptoExchangeModal.IsOpen()) {
+        const bool isAnyModalOpen = settingsModal.IsOpen() || gpuInspectionModal.IsOpen() || 
+                                    marketModal.IsOpen() || taskModal.IsOpen() || 
+                                    worldMapModal.IsOpen() || cryptoExchangeModal.IsOpen() || 
+                                    newsModal.IsOpen() || researchModal.IsOpen();
+
+        if (!isAnyModalOpen) {
             if (btnOpenSettings.UpdateAndCheckClick()) {
                 settingsModal.Open();
             }
             if (btnQuickSave.UpdateAndCheckClick() || IsKeyPressed(KEY_F5) || ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_S))) {
                 triggerSave();
+            }
+            if (btnOpenResearch.UpdateAndCheckClick() || IsKeyPressed(KEY_R)) {
+                researchModal.Open();
             }
             if (btnOpenTasks.UpdateAndCheckClick()) {
                 taskModal.Open();
@@ -528,7 +557,7 @@ int main() {
         btnTabRigDetail.SetBounds(Rectangle{pad + leftW - 246.0f, contentY + 8.0f, 116.0f, 28.0f});
         btnTabOverview.SetBounds(Rectangle{pad + leftW - 124.0f, contentY + 8.0f, 116.0f, 28.0f});
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
+        if (!isAnyModalOpen) {
             if (btnTabRigDetail.UpdateAndCheckClick()) currentViewMode = WarehouseViewMode::RIG_DETAIL;
             if (btnTabOverview.UpdateAndCheckClick()) currentViewMode = WarehouseViewMode::OVERVIEW_GRID;
 
@@ -568,7 +597,7 @@ int main() {
                 btnSellRig.SetDisabled(false);
             }
 
-            if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
+            if (!isAnyModalOpen) {
                 if (activeRig && btnToggleRigPower.UpdateAndCheckClick()) {
                     activeRig->TogglePower();
                 }
@@ -605,7 +634,7 @@ int main() {
         const float rigX = pad + std::max(0.0f, (leftW - rigBaseW) / 2.0f);
         const float rigY = contentY + 84.0f;
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && !cryptoExchangeModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
+        if (!isAnyModalOpen && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
             Vector2 mouse = GetMousePosition();
             if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 int clickedIndex = rigRenderer.GetClickedGPUIndex(static_cast<int>(rigX), static_cast<int>(rigY), activeRig->GetGPUCount(), mouse);
@@ -618,7 +647,15 @@ int main() {
             }
         }
 
-        if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && !cryptoExchangeModal.IsOpen()) {
+        // Altın Nonce (Lucky Golden Nonce) Tıklama Tespiti
+        if (!isAnyModalOpen) {
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                Vector2 mouse = GetMousePosition();
+                multiplierManager.CheckClick(mouse, economy, warehouse, marketCatalog);
+            }
+        }
+
+        if (!isAnyModalOpen) {
             // [B] veya [E] kısayolu ile Borsayı aç
             if (IsKeyPressed(KEY_B) || IsKeyPressed(KEY_E)) {
                 cryptoExchangeModal.Open();
@@ -750,7 +787,7 @@ int main() {
             btnResetBreaker.SetTitle(Core::LocalizationManager::Tr("BTN_BREAKER_RESET"));
             btnResetBreaker.SetDisabled(!powerGrid.IsBreakerTripped());
             btnResetBreaker.SetSubtitle(powerGrid.IsBreakerTripped() ? Core::LocalizationManager::Tr("BTN_BREAKER_TRIPPED") : Core::LocalizationManager::Tr("BTN_BREAKER_OK"));
-            if (btnResetBreaker.UpdateAndCheckClick() || (powerGrid.IsBreakerTripped() && IsKeyPressed(KEY_R))) {
+            if (btnResetBreaker.UpdateAndCheckClick() || (powerGrid.IsBreakerTripped() && IsKeyPressed(KEY_K))) {
                 powerGrid.ResetBreaker();
             }
         }
@@ -777,6 +814,9 @@ int main() {
             }
 
             if (fPowerGrid.IsBreakerTripped()) {
+                if (researchManager.HasSmartAutomation()) {
+                    fPowerGrid.ResetBreaker();
+                }
                 // Sartel atmis: Tesis elektrigi tamamen kesildi.
                 // Kartlar guc cekmez, isi uretilmez ve ortam pasif olarak dis sicakliga dogru sogur.
                 fThermal.Update(0.0, dt);
@@ -799,6 +839,9 @@ int main() {
 
                 // AddConsumerWatts sirasinda kapasite asildiginda sartel aninda atar
                 if (fPowerGrid.IsBreakerTripped()) {
+                    if (researchManager.HasSmartAutomation()) {
+                        fPowerGrid.ResetBreaker();
+                    }
                     // Guvenlik korumasi devreye girdi: Sartel attigi an guc kesilir, donanim yanmaz!
                     fThermal.Update(0.0, dt);
                     for (const auto& r : fWarehouse.GetAllRigs()) {
@@ -812,10 +855,10 @@ int main() {
                         activeMaxCardTemp = std::max(activeMaxCardTemp, fThermal.GetAmbientTemperature());
                     }
                 } else {
-                    const double electricityCost = fPowerGrid.CalculateCostForDuration(dt);
+                    const double electricityCost = fPowerGrid.CalculateCostForDuration(dt) * researchManager.GetPowerCostReductionMultiplier();
                     economy.DeductFiat(electricityCost);
 
-                    const double thermalLoad = warehousePower * (fPowerGrid.IsGridStrained() ? 1.15 : 1.0);
+                    const double thermalLoad = warehousePower * (fPowerGrid.IsGridStrained() ? 1.15 : 1.0) * researchManager.GetHeatReductionMultiplier();
                     fThermal.Update(thermalLoad, dt);
 
                     for (const auto& r : fWarehouse.GetAllRigs()) {
@@ -830,6 +873,9 @@ int main() {
                                     }
 
                                     if (rPowered) {
+                                        if (researchManager.HasSmartAutomation() && cardTemp >= 80.0) {
+                                            gpu->SetFanSpeedPercent(100.0);
+                                        }
                                         gpu->SetThrottled(Core::ThermalModel::IsOverheating(cardTemp));
 
                                         // Termal Guvenlik Kesicisi: Donanimin yanmamasi icin 105C esiginde
@@ -845,7 +891,15 @@ int main() {
                         }
                     }
 
-                    companyTotalMinedHashrate += fWarehouse.CalculateTotalHashrate() * fPowerGrid.GetHashrateSurgeMultiplier();
+                    double facilityHash = 0.0;
+                    for (const auto& rigPtr : fWarehouse.GetAllRigs()) {
+                        if (rigPtr && rigPtr->IsPoweredOn() && !fPowerGrid.IsBreakerTripped()) {
+                            double rigBase = rigPtr->CalculateTotalHashrate();
+                            auto synergy = multiplierManager.CalculateRigSynergy(*rigPtr, fThermal);
+                            facilityHash += rigBase * synergy.totalMultiplier;
+                        }
+                    }
+                    companyTotalMinedHashrate += facilityHash * fPowerGrid.GetHashrateSurgeMultiplier() * multiplierManager.GetGlobalHashMultiplier() * researchManager.GetHashrateMultiplier();
                 }
             }
         }
@@ -856,12 +910,14 @@ int main() {
 
         // Tüm aktif tesislerden toplanan net kazım gücü ile coin madenciliği
         if (companyTotalMinedHashrate > 0.0) {
-            economy.MineCoins(companyTotalMinedHashrate, dt);
+            economy.MineCoins(companyTotalMinedHashrate, dt * researchManager.GetProfitMultiplier());
         }
 
         economy.UpdateMarket(dt);
         newsManager.Update(dt, economy);
         taskManager.UpdateProgress(warehouse, economy, coolingManager, powerGrid, &facilityManager);
+        multiplierManager.SetSpawnArea(Rectangle{pad + 20.0f, contentY + 60.0f, leftW - 40.0f, contentH - 120.0f});
+        multiplierManager.Update(dt, economy, warehouse, thermalModel);
 
         // Otomatik Kayıt Zamanlayıcısı (Her 45 saniyede bir kaydet)
         autoSaveTimer += dt;
@@ -895,7 +951,14 @@ int main() {
 
         std::ostringstream ssCrypto, ssHash, ssTemp;
         ssCrypto << std::fixed << std::setprecision(4) << economy.GetCryptoBalance() << " " << economy.GetCoinSymbol();
-        ssHash << std::fixed << std::setprecision(1) << warehouse.CalculateTotalHashrate() << " MH/s";
+
+        double globalHashMult = multiplierManager.GetGlobalHashMultiplier() * researchManager.GetHashrateMultiplier();
+        double displayHash = warehouse.CalculateTotalHashrate() * globalHashMult;
+        ssHash << std::fixed << std::setprecision(1) << displayHash << " MH/s";
+        if (globalHashMult > 1.0) {
+            ssHash << " [x" << std::fixed << std::setprecision(1) << globalHashMult << "]";
+        }
+
         ssTemp << std::fixed << std::setprecision(1) << thermalModel.GetAmbientTemperature() << " C";
 
         Render::UIFrame::DrawStatBadge(pad + (0 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, currentAvatar, Core::LocalizationManager::Tr("BADGE_COMPANY"), userProfile.GetCompanyName(), Color{0, 230, 255, 255});
@@ -905,7 +968,7 @@ int main() {
         Render::UIFrame::DrawStatBadge(pad + (4 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[SPEED]", Core::LocalizationManager::Tr("BADGE_SPEED"), ssHash.str(), Color{100, 230, 255, 255});
 
         // Wallet veya Market rozetine tıklayarak doğrudan Borsayı açma
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !settingsModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !isAnyModalOpen) {
             Rectangle walletBadgeRec{pad + (2 * (badgeW + badgeGap)), badgeY, badgeW, badgeH};
             Rectangle marketBadgeRec{pad + (3 * (badgeW + badgeGap)), badgeY, badgeW, badgeH};
             Vector2 mPos = GetMousePosition();
@@ -916,7 +979,9 @@ int main() {
 
         btnOpenSettings.Draw();
         btnQuickSave.Draw();
+        btnOpenResearch.Draw();
         btnOpenTasks.Draw();
+        btnOpenNews.Draw();
         btnOpenWorldMap.Draw();
 
         // Kaydedildi / Yüklendi Bildirim Rozeti (Save Toast)
@@ -944,6 +1009,9 @@ int main() {
             float tW = Render::UIFrame::MeasureTextCustom(spikeText, 12.0f, true);
             Render::UIFrame::DrawTextCustom(spikeText, (screenW - tW) * 0.5f, headerH + 1.0f, 12.0f, WHITE, true);
         }
+
+        // Aktif Frenzy Banner veya Airdrop Toast Bildirimi
+        multiplierManager.DrawHUDNotification(screenW, headerH);
 
         // 2. SOL PANEL: VIEWPORT ÇERÇEVESİ (SEÇİLİ RİG DETAYI VEYA DEPO KUŞBAKIŞI)
         const Rectangle viewportRect{pad, contentY, leftW, contentH};
@@ -977,7 +1045,8 @@ int main() {
 
             if (activeRig) {
                 shaderManager.BeginShader();
-                rigRenderer.DrawRig(*activeRig, thermalModel, static_cast<int>(rigX), static_cast<int>(rigY), animTime, &textureManager, powerGrid.IsBreakerTripped());
+                auto synergy = multiplierManager.CalculateRigSynergy(*activeRig, thermalModel);
+                rigRenderer.DrawRig(*activeRig, thermalModel, static_cast<int>(rigX), static_cast<int>(rigY), animTime, &textureManager, powerGrid.IsBreakerTripped(), synergy.synergyLabel);
                 shaderManager.EndShader();
             }
 
@@ -1036,6 +1105,9 @@ int main() {
                 currentViewMode = WarehouseViewMode::RIG_DETAIL;
             }
         }
+
+        // Altın Nonce (Lucky Golden Nonce) ve Parçacık Animasyonunu Çiz
+        multiplierManager.Draw(static_cast<float>(animTime));
 
         // 3. SAĞ PANEL: KONTROL VE YÜKSELTME MERKEZİ
         const Rectangle managementRect{rightX, contentY, rightW, contentH};
@@ -1098,7 +1170,12 @@ int main() {
             newsModal.Draw(newsManager);
         }
 
-        // 12. HABER BILDIRIM TOASTI (En ustte son haber uyarisi)
+        // 12. AR-GE VE VENTURE IPO MODAL PENCERESI
+        if (researchModal.IsOpen()) {
+            researchModal.Draw(researchManager, economy);
+        }
+
+        // 13. HABER BILDIRIM TOASTI (En ustte son haber uyarisi)
         if (newsManager.HasRecentToast() && !newsModal.IsOpen()) {
             std::string toastStr = newsManager.GetLatestToastMessage(isTR);
             float toastW = Render::UIFrame::MeasureTextCustom(toastStr.c_str(), 13.0f, true) + 36.0f;
@@ -1122,7 +1199,7 @@ int main() {
     }
 
     // 8. Cikista Otomatik Kayit ve Temizlik
-    Core::SaveManager::SaveGame(Core::SaveManager::DEFAULT_SAVE_PATH, userProfile, economy, facilityManager, taskManager, marketCatalog);
+    Core::SaveManager::SaveGame(Core::SaveManager::DEFAULT_SAVE_PATH, userProfile, economy, facilityManager, taskManager, marketCatalog, &researchManager);
     textureManager.Unload();
     if (fontRegular.texture.id > 0) {
         UnloadFont(fontRegular);

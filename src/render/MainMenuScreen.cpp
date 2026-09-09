@@ -90,12 +90,12 @@ MainMenuAction MainMenuScreen::Update(float dt) {
         return MainMenuAction::NONE;
     }
 
-    // Menü Kartı Boyutlandırması
-    const float menuW = std::clamp(screenW * 0.38f, 440.0f, 520.0f);
-    const float btnH = 58.0f;
-    const float btnGap = 12.0f;
+    // Menü Kartı Boyutlandırması (Daha Ferah ve Belirgin Butonlar)
+    const float menuW = std::clamp(screenW * 0.42f, 520.0f, 640.0f);
+    const float btnH = 68.0f;
+    const float btnGap = 14.0f;
     const float menuX = (screenW - menuW) * 0.5f;
-    const float startY = screenH * 0.44f;
+    const float startY = screenH * 0.41f;
 
     m_btnContinue.SetBounds(Rectangle{menuX, startY + (0 * (btnH + btnGap)), menuW, btnH});
     m_btnNewGame.SetBounds(Rectangle{menuX, startY + (1 * (btnH + btnGap)), menuW, btnH});
@@ -177,29 +177,29 @@ void MainMenuScreen::Draw() const {
     }
 
     // 3. Merkez Başlık ve Cyber Logo
-    const float titleY = screenH * 0.16f;
+    const float titleY = screenH * 0.14f;
     std::string mainTitle = "GAMEOFTEX";
-    float titleW = UIFrame::MeasureTextCustom(mainTitle, 62.0f, true);
+    float titleW = UIFrame::MeasureTextCustom(mainTitle, 72.0f, true);
     float titleX = (screenW - titleW) * 0.5f;
 
     // Glowing Neon Aura
     float pulse = (std::sin(m_animTime * 2.5f) + 1.0f) * 0.5f;
     Color glowColor{0, 220, 255, static_cast<unsigned char>(40 + pulse * 60)};
     for (int offset = -3; offset <= 3; offset += 3) {
-        UIFrame::DrawTextCustom(mainTitle, titleX + offset, titleY + offset, 62.0f, glowColor, true);
+        UIFrame::DrawTextCustom(mainTitle, titleX + offset, titleY + offset, 72.0f, glowColor, true);
     }
-    UIFrame::DrawTextCustom(mainTitle, titleX, titleY, 62.0f, Color{0, 240, 255, 255}, true);
+    UIFrame::DrawTextCustom(mainTitle, titleX, titleY, 72.0f, Color{0, 240, 255, 255}, true);
 
     // Alt Başlık
     std::string subTitle = "CRYPTO MINING & ENERGY EMPIRE TYCOON";
-    float subW = UIFrame::MeasureTextCustom(subTitle, 20.0f, true);
+    float subW = UIFrame::MeasureTextCustom(subTitle, 22.0f, true);
     float subX = (screenW - subW) * 0.5f;
-    UIFrame::DrawTextCustom(subTitle, subX, titleY + 70.0f, 20.0f, Color{255, 200, 40, 255}, true);
+    UIFrame::DrawTextCustom(subTitle, subX, titleY + 76.0f, 22.0f, Color{255, 200, 40, 255}, true);
 
     // Versiyon Rozeti
-    std::string verTag = "[ENTERPRISE EDITION v1.9 - AUTOSAVE & PERSISTENCE ENGINE]";
-    float verW = UIFrame::MeasureTextCustom(verTag, 13.0f, false);
-    UIFrame::DrawTextCustom(verTag, (screenW - verW) * 0.5f, titleY + 102.0f, 13.0f, Color{130, 160, 200, 255}, false);
+    std::string verTag = "[ENTERPRISE EDITION v2.2 - AUTOSAVE & PERSISTENCE ENGINE]";
+    float verW = UIFrame::MeasureTextCustom(verTag, 15.0f, false);
+    UIFrame::DrawTextCustom(verTag, (screenW - verW) * 0.5f, titleY + 110.0f, 15.0f, Color{130, 160, 200, 255}, false);
 
     // 4. Menü Butonları
     m_btnContinue.Draw();
@@ -209,8 +209,8 @@ void MainMenuScreen::Draw() const {
 
     // 5. Alt Bilgi
     std::string footerText = "Gelismis Termal Fizik, Gercek Zamanli Enerji Sebekesi ve Kripto Piyasasi Simulatöru";
-    float fW = UIFrame::MeasureTextCustom(footerText, 14.0f, false);
-    UIFrame::DrawTextCustom(footerText, (screenW - fW) * 0.5f, screenH - 35.0f, 14.0f, Color{90, 110, 140, 255}, false);
+    float fW = UIFrame::MeasureTextCustom(footerText, 16.0f, false);
+    UIFrame::DrawTextCustom(footerText, (screenW - fW) * 0.5f, screenH - 38.0f, 16.0f, Color{100, 125, 160, 255}, false);
 
     // 6. Sıfırlama Onay Diyaloğu (Açıksa)
     if (m_showConfirmNewGame) {

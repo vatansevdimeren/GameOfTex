@@ -10,6 +10,7 @@
 #include "PowerGrid.hpp"
 #include "CoolingManager.hpp"
 #include "ThermalModel.hpp"
+#include "ResearchManager.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -134,7 +135,8 @@ bool SaveManager::SaveGame(const std::string& filepath,
                            const EconomyManager& economy,
                            const FacilityManager& facilityManager,
                            const TaskManager& taskManager,
-                           const MarketCatalog& marketCatalog) {
+                           const MarketCatalog& marketCatalog,
+                           const ResearchManager* researchManager) {
     std::ofstream file(filepath, std::ios::trunc);
     if (!file.is_open()) return false;
 
@@ -270,6 +272,21 @@ bool SaveManager::SaveGame(const std::string& filepath,
         file << tPrefix << "claimed=" << (tasks[i].isClaimed ? "1" : "0") << "\n";
         file << tPrefix << "progress=" << tasks[i].currentProgress << "\n";
     }
+    file << "\n";
+
+    // 6. RESEARCH & PRESTIGE
+    if (researchManager) {
+        file << "[RESEARCH]\n";
+        file << "ventureShares=" << researchManager->GetVentureShares() << "\n";
+        file << "prestigeCount=" << researchManager->GetPrestigeCount() << "\n";
+        const auto& techs = researchManager->GetTechnologies();
+        file << "techCount=" << techs.size() << "\n";
+        for (size_t i = 0; i < techs.size(); ++i) {
+            file << "tech_" << i << "_id=" << techs[i].id << "\n";
+            file << "tech_" << i << "_level=" << techs[i].currentLevel << "\n";
+        }
+        file << "\n";
+    }
 
     return true;
 }
@@ -279,7 +296,8 @@ bool SaveManager::LoadGame(const std::string& filepath,
                            EconomyManager& economy,
                            FacilityManager& facilityManager,
                            TaskManager& taskManager,
-                           MarketCatalog& marketCatalog) {
+                           MarketCatalog& marketCatalog,
+                           ResearchManager* researchManager) {
     if (!HasSaveFile(filepath)) return false;
 
     auto kv = ParseKeyValueFile(filepath);
@@ -415,6 +433,25 @@ bool SaveManager::LoadGame(const std::string& filepath,
             bool claimed = GetValBool(kv, tPrefix + "claimed", false);
             double prog = GetValDouble(kv, tPrefix + "progress", 0.0);
             taskManager.SetTaskState(tId, comp, claimed, prog);
+        }
+    }
+
+    // 6. RESEARCH & PRESTIGE
+    if (researchManager) {
+        int shares = GetValInt(kv, "RESEARCH.ventureShares", 0);
+        int prestige = GetValInt(kv, "RESEARCH.prestigeCount", 0);
+        researchManager->SetVentureShares(shares);
+        researchManager->SetPrestigeCount(prestige);
+
+        size_t techCount = static_cast<size_t>(GetValInt(kv, "RESEARCH.techCount", 0));
+        for (size_t i = 0; i < techCount; ++i) {
+            std::string tId = GetVal(kv, "RESEARCH.tech_" + std::to_string(i) + "_id");
+            int lvl = GetValInt(kv, "RESEARCH.tech_" + std::to_string(i) + "_level", 0);
+            if (tId == "tech_bios") researchManager->SetTechLevel(TechType::CUSTOM_BIOS, lvl);
+            else if (tId == "tech_ai_pool") researchManager->SetTechLevel(TechType::AI_POOL_ROUTER, lvl);
+            else if (tId == "tech_immersion") researchManager->SetTechLevel(TechType::IMMERSION_NANO, lvl);
+            else if (tId == "tech_green_power") researchManager->SetTechLevel(TechType::GREEN_POWER, lvl);
+            else if (tId == "tech_automation") researchManager->SetTechLevel(TechType::SMART_AUTOMATION, lvl);
         }
     }
 

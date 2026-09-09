@@ -1040,3 +1040,55 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   2. **Üst HUD Rozetleri:** `UIFrame::DrawStatBadge` etiket fontu 13px (ölçekle ~15px), değer fontu 18/21px (ölçekle ~24px) seviyesine çıkarıldı. Dikey hizalama optimize edildi.
   3. **Buton Tipografisi:** `UIButton::Draw` içerisindeki başlık fontları 13.5px - 18.5px aralığına, alt başlık fontları 10.5px - 12.5px aralığına yükseltildi. Metin genişlik taşma kontrolleri dinamik tutularak butonların sınırlarından taşması engellendi.
 
+---
+
+## 24. IDLE ÇARPAN MEKANİKLERİ, ŞANSLI ALTIN NONCE, RİG SİNERJİLERİ, AR-GE TEKNOLOJİ AĞACI & VENTURE IPO (PRESTIGE) SİSTEMİ (v2.3.0)
+
+### 24.1. Başlangıç Menüsü ve Giriş Ekranı Tipografi / Kutu Boyutlarının Büyütülmesi
+* **Kullanıcı Talebi:** *"hala ilk basta oyun basladığında cok kücük yazı fontları kututucklar oluyor bunlara birer ayar cekmen gerekicek kral tamam mdıır?!"*
+* **Uygulanan Çözümler (`MainMenuScreen.cpp`, `LoginScreen.cpp`, `UIFrame.hpp`, `UIFrame.cpp`):**
+  1. **Global Ölçek:** `UIFrame::s_uiScale` taban değeri `1.25f`'e çekildi. Kart başlıkları (`DrawCard`) 16px'den 20px'e, metin kutuları (`DrawTextInput`) 16px'den 22px'e çıkarıldı.
+  2. **Ana Menü (`MainMenuScreen.cpp`):**
+     - Başlık "GAMEOFTEX" fontu 54px'den 72px'e çıkarıldı.
+     - Alt başlık ("YENI NESIL KRIPTO MADENCILIK SIMULASYONU") 16px'den 22px'e büyütüldü.
+     - Menü buton yükseklikleri 58px'den 68px'e, buton genişliği 520px-640px aralığına çıkarıldı. Buton başlıkları 22px, alt yazıları 15px yapıldı.
+  3. **Şirket Kurulum / Giriş Ekranı (`LoginScreen.cpp`):**
+     - Merkez modal kart genişliği 620-800px, yüksekliği 620-780px aralığına genişletildi.
+     - Şirket adı girdi kutusu yüksekliği 60px'e ve fontu 22px'e çıkarıldı.
+     - Avatar seçim kartları 82px yüksekliğe çıkarıldı; ikonlar 22px ve açıklamalar 15px olarak büyütüldü.
+     - "MADENCİLİĞE BAŞLA" aksiyon butonu 68px yüksekliğe ve 30px devasa fonta ulaştırıldı.
+
+### 24.2. Şanslı Altın Nonce & Çılgınlık Çarpan Motoru (MultiplierManager)
+* **Kullanıcı Talebi:** *"IDLE oyunlarında carpan atan bazı seyler vardır bizde buna benzer seyler ekeleybiliriz sen ne diyorsun kral"*
+* **Mimari ve İşleyiş (`MultiplierManager.hpp` / `.cpp`):**
+  1. **Doğal Nonce Doğuşu:** Depo görünümü (viewport) alanında her 40-75 saniyede bir parıldayan, hafifçe süzülen altın bir madencilik noncesi (Golden Nonce) belirir.
+  2. **Etkileşim:** Oyuncu altın nonce'a tıkladığında altın parçacık patlaması eşliğinde 4 farklı Çılgınlık (Frenzy) modundan biri rastgele tetiklenir:
+     - **Turbo Hash Hızı (TURBO HASH):** Tüm riglerin kazım gücü 30 saniye boyunca tam **5.0 katına** (`x5.0`) fırlar.
+     - **Boğa Rallisi (BULL RUN):** Borsadaki tüm coin fiyatları 25 saniye boyunca anında **+%80 primlenir**.
+     - **Süperiletken Soğutma (SUPERCONDUCTOR):** 40 saniye boyunca rig sıcaklıkları ve ortam ısısı minimum seviyede kilitlenir; kartlar sıfır ısınmayla çalışır.
+     - **Kripto Fon Airdrop (AIRDROP):** Şirket kasasına anında net varlığın %15'i (veya min $1.500) nakit hibe edilir.
+  3. **Canlı HUD Banner:** Frenzy aktifken üst HUD'ın hemen altında geri sayımlı animasyonlu çılgınlık çubuğu görünür.
+
+### 24.3. Donanım ve Rig Sinerjileri (Rig Synergy Multipliers)
+* **Özellik:** Oyuncunun rig yapılandırmasını optimize etmesini ödüllendiren dinamik donanım komboları eklendi:
+  - **6x Kart Takım Kombosu (`[6x KOMBO +%25]`):** Bir rig içerisindeki 6 slotun tamamı aynı GPU modelinden oluştuğunda rigin kazım gücüne **+%25 sinerji çarpanı** eklenir.
+  - **Kriyojenik Soğukluk Bonusu (`[KRIYO +%15]`):** Rig ortalama sıcaklığı 60°C'nin altında tutulabildiğinde **+%15 saf verim çarpanı** kazanılır.
+  - **Eko Güç Dengesi (`[EKO GUC +%10]`):** PSU yükü %70'in altında kaldığında optimum gerilimden dolayı **+%10 hashrate bonusu** verilir.
+* **Görselleştirme (`RigRenderer.cpp`):** Rig üzerinde aktif sinerjiler altın sarısı / neon yeşil canlı rozetler (`[6x KOMBO +%25]`, `[KRIYO +%15]`) halinde çizilir.
+
+### 24.4. AR-GE Teknoloji Ağacı & Venture IPO (Prestige) Sistemi
+* **Mimari ve İşleyiş (`ResearchManager.hpp` / `.cpp`, `ResearchModal.hpp` / `.cpp`):**
+  1. **Üst HUD [R] AR-GE Butonu:** Üst panelde `[R] AR-GE (Tekno & IPO)` butonu ve klavye `[R]` kısayolu eklendi.
+  2. **Geliştirilebilir 5 Kalıcı Teknoloji:**
+     - **Özel BIOS & Firmware:** Kademe başına +%10 (Maks +%50) küresel hashrate artışı.
+     - **Yapay Zeka Havuz Yönlendirici:** Kademe başına +%12 (Maks +%60) kazılan coin başına kar artışı.
+     - **Grafen Nano-Termal Soğutma:** Kademe başına -%8 (Maks -%40) ısı üretimi düşüşü.
+     - **Yeşil Enerji PPA Sözleşmesi:** Kademe başına -%10 (Maks -%50) elektrik faturası indirimi.
+     - **Akıllı Tesis Otomasyonu:** Atan şalteri anında otomatik kaldırır ve aşırı ısınan kartların fanlarını anında %100'e getirir.
+  3. **Venture IPO / Şirket Halka Arzı (Prestige):**
+     - Oyuncunun toplam net serveti $50.000'ı aştığında şirket halka arz edilebilir (`Prestige`).
+     - Halka arzda nakit ve donanımlar sıfırlanırken, şirketin değerine göre kalıcı **Girişim Hisseleri (Venture Shares)** kazanılır.
+     - Sahip olunan her hisse, sonraki tüm oyunlarda **kalıcı +%5 kazım hızı ve +%5 borsa kazanç çarpanı** sağlar (katlanarak büyüyen Idle Tycoon döngüsü).
+  4. **Disk Kaydı:** AR-GE seviyeleri ve Girişim Hisseleri `savegame.dat` dosyasına `[RESEARCH]` başlığı altında kaydedilir ve oyundan çıkıp girildiğinde korunur.
+
+

@@ -143,7 +143,7 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
 
 void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& thermalModel,
                          int posX, int posY, double animTime, const TextureManager* textureManager,
-                         bool isBreakerTripped) const {
+                         bool isBreakerTripped, const std::string& synergyLabel) const {
     constexpr int rigWidth = 720;
     constexpr int rigHeight = 320;
 
@@ -223,6 +223,15 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
             DrawRectangleLines(cardX, gpuY, 90, 220, Color{45, 50, 60, 180});
             UIFrame::DrawTextCustom("EMPTY", static_cast<float>(cardX + 22), static_cast<float>(gpuY + 100), 14.0f, Color{80, 90, 105, 255}, false);
         }
+    }
+
+    // Kasa Sinerji ve Kombo Rozeti (Synergy Badges)
+    if (!synergyLabel.empty()) {
+        float synW = UIFrame::MeasureTextCustom(synergyLabel, 12.5f, true) + 16.0f;
+        Rectangle synRec{static_cast<float>(posX + 24), static_cast<float>(posY + rigHeight - 20), synW, 20.0f};
+        DrawRectangleRounded(synRec, 0.3f, 4, Color{36, 30, 10, 230});
+        DrawRectangleRoundedLines(synRec, 0.3f, 4, 1.2f, Color{255, 215, 0, 255});
+        UIFrame::DrawTextCustom(synergyLabel, synRec.x + 8.0f, synRec.y + 3.0f, 12.5f, Color{255, 225, 60, 255}, true);
     }
 }
 

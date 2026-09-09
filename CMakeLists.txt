@@ -40,6 +40,8 @@ add_executable(GameOfTex
     src/core/UserProfile.cpp
     src/core/Localization.hpp
     src/core/Localization.cpp
+    src/core/MultiplierManager.hpp
+    src/core/MultiplierManager.cpp
     src/render/ShaderManager.hpp
     src/render/ShaderManager.cpp
     src/render/TextureManager.hpp
@@ -78,6 +80,10 @@ add_executable(GameOfTex
     src/core/NewsManager.cpp
     src/render/NewsModal.hpp
     src/render/NewsModal.cpp
+    src/core/ResearchManager.hpp
+    src/core/ResearchManager.cpp
+    src/render/ResearchModal.hpp
+    src/render/ResearchModal.cpp
 )
 
 target_include_directories(GameOfTex PRIVATE

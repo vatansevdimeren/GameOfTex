@@ -69,12 +69,12 @@ void UIFrame::DrawCard(Rectangle bounds, const std::string& title, Color accent)
     // Kart başlığı varsa üst bant çiz
     if (!title.empty()) {
         DrawRectangle(static_cast<int>(bounds.x + 16), static_cast<int>(bounds.y + 16),
-                      4, 20, accent);
+                      4, 24, accent);
 
-        DrawTextCustom(title, bounds.x + 28, bounds.y + 14, 18.0f, RAYWHITE, true);
+        DrawTextCustom(title, bounds.x + 28, bounds.y + 14, 20.0f, RAYWHITE, true);
 
-        DrawLine(static_cast<int>(bounds.x + 16), static_cast<int>(bounds.y + 44),
-                 static_cast<int>(bounds.x + bounds.width - 16), static_cast<int>(bounds.y + 44),
+        DrawLine(static_cast<int>(bounds.x + 16), static_cast<int>(bounds.y + 46),
+                 static_cast<int>(bounds.x + bounds.width - 16), static_cast<int>(bounds.y + 46),
                  Color{38, 46, 62, 255});
     }
 }
@@ -141,17 +141,17 @@ void UIFrame::DrawTextInput(Rectangle bounds, const std::string& text, bool isAc
     DrawRectangleRoundedLines(bounds, 0.15f, 6, 2.0f, border);
 
     if (text.empty()) {
-        DrawTextCustom(placeholder, bounds.x + 16, bounds.y + (bounds.height / 2.0f) - 10.0f, 20.0f, GRAY, false);
+        DrawTextCustom(placeholder, bounds.x + 16, bounds.y + (bounds.height / 2.0f) - 11.0f, 22.0f, GRAY, false);
     } else {
-        DrawTextCustom(text, bounds.x + 16, bounds.y + (bounds.height / 2.0f) - 10.0f, 20.0f, RAYWHITE, true);
+        DrawTextCustom(text, bounds.x + 16, bounds.y + (bounds.height / 2.0f) - 11.0f, 22.0f, RAYWHITE, true);
     }
 
     // Yanıp sönen imleç (Cursor)
     if (isActive) {
-        float textWidth = MeasureTextCustom(text, 20.0f, true);
+        float textWidth = MeasureTextCustom(text, 22.0f, true);
         DrawRectangle(static_cast<int>(bounds.x + 18 + textWidth),
-                      static_cast<int>(bounds.y + 12),
-                      3, static_cast<int>(bounds.height - 24), Color{0, 230, 255, 255});
+                      static_cast<int>(bounds.y + 10),
+                      3, static_cast<int>(bounds.height - 20), Color{0, 230, 255, 255});
     }
 }
 

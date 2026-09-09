@@ -23,29 +23,29 @@ LoginAction LoginScreen::Update(Core::UserProfile& profile) {
     const float screenW = static_cast<float>(GetScreenWidth());
     const float screenH = static_cast<float>(GetScreenHeight());
 
-    // Dinamik responsive ve ortalanmış kart boyutları
-    const float cardW = std::clamp(screenW * 0.48f, 560.0f, 720.0f);
-    const float cardH = std::clamp(screenH * 0.82f, 580.0f, 720.0f);
+    // Dinamik responsive ve ortalanmış kart boyutları (Daha Ferah ve Belirgin)
+    const float cardW = std::clamp(screenW * 0.52f, 620.0f, 800.0f);
+    const float cardH = std::clamp(screenH * 0.86f, 620.0f, 780.0f);
     const float cardX = (screenW - cardW) / 2.0f;
     const float cardY = (screenH - cardH) / 2.0f;
 
     const float innerX = cardX + 45.0f;
     const float innerW = cardW - 90.0f;
 
-    // Dinamik koordinatlar
-    m_inputBoxRect = Rectangle{innerX, cardY + 295.0f, innerW, 52.0f};
+    // Dinamik koordinatlar (Daha yüksek giriş kutusu ve avatar butonları)
+    m_inputBoxRect = Rectangle{innerX, cardY + 285.0f, innerW, 60.0f};
 
     const float avatarW = (innerW - 24.0f) / 3.0f;
-    const float avatarH = 70.0f;
-    const float avatarY = cardY + 405.0f;
+    const float avatarH = 82.0f;
+    const float avatarY = cardY + 412.0f;
     m_avatar1Rect = Rectangle{innerX, avatarY, avatarW, avatarH};
     m_avatar2Rect = Rectangle{innerX + avatarW + 12.0f, avatarY, avatarW, avatarH};
     m_avatar3Rect = Rectangle{innerX + (avatarW * 2.0f) + 24.0f, avatarY, avatarW, avatarH};
 
-    const float cancelW = 120.0f;
-    const float submitW = innerW - cancelW - 12.0f;
-    m_submitButton.SetBounds(Rectangle{innerX, cardY + cardH - 85.0f, submitW, 60.0f});
-    m_btnCancel.SetBounds(Rectangle{innerX + submitW + 12.0f, cardY + cardH - 85.0f, cancelW, 60.0f});
+    const float cancelW = 140.0f;
+    const float submitW = innerW - cancelW - 14.0f;
+    m_submitButton.SetBounds(Rectangle{innerX, cardY + cardH - 92.0f, submitW, 68.0f});
+    m_btnCancel.SetBounds(Rectangle{innerX + submitW + 14.0f, cardY + cardH - 92.0f, cancelW, 68.0f});
 
     Vector2 mouse = GetMousePosition();
 
@@ -105,8 +105,8 @@ void LoginScreen::Draw() const {
     }
 
     // Dinamik ortalanmış kart
-    const float cardW = std::clamp(screenW * 0.48f, 560.0f, 720.0f);
-    const float cardH = std::clamp(screenH * 0.82f, 580.0f, 720.0f);
+    const float cardW = std::clamp(screenW * 0.52f, 620.0f, 800.0f);
+    const float cardH = std::clamp(screenH * 0.86f, 620.0f, 780.0f);
     const float cardX = (screenW - cardW) / 2.0f;
     const float cardY = (screenH - cardH) / 2.0f;
 
@@ -116,21 +116,21 @@ void LoginScreen::Draw() const {
     UIFrame::DrawCard(Rectangle{cardX, cardY, cardW, cardH}, "YENI PROFIL VE HESAP OLUSTURMA", Color{0, 220, 255, 255});
 
     // Büyük ve okunaklı Başlıklar
-    UIFrame::DrawTextCustom("GameOfTex: Crypto & Energy Tycoon", innerX, cardY + 65.0f, 26.0f, RAYWHITE, true);
-    UIFrame::DrawTextCustom("Kendi Madencilik ve Enerji Imparatorlugunu Kur!", innerX, cardY + 105.0f, 16.0f, Color{140, 160, 190, 255}, false);
+    UIFrame::DrawTextCustom("GameOfTex: Crypto & Energy Tycoon", innerX, cardY + 62.0f, 30.0f, RAYWHITE, true);
+    UIFrame::DrawTextCustom("Kendi Madencilik ve Enerji Imparatorlugunu Kur!", innerX, cardY + 105.0f, 18.0f, Color{140, 160, 190, 255}, false);
 
     // +$1,000 Bonus Kutusu
-    Rectangle bonusBadge{innerX, cardY + 145.0f, innerW, 56.0f};
+    Rectangle bonusBadge{innerX, cardY + 142.0f, innerW, 60.0f};
     DrawRectangleRounded(bonusBadge, 0.2f, 6, Color{16, 45, 35, 240});
     DrawRectangleRoundedLines(bonusBadge, 0.2f, 6, 1.8f, Color{0, 255, 150, 255});
-    UIFrame::DrawTextCustom("[HEDIYE] HESAP ACILIS BONUSA: +$1,000 NAKIT", innerX + 20.0f, cardY + 162.0f, 18.0f, Color{0, 255, 150, 255}, true);
+    UIFrame::DrawTextCustom("[HEDIYE] HESAP ACILIS BONUSA: +$1,000 NAKIT", innerX + 20.0f, cardY + 160.0f, 20.0f, Color{0, 255, 150, 255}, true);
 
     // Şirket Adı Başlığı ve Giriş Kutusu
-    UIFrame::DrawTextCustom("MADENCI / SIRKET ADINIZ:", innerX, cardY + 265.0f, 15.0f, Color{180, 195, 220, 255}, true);
+    UIFrame::DrawTextCustom("MADENCI / SIRKET ADINIZ:", innerX, cardY + 256.0f, 17.0f, Color{180, 195, 220, 255}, true);
     UIFrame::DrawTextInput(m_inputBoxRect, m_inputText, m_inputActive, "Sirket adinizi yazin...");
 
     // Avatar Seçimi
-    UIFrame::DrawTextCustom("PROFIL ROZETI / AVATAR SECIN:", innerX, cardY + 375.0f, 15.0f, Color{180, 195, 220, 255}, true);
+    UIFrame::DrawTextCustom("PROFIL ROZETI / AVATAR SECIN:", innerX, cardY + 380.0f, 17.0f, Color{180, 195, 220, 255}, true);
 
     auto drawAvatarOption = [&](Rectangle rect, int index, const char* icon, const char* label) {
         bool selected = (m_selectedAvatar == index);
@@ -140,8 +140,8 @@ void LoginScreen::Draw() const {
         DrawRectangleRounded(rect, 0.2f, 6, fill);
         DrawRectangleRoundedLines(rect, 0.2f, 6, selected ? 2.5f : 1.2f, border);
 
-        UIFrame::DrawTextCustom(icon, rect.x + 14.0f, rect.y + 12.0f, 18.0f, selected ? Color{0, 230, 255, 255} : LIGHTGRAY, true);
-        UIFrame::DrawTextCustom(label, rect.x + 14.0f, rect.y + 38.0f, 13.0f, selected ? WHITE : GRAY, false);
+        UIFrame::DrawTextCustom(icon, rect.x + 16.0f, rect.y + 14.0f, 22.0f, selected ? Color{0, 230, 255, 255} : LIGHTGRAY, true);
+        UIFrame::DrawTextCustom(label, rect.x + 16.0f, rect.y + 46.0f, 15.0f, selected ? WHITE : GRAY, false);
     };
 
     drawAvatarOption(m_avatar1Rect, 0, "[SIBER]", "Tech Hacker");
