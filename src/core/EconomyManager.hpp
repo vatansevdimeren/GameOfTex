@@ -133,6 +133,7 @@ public:
     void SetCryptoBalance(double balance);
     void SetCryptoPrice(double price);
     void SetCoinBalance(const std::string& coinId, double balance);
+    void AddCoinBalance(const std::string& coinId, double amount);
     void SetCoinPrice(const std::string& coinId, double price);
 
     // Market simulation & Events

@@ -400,6 +400,7 @@ int main() {
                     if (targetRig && targetRig->GetCPUName() != model->name) {
                         if (economy.DeductFiat(model->priceUSD)) {
                             targetRig->InstallCPU(model->name, model->hashrateKH, model->powerWatts);
+                            taskManager.NotifyCPUPurchased();
                         }
                     }
                 }
@@ -632,6 +633,7 @@ int main() {
                     double upgCost = activeRig->GetNextRigUpgradeCost();
                     if (economy.DeductFiat(upgCost)) {
                         activeRig->UpgradeRigFrame();
+                        taskManager.NotifyRigFrameUpgraded();
                     }
                 }
                 if (activeRig && btnToggleRigPower.UpdateAndCheckClick()) {

@@ -246,6 +246,31 @@ void EconomyManager::InitCoins(double initialTexPrice) {
         rtm.isCPUCoin = true;
         m_coins.push_back(std::move(rtm));
     }
+
+    // 8. SOL - Solana
+    {
+        CryptoCoin sol;
+        sol.id = "SOL";
+        sol.name = "Solana";
+        sol.symbol = "SOL";
+        sol.algorithm = "Proof-of-History";
+        sol.unit = "MH/s";
+        sol.balance = 0.0;
+        sol.basePriceUSD = 145.00;
+        sol.priceUSD = sol.basePriceUSD;
+        sol.baseDifficulty = 3800000.0;
+        sol.difficulty = sol.baseDifficulty;
+        sol.blockReward = 1.5;
+        sol.high24h = 154.50;
+        sol.low24h = 138.20;
+        sol.volume24hUSD = 125000000.0;
+        sol.candles = generateInitialCandles(sol.basePriceUSD, 1.65, sol.priceHistory);
+        sol.currentCandle = Candle{static_cast<float>(sol.priceUSD), static_cast<float>(sol.priceUSD), static_cast<float>(sol.priceUSD), static_cast<float>(sol.priceUSD), 0.0f};
+        sol.profitabilityMultiplier = 1.0;
+        sol.requiredTier = 2;
+        sol.isUnlocked = true;
+        m_coins.push_back(std::move(sol));
+    }
 }
 
 double EconomyManager::GetFiatBalance() const {
@@ -460,6 +485,14 @@ void EconomyManager::SetCoinBalance(const std::string& coinId, double balance) {
     CryptoCoin* coin = GetCoinById(coinId);
     if (coin) {
         coin->balance = std::max(0.0, balance);
+    }
+}
+
+void EconomyManager::AddCoinBalance(const std::string& coinId, double amount) {
+    if (amount <= 0.0) return;
+    CryptoCoin* coin = GetCoinById(coinId);
+    if (coin) {
+        coin->balance += amount;
     }
 }
 

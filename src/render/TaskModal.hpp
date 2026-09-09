@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "raylib.h"
 #include "UIButton.hpp"
@@ -23,11 +23,18 @@ public:
     [[nodiscard]] bool IsOpen() const;
 
     void Update(Core::TaskManager& taskManager, Core::EconomyManager& economy);
-    void Draw(const Core::TaskManager& taskManager, const Core::EconomyManager& economy) const;
+    void Draw(const Core::TaskManager& taskManager, const Core::EconomyManager& economy);
 
 private:
     bool m_isOpen{false};
     UIButton m_btnClose;
+    UIButton m_btnTabAll;
+    UIButton m_btnTabCash;
+    UIButton m_btnTabCrypto;
+    UIButton m_btnTabFacility;
+    UIButton m_btnTabHardware;
+    UIButton m_btnTabTrading;
+    Core::TaskCategory m_currentCategory{Core::TaskCategory::ALL};
     std::vector<UIButton> m_claimButtons;
     float m_scrollOffset{0.0f};
 };

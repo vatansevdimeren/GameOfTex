@@ -1156,4 +1156,83 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * Disk kayıt formatına `rigLevel`, `cpuName`, `cpuHash` ve `cpuWatts` alanları eklendi.
 * Eski kayıtlar yüklendiğinde varsayılan değerlerle (Tier 1 ahşap kasa, Ryzen 5 3600) sorunsuz ve geriye uyumlu şekilde açılması sağlandı.
 
+---
+
+## 26. GELİŞMİŞ GÖREV AĞI (+50 YENİ GÖREV & ÖDÜL), KRİPTO ÇAPRAZ ÖDÜLLER (1 BTC -> 10 SOL), DİNAMİK TESİS KİLİTLERİ & KATEGORİZE EDİLMİŞ SADE ARAYÜZ (v2.5.0)
+
+### 26.1. Problem ve Kullanıcı Talebi
+* **Kullanıcı Talebi:**
+  *"tamamdır kanki ödüllerde ekstra min +50 ödül ekle vede her fabrika aldığında tekrardan yeni görevler ekleyerejj devam et mesela 1000 dolara ulasınca 100 dolar ekstra bonmus versin 1 btc kazınca ekstra atıyorum 10 tane solana versin crypto marketi vs de ekle uygulamanın arayüzü sade ve anlaşılır olsun"*
+* **Ana Hedefler:**
+  1. Görev havuzuna minimum +50 yeni görev ekleyerek toplam görev sayısını 75+'e çıkarmak.
+  2. Kademeli nakit kilometre taşları oluşturmak ($1,000 kasaya ulaşınca anında +$100 bonus, $2,500'a ulaşınca +$250 bonus vb.).
+  3. Kripto çapraz ödül sistemini entegre etmek: Özellikle 1 BTC kazıldığında cüzdana anında **+10 SOL (Solana)** hediye edilmesi, 0.1 BTC -> 2 SOL, 2 BTC -> 25 SOL vb.
+  4. Solana'yı (`SOL`) kripto borsasına, fiyat motoruna ve cüzdan sistemine 8. coin olarak eklemek.
+  5. Dünya haritasında yeni fabrika/tesis satın alındıkça (İzlanda, Norveç, Almanya, Sibirya) o tesise özel kilitli görevlerin dinamik olarak açılması (`isUnlocked`). Henüz satın alınmamış tesislerin görevlerinin şık kilit rozetiyle oyuncuyu teşvik etmesi.
+  6. Görev modalını sade, anlaşılır ve modern bir kategori sekme çubuğu (`[HEPSİ]`, `[NAKİT]`, `[KRİPTO]`, `[TESİS]`, `[DONANIM]`, `[TİCARET]`) ile yenilemek.
+
+---
+
+### 26.2. Solana (SOL) Kripto Para ve Borsa Entegrasyonu
+* **Mimari (`EconomyManager.hpp`, `EconomyManager.cpp`):**
+  - Borsaya 8. tradeable ve cüzdanda tutulabilir coin olarak **Solana (`SOL`)** eklendi:
+    * Taban fiyat: **$145.00**
+    * Algoritma: **Proof of History (PoH)**
+    * 24s Hacim: **125M USD**
+    * Başlangıç 20 mumluk geçmiş piyasa verisi simülasyonu.
+  - Cüzdan kredilendirme metodu `AddCoinBalance(const std::string& coinId, double amount)` eklendi; görevler tamamlandığında doğrudan SOL, BTC, ETH, RVN, XMR bakiyelerine anında yükleme yapılır.
+  - Kripto borsa modalı (`CryptoExchangeModal`) 8 coin'i dinamik olarak listeler ve SOL alım/satımını destekler.
+
+---
+
+### 26.3. Genişletilmiş Görev Mimarisi ve +50 Yeni Görev (75+ Toplam Görev)
+* **Veri Modeli (`TaskManager.hpp`, `TaskManager.cpp`):**
+  - Görev yapısına `category` (`TaskCategory`), `requiredFacilityId`, `rewardCryptoSymbol`, `rewardCryptoAmount` ve `isUnlocked` alanları eklendi.
+  - 6 Farklı Kategoride Zengin Görev Havuzu:
+    1. **Nakit Kilometre Taşları (`TaskCategory::CASH`):**
+       - $1,000 Nakit Hedefi -> **+$100 Nakit Bonusu** (Kullanıcı spesifik talebi)
+       - $2,500 Nakit Hedefi -> +$250 Nakit Bonusu
+       - $5,000 Nakit Hedefi -> +$500 Nakit Bonusu
+       - $10,000 Nakit Hedefi -> +$1,000 Nakit Bonusu
+       - $25,000, $50,000, $100,000, $250,000, $500,000 ve $1,000,000 Nakit Milestone'ları (Ödül: +$100,000 ve +1 BTC!).
+    2. **Kripto Çapraz Ödülleri (`TaskCategory::CRYPTO`):**
+       - 1.0 BTC Kazımı -> **+$1,000 Nakit + 10.00 SOL** (Kullanıcı spesifik talebi)
+       - 0.1 BTC Kazımı -> +$250 Nakit + 2.00 SOL
+       - 0.5 BTC Kazımı -> +$600 Nakit + 5.00 SOL
+       - 2.0 BTC Kazımı -> +$2,500 Nakit + 25.00 SOL
+       - 10.0 ETH Kazımı -> +$1,200 Nakit + 5.00 SOL
+       - 5.0 XMR Kazımı -> +$300 Nakit + 1.50 SOL
+       - 5,000 TEX Kazımı -> +$150 Nakit + 500 RVN
+       - 10,000 RVN Kazımı -> +$200 Nakit + 1,000 TEX vb.
+    3. **Dinamik Tesis Görevleri (`TaskCategory::FACILITY`):**
+       - İzlanda Jeotermal Tesisini Satın Al -> +$3,500 Nakit + 5 SOL
+       - [İzlanda Kilidi Açıldıktan Sonra]: İzlanda'da 3 Rig Kur, 20 GPU Çalıştır, Sıcaklığı 55°C Altında Tut.
+       - Norveç Fiyort Hidroelektrik Tesisini Satın Al -> +$10,000 Nakit + 15 SOL
+       - [Norveç Kilidi Açıldıktan Sonra]: Norveç'te 5 Rig Doldur, Sıfır Karbon 50kW Güç Üret.
+       - Almanya Endüstriyel Park Tesisini Satın Al -> +$25,000 Nakit + 30 SOL
+       - [Almanya Kilidi Açıldıktan Sonra]: Almanya'da 50 GPU Çalıştır, Tier 4 Soğutmaya Ulaş.
+       - Sibirya Kriyojenik Arktik Tesisini Satın Al -> +$60,000 Nakit + 60 SOL + 1 BTC
+       - [Sibirya Kilidi Açıldıktan Sonra]: Sibirya'da 10 Rig Kur, Tier 5 Sıvı Daldırma Kasaları Aç.
+    4. **Donanım ve Kasa Geliştirme Görevleri (`TaskCategory::HARDWARE`):**
+       - İlk CPU'yu Tak -> +$50 Nakit + 0.1 XMR
+       - Kasayı Alüminyum Şasiye Yükselt (Tier 2) -> +$100 Nakit
+       - Kasayı Çelik Pro Kasaya Yükselt (Tier 3) -> +$250 Nakit
+       - Kasayı 4U Sunucu Kabinine Yükselt (Tier 4) -> +$500 Nakit + 2 SOL
+       - Kasayı Kriyojenik Sıvı Daldırma Tankına Çıkar (Tier 5) -> +$1,200 Nakit + 5 SOL
+       - Güç kaynağı, soğutma yükseltmeleri ve 50 GPU'ya kadar kademeli filo görevleri.
+    5. **Ticaret, Haberler ve Piyasa Görevleri (`TaskCategory::TRADING`):**
+       - İlk Kripto İşlemini Yap, 5 İşlem Yap, 25 İşlem Yap, 5 Kripto Haberini Analiz Et, $10,000 Hacme Ulaş.
+
+---
+
+### 26.4. Sade, Anlaşılır ve Kategorize Edilmiş Görev Modalı (`TaskModal`)
+* **Kullanıcı Arayüzü İyileştirmeleri (`TaskModal.hpp`, `TaskModal.cpp`):**
+  - **Kategori Filtre Sekmeleri:** Üst kısıma 6 adet hızlı filtre butonu eklendi:
+    * `[HEPSİ]`, `[NAKİT]`, `[KRİPTO]`, `[TESİS]`, `[DONANIM]`, `[TİCARET]`
+    * Seçili sekme neon altın/mavi renkle aydınlatılır, görev sayacı başlıkta gösterilir.
+  - **Çift Ödül Rozetleri:** Nakit ve kripto ödülleri yan yana şık ve okunaklı rozetlerde sergilenir (`+$100.00 + 10.00 SOL`).
+  - **Kilitli Tesis Göstergesi:** Henüz satın alınmamış tesislerin görevleri koyu kırmızı/kehribar kilit rozetiyle (`[KİLİTLİ - İzlanda Tesisi Satın Alındığında Açılır]`) gösterilir ve oyuncuya net bir hedef sunar.
+  - **Akıcı Kaydırma (Scroll):** Çok sayıda görev sorunsuz biçimde fare tekerleğiyle taranabilir.
+
+
 
