@@ -9,15 +9,14 @@
 
 namespace Render {
 
+enum class ChartDisplayMode {
+    CANDLESTICK,
+    LINE_AREA
+};
+
 /**
  * @class CryptoExchangeModal
- * @brief Interactive Cryptocurrency Exchange and Live Price Chart Desk.
- * 
- * Features:
- * - Real-time smooth neon area/line price chart with dynamic scaling and grid lines.
- * - Multi-coin tabs (TEX, RVN, ETC, ETHW, BTC) with live tickers.
- * - Mining coin selector (switch active coin to mine).
- * - Instant Trading Desk with %25, %50, %75, %100 quick volume buttons.
+ * @brief Interactive Cryptocurrency Exchange, Candlestick (OHLC) Charts & Live Trading Desk.
  */
 class CryptoExchangeModal {
 public:
@@ -31,18 +30,25 @@ public:
     void Draw(const Core::EconomyManager& economy) const;
 
 private:
-    void DrawHeader(float modalX, float modalY, float modalW) const;
+    void DrawHeader(float modalX, float modalY, float modalW, const Core::EconomyManager& economy) const;
     void DrawCoinTabs(float modalX, float modalY, float modalW, const Core::EconomyManager& economy) const;
     void DrawPriceChart(float chartX, float chartY, float chartW, float chartH, const Core::CryptoCoin& coin, const Core::EconomyManager& economy) const;
+    void DrawCandlestickChart(float cAreaX, float cAreaY, float cAreaW, float cAreaH, const Core::CryptoCoin& coin, const Core::EconomyManager& economy) const;
+    void DrawLineAreaChart(float cAreaX, float cAreaY, float cAreaW, float cAreaH, const Core::CryptoCoin& coin, const Core::EconomyManager& economy) const;
     void DrawTradeDesk(float deskX, float deskY, float deskW, float deskH, const Core::CryptoCoin& coin, const Core::EconomyManager& economy) const;
 
     bool m_isOpen{false};
     size_t m_selectedCoinIndex{0};
     double m_tradeTradePercent{1.0}; // 0.25, 0.50, 0.75, 1.0
+    ChartDisplayMode m_chartMode{ChartDisplayMode::CANDLESTICK};
 
     UIButton m_btnClose;
     std::vector<UIButton> m_coinTabButtons;
     UIButton m_btnMineThis;
+
+    // Chart mode toggle buttons
+    UIButton m_btnModeCandle;
+    UIButton m_btnModeLine;
 
     // Quick % buttons
     UIButton m_btnPct25;

@@ -776,6 +776,55 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
 * `savegame.dat` dosyasına `[ECONOMY]` altında `activeCoinIndex`, `coinCount` ve her coinin bakiyesi (`coin_i_balance`) ile fiyatı (`coin_i_price`) yazılır.
 * Eski kayıt dosyalarıyla tam geriye dönük uyumluluk (backward compatibility) korunmuştur; eski sürümlerden kalan kayıtlar hatasız açılır.
 
+---
+
+## 18. MUM GRAFİKLERİ (CANDLESTICK OHLC), PİYASA STABİLİZASYONU VE VERİMLİLİK METRİKLERİ (v2.1.0)
+
+### 18.1. Fiyat Koridoru (Bollinger Kanalı) & Scam Coin Koruması
+* **Kullanıcı Şikayeti:** "kanki suanda fiyatlar cok kafasına göre ilerliyor bak TEX coin özellikle 300 dolardan 3 dolara düştü harbidende scam coin gibi oldu, bu kadar fazla dalgalanma olmasın."
+* **Kök Neden:**
+  1. Eski kayıtlarda kalan `price=300.0` ya da `price=2400.0` gibi değerler `SaveManager::LoadGame` sırasında TEX'in yeni $2.40 taban fiyatına çekilirken saniyeler içinde çöküş hissi yaratıyordu.
+  2. `UpdateMarket` fonksiyonundaki rastgele yürüyüş (random walk) %0.7 gibi devasa bir standart sapmayla çalışıyor ve tavan/taban sınırı bulunmuyordu.
+* **Uygulanan Çözüm (`EconomyManager.cpp`):**
+  - **Sakinleştirilmiş Mikro Volatilite:** Saniyelik standart sapma %0.7'den **%0.08'e** düşürüldü.
+  - **Fiyat Koridoru & Kelepçe (Price Channel):** Her coinin fiyatı matematiksel olarak `[basePrice * 0.70, basePrice * 1.45]` aralığına kilitlendi.
+    - TEX ($2.40): $1.68 - $3.48 arasında doğal ve profesyonel salınır; asla $300'e uçamaz veya $0.01'e çakılamaz.
+    - RVN ($0.085): $0.060 - $0.123 arasında salınır.
+    - ETC ($28.50): $20.00 - $41.00 arasında salınır.
+    - ETHW ($145.00): $101.00 - $210.00 arasında salınır.
+    - BTC ($64,250): $45,000 - $93,000 arasında salınır.
+  - `SetCoinPrice` ve `SetCryptoPrice` fonksiyonlarına otomatik sanitizasyon eklenerek eski bozuk kayıt dosyaları bile anında bu banda çekilir.
+
+---
+
+### 18.2. Canlı Mum Grafikleri (Candlestick OHLC Engine)
+* **`Candle` Yapısı (`EconomyManager.hpp`):** Açılış (`open`), En Yüksek (`high`), En Düşük (`low`), Kapanış (`close`) ve Hacim (`volume`).
+* **Zaman Pencereleri:** Her 4 saniyelik mikro periyot yeni bir muma dönüştürülür. Son 28 mum bellekte tutulur.
+* **Görselleştirme (`CryptoExchangeModal::DrawCandlestickChart`):**
+  - **Boğa Mumu (Yeşil):** `Close >= Open` olduğunda parlayan yeşil gövde (`Color{45, 225, 125, 255}`).
+  - **Ayı Mumu (Kırmızı):** `Close < Open` olduğunda siber kırmızı gövde (`Color{255, 65, 75, 255}`).
+  - **Fitiller (Wicks):** High ve Low arasına çizilen keskin dikey gölge çizgileri.
+  - **Hacim Barları (Volume):** Mumların altına yerleştirilen dinamik oransal hacim barları.
+  - **Mod Seçici:** `[MUM (OHLC)]` ve `[ÇİZGİ]` butonlarıyla iki grafik tarzı arasında tek tıkla geçiş.
+  - **Hover Tooltip:** Mumun üzerine gelindiğinde anlık Açılış, Yüksek, Düşük, Kapanış (OHLC) değerleri rozet olarak gösterilir.
+
+---
+
+### 18.3. Dinamik Piyasa Olayları (Event-Driven Market News)
+* Rastgele anlamsız savrulmalar yerine, haber tabanlı kontrollü piyasa dalgaları eklendi:
+  1. **BOĞA RALLİSİ (+%18):** Kurumsal yatırımcı girişi ve ETF haberleri (24 saniye, yeşil parlayan duyuru şeridi).
+  2. **PİYASA DÜZELTMESİ (-%16):** Kâr satışları ve türev tasfiyeleri (24 saniye, kırmızı duyuru şeridi).
+  3. **MADENCİLİK PATLAMASI (+%12):** Küresel ağ hashrate büyümesi (20 saniye, altın sarısı duyuru şeridi).
+  4. **DÜZENLEME BASKISI (-%10):** Hükümet düzenlemeleri ve piyasa geri çekilmesi (20 saniye, turuncu duyuru şeridi).
+
+---
+
+### 18.4. Madencilik Verimlilik & Karlılık Metrikleri
+* Borsa grafik başlığına iki yeni stratejik metrik entegre edildi:
+  - **100 MH/s Başına Günlük Getiri:** Seçili coinin zorluk ve güncel fiyatına göre 100 MH/s gücün ürettiği nakit (`Verimlilik (100 MH/s): $0.58 / gün`).
+  - **Karlılık Endeksi (Profitability Index):** Ağ zorluğu ile taban getiri oranı karşılaştırılarak hesaplanan canlı kârlılık yüzdesi (`Karlılık Endeksi: %108`). Oyuncu hangi coini kazmanın o an daha karlı olduğunu doğrudan görebilir.
+
+
 
 
 

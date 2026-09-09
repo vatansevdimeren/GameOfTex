@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <raylib.h>
 
 namespace Core {
 
@@ -10,6 +11,45 @@ enum class CurrencyType {
     USDT,
     TRY,
     EUR
+};
+
+/**
+ * @struct Candle
+ * @brief Represents a candlestick bar (Open, High, Low, Close, Volume).
+ */
+struct Candle {
+    float open{0.0f};
+    float high{0.0f};
+    float low{0.0f};
+    float close{0.0f};
+    float volume{0.0f};
+};
+
+/**
+ * @enum MarketEventType
+ * @brief Event types driving macro market news and controlled price waves.
+ */
+enum class MarketEventType {
+    NORMAL,
+    BULL_RALLY,
+    CORRECTION_CRASH,
+    REGULATION_NEWS,
+    MINING_BOOM
+};
+
+/**
+ * @struct MarketEvent
+ * @brief Real-time event that temporarily creates positive or negative market trends.
+ */
+struct MarketEvent {
+    MarketEventType type{MarketEventType::NORMAL};
+    std::string headlineTR;
+    std::string headlineEN;
+    std::string targetCoinId; // "" applies to market or specific coin symbol
+    double durationSeconds{0.0};
+    double remainingSeconds{0.0};
+    double driftFactor{0.0};
+    Color bannerColor{60, 180, 240, 255};
 };
 
 /**
@@ -25,14 +65,17 @@ struct CryptoCoin {
     double balance{0.0};             // Wallet coin count
     double priceUSD{2.40};           // Current live market price
     double basePriceUSD{2.40};       // Market center anchor
-    double difficulty{150000.0};     // Dynamic mining difficulty
-    double baseDifficulty{150000.0}; // Base network difficulty
+    double difficulty{120000.0};     // Dynamic mining difficulty
+    double baseDifficulty{120000.0}; // Base network difficulty
     double blockReward{5.0};         // Reward per block
     double priceChange24hPercent{0.0};
     double high24h{2.55};
     double low24h{2.25};
     double volume24hUSD{1250000.0};
-    std::vector<float> priceHistory; // Live historical tick series for price chart
+    std::vector<float> priceHistory; // Live historical tick series
+    std::vector<Candle> candles;     // Candlestick OHLC series (30 bars)
+    Candle currentCandle;            // Active building candlestick
+    float candleTimer{0.0f};         // Timer for active candle duration (4 seconds/bar)
     int requiredTier{1};             // 1: Starter, 2: Pro, 3: Server, 4: Industrial ASIC
     bool isUnlocked{true};
 };
@@ -90,10 +133,13 @@ public:
     void SetCoinBalance(const std::string& coinId, double balance);
     void SetCoinPrice(const std::string& coinId, double price);
 
-    // Market simulation
+    // Market simulation & Events
     [[nodiscard]] double GetCryptoPrice() const;
     [[nodiscard]] double GetNetworkDifficulty() const;
     void UpdateMarket(double deltaTimeSeconds);
+
+    [[nodiscard]] const MarketEvent& GetActiveEvent() const;
+    [[nodiscard]] bool HasActiveEvent() const;
 
     // Kripto Alım-Satım Borsası (Exchange Desk)
     bool BuyCoin(size_t coinIndex, double usdAmount);
@@ -110,23 +156,32 @@ public:
 
     bool SellCrypto(double amount);
 
-    // Saatlik ve Günlük Getiri/Kar Hesaplamaları
+    // Saatlik ve Günlük Getiri/Kar/Verimlilik Hesaplamaları
     [[nodiscard]] double CalculateHourlyCoins(double hashrateMHS) const;
     [[nodiscard]] double CalculateHourlyRevenueUSD(double hashrateMHS) const;
     [[nodiscard]] double CalculateDailyRevenueUSD(double hashrateMHS) const;
     [[nodiscard]] double CalculateHourlyElectricityCostUSD(double powerWatts, double electricityRateKWh) const;
     [[nodiscard]] double CalculateHourlyNetProfitUSD(double hashrateMHS, double powerWatts, double electricityRateKWh) const;
 
+    // Coin Başına Özel Karlılık ve Verimlilik Metrikleri
+    [[nodiscard]] double CalculateDailyYieldCoinsPer100MH(const CryptoCoin& coin) const;
+    [[nodiscard]] double CalculateDailyYieldUSDPer100MH(const CryptoCoin& coin) const;
+    [[nodiscard]] double CalculateProfitabilityPercent(const CryptoCoin& coin) const;
+
 private:
     void InitCoins(double initialTexPrice);
+    void TriggerRandomMarketEvent();
 
     double m_fiatBalance;
     CurrencyType m_currency{CurrencyType::USD};
     double m_marketTimer{0.0};
+    double m_eventTimer{0.0};
+    double m_nextEventInterval{80.0}; // seconds between events
+
+    MarketEvent m_activeEvent;
 
     std::vector<CryptoCoin> m_coins;
     size_t m_activeCoinIndex{0};
 };
 
 } // namespace Core
-
