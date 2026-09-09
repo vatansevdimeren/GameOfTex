@@ -176,10 +176,10 @@ void MarketCatalog::InitCatalog() {
 
     // 2. Trafo & Elektrik Şebekesi Yükseltmeleri
     m_powerUpgrades = {
-        {"psu_base", "POWER_TIER_1", 3600.0, 0.0, true},
-        {"psu_industrial", "POWER_TIER_2", 7500.0, 1500.0, false},
-        {"psu_substation", "POWER_TIER_3", 15000.0, 3500.0, false},
-        {"psu_grid_line", "POWER_TIER_4", 30000.0, 8000.0, false}
+        {"psu_base", "POWER_TIER_1", 15000.0, 0.0, true},
+        {"psu_industrial", "POWER_TIER_2", 30000.0, 2500.0, false},
+        {"psu_substation", "POWER_TIER_3", 60000.0, 6500.0, false},
+        {"psu_grid_line", "POWER_TIER_4", 120000.0, 15000.0, false}
     };
 
     // 3. Tesis & Depo Geliştirmeleri

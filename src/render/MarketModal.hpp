@@ -29,6 +29,7 @@ struct MarketPurchaseAction {
     };
     ActionType type = ActionType::NONE;
     size_t itemIndex = 0;
+    int targetRigIndex = -1;
 };
 
 /**

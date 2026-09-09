@@ -351,10 +351,25 @@ int main() {
             auto action = marketModal.Update(economy, warehouse, coolingManager, marketCatalog, powerGrid);
             if (action.type == Render::MarketPurchaseAction::ActionType::BUY_GPU) {
                 const auto* model = marketCatalog.GetGPUModel(action.itemIndex);
-                if (model && activeRig && activeRig->GetGPUCount() < activeRig->GetMaxCapacity()) {
-                    if (economy.DeductFiat(model->priceUSD)) {
-                        activeRig->InstallGPU(std::make_unique<Core::GPU>(model->name, model->hashrate, model->powerWatts, 1.0));
-                        taskManager.NotifyGpuPurchased();
+                if (model) {
+                    Core::MiningRig* targetRig = nullptr;
+                    if (action.targetRigIndex >= 0 && action.targetRigIndex < static_cast<int>(warehouse.GetRigCount())) {
+                        targetRig = warehouse.GetRig(action.targetRigIndex);
+                    } else if (activeRig && activeRig->GetGPUCount() < activeRig->GetMaxCapacity()) {
+                        targetRig = activeRig;
+                    } else {
+                        for (const auto& r : warehouse.GetAllRigs()) {
+                            if (r && r->GetGPUCount() < r->GetMaxCapacity()) {
+                                targetRig = r.get();
+                                break;
+                            }
+                        }
+                    }
+                    if (targetRig && targetRig->GetGPUCount() < targetRig->GetMaxCapacity()) {
+                        if (economy.DeductFiat(model->priceUSD)) {
+                            targetRig->InstallGPU(std::make_unique<Core::GPU>(model->name, model->hashrate, model->powerWatts, 1.0));
+                            taskManager.NotifyGpuPurchased();
+                        }
                     }
                 }
             } else if (action.type == Render::MarketPurchaseAction::ActionType::BUY_POWER) {
@@ -363,7 +378,7 @@ int main() {
                     const auto& upg = powerUpgrades[action.itemIndex];
                     if (!upg.isInstalled && economy.DeductFiat(upg.priceUSD)) {
                         marketCatalog.PurchasePowerUpgrade(action.itemIndex);
-                        powerGrid.SetMaxCapacityWatts(upg.capacityWatts);
+                        powerGrid.SetMaxCapacityWatts(std::max(powerGrid.GetMaxCapacityWatts(), upg.capacityWatts));
                     }
                 }
             } else if (action.type == Render::MarketPurchaseAction::ActionType::BUY_COOLING) {
@@ -541,14 +556,23 @@ int main() {
                 btnToggleRigPower.SetSubtitle(activeRig->IsPoweredOn() ? Core::LocalizationManager::Tr("RIG_POWER_OFF_SUB") : Core::LocalizationManager::Tr("RIG_POWER_ON_SUB"));
             }
             btnSellRig.SetTitle(Core::LocalizationManager::Tr("RIG_SELL"));
-            btnSellRig.SetSubtitle(std::string("+") + economy.FormatFiat(1200.0) + (isTR ? " Hurda" : " Scrap"));
-            btnSellRig.SetDisabled(warehouse.GetRigCount() <= 1);
+            const bool hasGPUs = (activeRig && activeRig->GetGPUCount() > 0);
+            if (hasGPUs) {
+                btnSellRig.SetSubtitle(isTR ? "(Once kartlari satın/cikarin)" : "(Sell/remove cards first)");
+                btnSellRig.SetDisabled(true);
+            } else if (warehouse.GetRigCount() <= 1) {
+                btnSellRig.SetSubtitle(isTR ? "(Son kasa satilamaz)" : "(Cannot sell last rig)");
+                btnSellRig.SetDisabled(true);
+            } else {
+                btnSellRig.SetSubtitle(std::string("+") + economy.FormatFiat(1200.0) + (isTR ? " Hurda" : " Scrap"));
+                btnSellRig.SetDisabled(false);
+            }
 
             if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen()) {
                 if (activeRig && btnToggleRigPower.UpdateAndCheckClick()) {
                     activeRig->TogglePower();
                 }
-                if (btnSellRig.UpdateAndCheckClick() && warehouse.GetRigCount() > 1) {
+                if (btnSellRig.UpdateAndCheckClick() && warehouse.GetRigCount() > 1 && !hasGPUs) {
                     if (warehouse.RemoveRig(warehouse.GetActiveRigIndex())) {
                         economy.AddFiat(1200.0);
                         activeRig = warehouse.GetActiveRig();
@@ -752,51 +776,77 @@ int main() {
                 if (r) r->Update(dt);
             }
 
-            if (!fPowerGrid.IsBreakerTripped()) {
-                const double rawPower = fWarehouse.CalculateTotalPowerWatts();
-                const double warehousePower = rawPower * fPowerGrid.GetPowerSurgeMultiplier();
-                fPowerGrid.AddConsumerWatts(warehousePower);
-
-                const double electricityCost = fPowerGrid.CalculateCostForDuration(dt);
-                economy.DeductFiat(electricityCost);
-
-                const double thermalLoad = warehousePower * (fPowerGrid.IsGridStrained() ? 1.15 : 1.0);
-                fThermal.Update(thermalLoad, dt);
-
+            if (fPowerGrid.IsBreakerTripped()) {
+                // Sartel atmis: Tesis elektrigi tamamen kesildi.
+                // Kartlar guc cekmez, isi uretilmez ve ortam pasif olarak dis sicakliga dogru sogur.
+                fThermal.Update(0.0, dt);
                 for (const auto& r : fWarehouse.GetAllRigs()) {
                     if (r) {
-                        bool rPowered = r->IsPoweredOn();
                         for (const auto& gpu : r->GetGPUs()) {
                             if (gpu) {
-                                double cardTemp = rPowered ? fThermal.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), gpu->GetFanSpeedPercent() / 100.0)
-                                                           : fThermal.GetAmbientTemperature();
-                                if (isActiveFacility && cardTemp > activeMaxCardTemp) {
-                                    activeMaxCardTemp = cardTemp;
-                                }
-
-                                if (rPowered) {
-                                    gpu->SetThrottled(Core::ThermalModel::IsOverheating(cardTemp));
-
-                                    if (cardTemp >= 105.0 && !fCooling.IsImmersionCoolingActive()) {
-                                        gpu->TakeDamage(dt * 5.0);
-                                    }
-
-                                    if (cardTemp >= 140.0 && !fCooling.IsImmersionCoolingActive()) {
-                                        if (marketCatalog.HasAutoFireSuppression()) {
-                                            r->SetPoweredOn(false);
-                                        } else {
-                                            gpu->SetBurnt(true);
-                                        }
-                                    }
-                                } else {
-                                    gpu->SetThrottled(false);
-                                }
+                                gpu->SetThrottled(false);
                             }
                         }
                     }
                 }
+                if (isActiveFacility) {
+                    activeMaxCardTemp = std::max(activeMaxCardTemp, fThermal.GetAmbientTemperature());
+                }
+            } else {
+                const double rawPower = fWarehouse.CalculateTotalPowerWatts();
+                const double warehousePower = rawPower * fPowerGrid.GetPowerSurgeMultiplier();
+                fPowerGrid.AddConsumerWatts(warehousePower);
 
-                companyTotalMinedHashrate += fWarehouse.CalculateTotalHashrate() * fPowerGrid.GetHashrateSurgeMultiplier();
+                // AddConsumerWatts sirasinda kapasite asildiginda sartel aninda atar
+                if (fPowerGrid.IsBreakerTripped()) {
+                    // Guvenlik korumasi devreye girdi: Sartel attigi an guc kesilir, donanim yanmaz!
+                    fThermal.Update(0.0, dt);
+                    for (const auto& r : fWarehouse.GetAllRigs()) {
+                        if (r) {
+                            for (const auto& gpu : r->GetGPUs()) {
+                                if (gpu) gpu->SetThrottled(false);
+                            }
+                        }
+                    }
+                    if (isActiveFacility) {
+                        activeMaxCardTemp = std::max(activeMaxCardTemp, fThermal.GetAmbientTemperature());
+                    }
+                } else {
+                    const double electricityCost = fPowerGrid.CalculateCostForDuration(dt);
+                    economy.DeductFiat(electricityCost);
+
+                    const double thermalLoad = warehousePower * (fPowerGrid.IsGridStrained() ? 1.15 : 1.0);
+                    fThermal.Update(thermalLoad, dt);
+
+                    for (const auto& r : fWarehouse.GetAllRigs()) {
+                        if (r) {
+                            bool rPowered = r->IsPoweredOn();
+                            for (const auto& gpu : r->GetGPUs()) {
+                                if (gpu) {
+                                    double cardTemp = rPowered ? fThermal.CalculateGPUTemperature(gpu->GetEffectivePowerWatts(), gpu->GetFanSpeedPercent() / 100.0)
+                                                               : fThermal.GetAmbientTemperature();
+                                    if (isActiveFacility && cardTemp > activeMaxCardTemp) {
+                                        activeMaxCardTemp = cardTemp;
+                                    }
+
+                                    if (rPowered) {
+                                        gpu->SetThrottled(Core::ThermalModel::IsOverheating(cardTemp));
+
+                                        // Termal Guvenlik Kesicisi: Donanimin yanmamasi icin 105C esiginde
+                                        // rig elektrigi guvenlik amaciyla otomatik kapanir! Kartlar yanmaz.
+                                        if (cardTemp >= 105.0 && !fCooling.IsImmersionCoolingActive()) {
+                                            r->SetPoweredOn(false);
+                                        }
+                                    } else {
+                                        gpu->SetThrottled(false);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    companyTotalMinedHashrate += fWarehouse.CalculateTotalHashrate() * fPowerGrid.GetHashrateSurgeMultiplier();
+                }
             }
         }
 

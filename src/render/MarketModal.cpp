@@ -143,8 +143,21 @@ MarketPurchaseAction MarketModal::Update(
         const float maxScroll = std::max(0.0f, totalCardsH - cardsAreaH);
         m_gpuScrollOffset = std::clamp(m_gpuScrollOffset, -maxScroll, 0.0f);
 
+        // Hedef rig tespiti: Önce seçili rig kontrol edilir, doluysa tesis içindeki boş slotu olan ilk rig seçilir
+        int targetRigIndex = -1;
         const auto* activeRig = warehouse.GetActiveRig();
-        const bool hasRigSpace = activeRig && (activeRig->GetGPUCount() < activeRig->GetMaxCapacity());
+        if (activeRig && (activeRig->GetGPUCount() < activeRig->GetMaxCapacity())) {
+            targetRigIndex = static_cast<int>(warehouse.GetActiveRigIndex());
+        } else {
+            const auto& allRigs = warehouse.GetAllRigs();
+            for (size_t rIdx = 0; rIdx < allRigs.size(); ++rIdx) {
+                if (allRigs[rIdx] && allRigs[rIdx]->GetGPUCount() < allRigs[rIdx]->GetMaxCapacity()) {
+                    targetRigIndex = static_cast<int>(rIdx);
+                    break;
+                }
+            }
+        }
+        const bool hasRigSpace = (targetRigIndex >= 0);
         const float buyBtnW = 145.0f;
         const float buyBtnH = 36.0f;
 
@@ -181,6 +194,7 @@ MarketPurchaseAction MarketModal::Update(
                 if (m_gpuBuyButtons[i].UpdateAndCheckClick()) {
                     action.type = MarketPurchaseAction::ActionType::BUY_GPU;
                     action.itemIndex = i;
+                    action.targetRigIndex = targetRigIndex;
                     return action;
                 }
             }
@@ -401,14 +415,33 @@ void MarketModal::DrawGPUsCategory(
     const auto* activeRig = warehouse.GetActiveRig();
     const auto& gpuModels = catalog.GetGPUModels();
 
-    // 1. Üst Bilgi Rozeti (Aktif Seçili Rig ve Boş Slot Durumu)
-    std::string rigInfo = Core::LocalizationManager::Tr("MARKET_ACTIVE_RIG");
-    if (activeRig) {
-        rigInfo += activeRig->GetName() + " [" + std::to_string(activeRig->GetGPUCount()) + "/" + std::to_string(activeRig->GetMaxCapacity()) + " Slot]";
+    // 1. Üst Bilgi Rozeti (Hedef Montaj Kasa ve Boş Slot Durumu)
+    int targetRigIdx = -1;
+    if (activeRig && activeRig->GetGPUCount() < activeRig->GetMaxCapacity()) {
+        targetRigIdx = static_cast<int>(warehouse.GetActiveRigIndex());
     } else {
-        rigInfo += "Yok";
+        const auto& allRigs = warehouse.GetAllRigs();
+        for (size_t rIdx = 0; rIdx < allRigs.size(); ++rIdx) {
+            if (allRigs[rIdx] && allRigs[rIdx]->GetGPUCount() < allRigs[rIdx]->GetMaxCapacity()) {
+                targetRigIdx = static_cast<int>(rIdx);
+                break;
+            }
+        }
     }
-    UIFrame::DrawTextCustom(rigInfo, startX + 8.0f, startY - 2.0f, 14.0f, Color{140, 180, 220, 255}, true);
+
+    std::string rigInfo = Core::LocalizationManager::Tr("MARKET_ACTIVE_RIG");
+    Color rigColor = Color{140, 220, 180, 255};
+    if (targetRigIdx >= 0 && targetRigIdx < static_cast<int>(warehouse.GetRigCount())) {
+        const auto* targetRig = warehouse.GetRig(targetRigIdx);
+        rigInfo += targetRig->GetName() + " [" + std::to_string(targetRig->GetGPUCount()) + "/" + std::to_string(targetRig->GetMaxCapacity()) + " Slot]";
+        if (targetRigIdx != static_cast<int>(warehouse.GetActiveRigIndex())) {
+            rigInfo += " (Otomatik Bos Kasa)";
+        }
+    } else {
+        rigInfo += std::string(Core::LocalizationManager::Tr("MARKET_RIG_FULL")) + " (Sag Panelden Yeni Rig Satin Alin)";
+        rigColor = Color{255, 110, 110, 255};
+    }
+    UIFrame::DrawTextCustom(rigInfo, startX + 8.0f, startY - 2.0f, 14.0f, rigColor, true);
 
     // 2. Tier Filtre Butonları
     m_btnTierAll.Draw();
@@ -549,7 +582,7 @@ void MarketModal::DrawPowerCategory(
         // Kapasite Barı
         const float barX = startX + 380.0f;
         const float barW = width - 380.0f - buyBtnW - 140.0f;
-        float capRatio = static_cast<float>(upg.capacityWatts / 30000.0);
+        float capRatio = static_cast<float>(upg.capacityWatts / 120000.0);
         DrawStatBar(barX, itemY + 24.0f, barW, 20.0f, capRatio, Color{245, 170, 40, 220}, "Kapasite", "");
 
         // Fiyat

@@ -28,11 +28,14 @@ void ThermalModel::SetCoolingPowerWatts(double coolingWatts) {
 }
 
 void ThermalModel::Update(double totalHeatGeneratedWatts, double deltaTimeSeconds) {
-    // Net termal birikim: Üretilen ısı - Tahliye edilen soğutma gücü
-    const double netHeatWatts = totalHeatGeneratedWatts - m_coolingPowerWatts;
+    // 1. Dış ortam ile doğal ısı alışverişi (Pasif konveksiyon ve bina ısı kaybı)
+    const double passiveDissipationWatts = (m_currentAmbientCelsius - m_baseAmbientTempCelsius) * 120.0;
 
-    // Oda hava kütlesi termal ataleti (örnek: küçük oda için 1200 Joule/°C)
-    constexpr double roomThermalCapacity = 15000.0; // Joules per degree C
+    // 2. Net termal birikim: Üretilen ısı - Aktif soğutma gücü - Doğal dış ortam dağılımı
+    const double netHeatWatts = totalHeatGeneratedWatts - m_coolingPowerWatts - passiveDissipationWatts;
+
+    // Oda hava kütlesi termal ataleti
+    constexpr double roomThermalCapacity = 20000.0; // Joules per degree C
 
     // Sıcaklık değişimi: deltaT = (NetWatts * dt) / Capacity
     const double deltaT = (netHeatWatts * deltaTimeSeconds) / roomThermalCapacity;
@@ -40,9 +43,9 @@ void ThermalModel::Update(double totalHeatGeneratedWatts, double deltaTimeSecond
 
     // Endüstriyel HVAC ve aktif soğutma ortam sıcaklığını 14°C'ye kadar soğutabilir
     const double minAmbient = std::max(14.0, m_baseAmbientTempCelsius - (m_coolingPowerWatts / 600.0));
-    if (m_currentAmbientCelsius < minAmbient) {
-        m_currentAmbientCelsius = minAmbient;
-    }
+    // Tesis içi ortam sıcaklığı açık hava konveksiyonu ve havalandırma sayesinde 48°C'yi aşamaz
+    const double maxAmbient = std::max(m_baseAmbientTempCelsius, 48.0);
+    m_currentAmbientCelsius = std::clamp(m_currentAmbientCelsius, minAmbient, maxAmbient);
 }
 
 double ThermalModel::CalculateGPUTemperature(double gpuPowerWatts, double fanSpeedPercent) const {

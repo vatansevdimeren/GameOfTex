@@ -910,16 +910,42 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   19. `TASK_MAX_FACILITY`: **Küresel Ağ (Dünya haritasında en az 2 tesis satın al - $3,500)**
   20. `TASK_ASIC_KING`: ASIC Kralı (500 MH/s hesaplama gücüne ulaş - $5,000)
 
+---
 
+## 20. ŞARTEL VE TERMAL GÜVENLİK SİSTEMİ, RIG KORUMASI VE AKILLI MARKET SİSTEMİ (v2.2.1)
 
+### 20.1. Şartel Atma Mantığının Düzeltilmesi & Yangınların Önlenmesi
+* **Kullanıcı Talebi:** *"şarteller neden atıyor sadece atma durumunu hepsi yanmasın elektrik gücü yetmediğin böyle olsun kral anladın mı"*
+* **Kök Neden:**
+  1. `PowerGrid::Update` içerisinde her 45 saniyede bir yapay `%25` şebeke dalgalanması (`m_spikeActive = true`) tetikleniyordu. Oyuncu AFK kaldığında anlık yük kapasiteyi aşıp şarteli atıyordu.
+  2. Şartel attığında simülasyon döngüsünde ısı modeli güncellenmiyor ve GPU'lar soğuyamıyordu. Ayrıca aşırı ısınma durumunda kartlar 140°C'ye ulaşıp yanıyordu (`SetBurnt(true)`). Yanmış kartların hashrate'i 0 MH/s'ye düştüğü için kullanıcı rig'in silindiğini veya donanımın tamamen yok olduğunu sanıyordu.
+* **Uygulanan Çözüm (`PowerGrid.cpp`, `ThermalModel.cpp`, `main.cpp`):**
+  1. Rastgele güç sıçraması kaldırıldı (`GetPowerSurgeMultiplier() = 1.0`). Şartel **YALNIZCA VE YALNIZCA** anlık rig tüketimi trafo/pano kapasitesini aştığında atar.
+  2. Depolara dış ortamla doğal ısı transferi eklendi; kapalı ortam sıcaklığı 48°C ile sınırlandırıldı.
+  3. **Şartel Atınca Güvenli Soğuma:** Şartel attığı an depodaki tüm elektrik akımı derhal sıfırlanır (`0W`). Kartlar çalışmayı durdurur, ısı üretimi kesilir ve ortam pasif olarak dış hava sıcaklığına doğru hızla soğur. **Şartel atması sebebiyle HİÇBİR kart yanmaz veya hasar almaz!**
+  4. **105°C Termal Güvenlik Kesicisi:** Soğutma yetersiz kaldığında kartların yanmasını önlemek için modern GPU BIOS koruma mekanizması getirildi. Sıcaklık 105°C sınırına ulaştığında rig güvenli şekilde kendi elektriğini kapatır (`r->SetPoweredOn(false)`). Kartlar hasar görmez, oyuncu soğutmayı artırıp rig'i tekrar açabilir.
 
+### 20.2. Rig Silinmesi / Kaybolması Koruması (`btnSellRig`)
+* **Kullanıcı Şikayeti:** *"amk tualete gidip geldim Bir tane rigim silinmiş bunedir"*
+* **Kök Neden:**
+  - Viewport üzerindeki `btnSellRig` (Rig Sat / Hurda) butonu, içinde pahalı ekran kartları bulunan rig'ler için bile aktifti ve tek tıkla rig'i içindeki tüm kartlarla birlikte $1,200 hurda bedeline siliyordu.
+* **Uygulanan Çözüm (`main.cpp`):**
+  - Buton artık rig içinde en az 1 GPU varsa otomatik olarak devre dışı bırakılır (`btnSellRig.SetDisabled(true)`).
+  - Buton üzerinde `"(Önce kartları satın/çıkarın)"` uyarısı çıkar.
+  - Tesisin son rig'i satılamaz (`"(Son kasa satılamaz)"`).
+  - Böylece hiçbir rig veya ekran kartı kazara silinemez.
 
-
-
-
-
-
-
-
-
-
+### 20.3. Akıllı Donanım Marketi & Çoklu Rig Slot Dağıtımı (`MarketModal` & `MarketCatalog`)
+* **Kullanıcı Şikayeti:** *"hala markette sorun var bunları düzenlemeni isityorum"*
+* **Kök Nedenler:**
+  1. Market GPU sekmesi yalnızca ekranda seçili `activeRig`'i kontrol ediyordu. Rig 01 dolduğunda (6/6), tesiste boş Rig 02 bulunsa bile buton `"RIG DOLU!"` yazarak kilitleniyordu.
+  2. Elektrik yükseltmeleri Teksas'ın 15,000W taban kapasitesinden daha düşük değerlere (ör. 7,500W) sahipti ve satın alındığında kapasiteyi düşürüyordu.
+* **Uygulanan Çözüm (`MarketModal.cpp`, `MarketCatalog.cpp`, `main.cpp`):**
+  1. **Akıllı Slot Yönlendirmesi:** GPU satın alırken önce seçili rig kontrol edilir; doluysa tesisteki boş slotu olan ilk rig hedef alınır (`action.targetRigIndex`).
+  2. **Görsel Durum:** Market başlığında montaj yapılacak hedef kasa gösterilir: `Hedef: Rig 01 [5/6 Slot]` veya `Hedef: Rig 02 [0/6 Slot] (Otomatik Boş Kasa)`. Yalnızca tesisteki TÜM kasalar 6/6 dolduğunda buton kilitlenir.
+  3. **Trafo Kademeleri Ölçeklendirildi:**
+     - Kademe 1: Standart Şebeke (15,000W - Başlangıç)
+     - Kademe 2: Sanayi Tipi Trifaze (30,000W - $2,500)
+     - Kademe 3: Özel Trafo İstasyonu (60,000W - $6,500)
+     - Kademe 4: Yüksek Gerilim Hattı (120,000W - $15,000)
+  4. Kapasite düşürme engellendi: Satın alımlarda `std::max(mevcut, yeni)` uygulanarak kapasitenin daima artması güvence altına alındı.
