@@ -127,30 +127,30 @@ void UIButton::Draw() const {
     const float textX = m_bounds.x + padX;
 
     if (!m_subtitle.empty()) {
-        float titleSize = (m_bounds.height < 42.0f) ? 12.0f : 16.0f;
-        float subSize = (m_bounds.height < 42.0f) ? 10.0f : 12.0f;
+        float titleSize = (m_bounds.height < 42.0f) ? 13.0f : 16.0f;
+        float subSize = (m_bounds.height < 42.0f) ? 10.5f : 12.5f;
 
         float tW = UIFrame::MeasureTextCustom(m_title, titleSize, true);
-        if (tW > maxW && tW > 0.0f) titleSize = std::max(9.0f, titleSize * (maxW / tW));
+        if (tW > maxW && tW > 0.0f) titleSize = std::max(9.5f, titleSize * (maxW / tW));
 
         float sW = UIFrame::MeasureTextCustom(m_subtitle, subSize, false);
-        if (sW > maxW && sW > 0.0f) subSize = std::max(8.0f, subSize * (maxW / sW));
+        if (sW > maxW && sW > 0.0f) subSize = std::max(8.5f, subSize * (maxW / sW));
 
         float titleY = (m_bounds.height < 42.0f)
-            ? (m_bounds.y + (m_bounds.height * 0.18f))
+            ? (m_bounds.y + (m_bounds.height * 0.16f))
             : (m_bounds.y + (m_bounds.height / 2.0f) - titleSize - 1.0f);
         float subY = (m_bounds.height < 42.0f)
-            ? (m_bounds.y + (m_bounds.height * 0.56f))
+            ? (m_bounds.y + (m_bounds.height * 0.54f))
             : (m_bounds.y + (m_bounds.height / 2.0f) + 3.0f);
 
         UIFrame::DrawTextCustom(m_title, textX, titleY, titleSize, textColor, true);
         UIFrame::DrawTextCustom(m_subtitle, textX, subY, subSize, subTextColor, false);
     } else {
-        float titleSize = (m_bounds.height < 34.0f) ? 13.0f : ((m_bounds.height < 44.0f) ? 15.0f : 18.0f);
+        float titleSize = (m_bounds.height < 34.0f) ? 13.5f : ((m_bounds.height < 44.0f) ? 16.0f : 18.5f);
         float tW = UIFrame::MeasureTextCustom(m_title, titleSize, true);
         if (tW > maxW && tW > 0.0f) titleSize = std::max(10.0f, titleSize * (maxW / tW));
 
-        float titleY = m_bounds.y + (m_bounds.height / 2.0f) - (titleSize * 0.55f);
+        float titleY = m_bounds.y + (m_bounds.height / 2.0f) - (titleSize * 0.52f);
         UIFrame::DrawTextCustom(m_title, textX, titleY, titleSize, textColor, true);
     }
 }

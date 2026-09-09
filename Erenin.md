@@ -1010,3 +1010,33 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   1. **48px Ultra Çözünürlüklü Vektör Font Atlası:** Segoe UI ve alternatif fontlar 48px yüksek çözünürlükle rasterize edildi.
   2. **Mipmap Kaldırıldı & Bilinear Filtreleme:** Mipmap oluşturma iptal edildi; font atlasına doğrudan donanımsal `TEXTURE_FILTER_BILINEAR` uygulandı.
   3. **Piksel Kenetleme (Pixel-Snapping):** `UIFrame::DrawTextCustom` içinde metin koordinatları `std::round(x)` ve `std::round(y)` ile tam ekran piksellerine kenetlendi. Harflerdeki tüm pikselleşme, bulanıklık ve titreme giderilerek ipeksi pürüzsüzlükte tipografi elde edildi.
+
+---
+
+## 23. RESIZABLE PENCERE MİMARİSİ, ÇİFTE F11 KAYMA HATASININ ÇÖZÜMÜ, PROSEDÜREL GPU TASARIMINA DÖNÜŞ VE GELİŞMİŞ UI ÖLÇEKLENDİRME (v2.2.4)
+
+### 23.1. 2 Kez F11'e Basınca Ekranın Kayması (Drift) Hatasının Çözümü
+* **Kullanıcı Şikayeti:** *"2 kez f11 e basıp kücültüp büyültüğümüzde erkran kayıyordu böyle hatalar kabul edilemez adam akıllı yap sunları direkt ekranın size ını al kullanıcının sonra buna göre window olusutrup ona orantulıu bir şekilde çiz"*
+* **Kök Neden:**
+  1. `FLAG_WINDOW_HIGHDPI` bayrağı, Windows `SetProcessDPIAware()` ile birlikte çalıştığında Raylib'in pencere boyutları ve OpenGL framebuffer'ı arasında çift ölçekleme yapıyordu (%125 veya %150 ölçekli ekranlarda koordinatlar 1.25x bölünerek kayıyordu).
+  2. Eski `toggleFullscreenNative` lambdasında tam ekrana geçerken veya tam ekrandan çıkarken `SetWindowSize(monW, monH)` çağrılıyordu. Windows pencereli moddayken monitör boyutunda bir pencere oluşturulduğunda başlık çubuğu (+31px) ve kenarlıklar (+8px) sebebiyle pencereyi aşağı ve sola itiyordu. Ardından `ToggleFullscreen()` bu kaymış konumu kaydediyor, ikinci F11 basışında pencere her seferinde ekranda 31 piksel kayıyordu.
+* **Uygulanan Çözüm (`main.cpp` & `SettingsModal.cpp`):**
+  1. `FLAG_WINDOW_HIGHDPI` kaldırıldı; `SetProcessDPIAware()` sayesinde donanımsal 1:1 piksel eşlemesi garanti altına alındı.
+  2. Monitör boyutları `GetSystemMetrics(SM_CXSCREEN)` ve `GetSystemMetrics(SM_CYSCREEN)` ile doğrudan alındı; pencereli mod için monitörün %80'i boyutunda merkezlenmiş pencere (`windowedWidth, windowedHeight`) oluşturuldu.
+  3. F11 geçişi için Raylib 5.0'ın native `ToggleBorderlessWindowed()` fonksiyonuna geçildi. Bu fonksiyon pencere boyutunu bozmadan, video modu değiştirmeden ve ekranı kaydırmadan doğrudan tam ekran ile pencereli mod arasında kusursuz geçiş sağlar. İki kez değil, yüz kez F11'e basılsa dahi piksel kayması sıfıra indirildi.
+  4. Sol panelde rig ve güç göstergesi çizimlerinde `rigX` ve `barX` koordinatları `pad + std::max(0.0f, (leftW - rigBaseW) / 2.0f)` ile kenetlendi; pencere ne kadar küçültülürse küçültülsün hiçbir öğe ekran dışına taşmaz.
+
+### 23.2. Prosedürel Klasik Ekran Kartı Tasarımına Geri Dönüş
+* **Kullanıcı Talebi:** *"bu ekran kartlarnıı sevmedim eski stilimize gecbilriiz öylesi daha güzel duruyordu"*
+* **Uygulanan Çözüm (`RigRenderer.cpp` & `GPUInspectionModal.cpp`):**
+  1. Fotoğraf kaplamaları (`gpu_card.png` ve `fan_blade.png`) rig üzerindeki çizimlerden kaldırıldı.
+  2. Kullanıcının çok beğendiği klasik prosedürel tasarım yeniden devreye alındı: Koyu alüminyum gövde, hassas CNC heatsink soğutma ızgaraları, çift ters yönlü dönen RGB aydınlatmalı pervaneler, sıcaklığa göre dinamik renk değiştiren fan merkezleri (Mavi -> Yeşil -> Turuncu -> Kırmızı) ve durum LED'leri.
+  3. 3D GPU İnceleme modalında (`GPUInspectionModal.cpp`) da karbon ön yüz, alüminyum ızgaralar ve bakır ısı boruları prosedürel olarak çizilecek şekilde eşitlendi.
+
+### 23.3. Başlangıç Tipografi ve UI Boyutlarının Büyütülmesi
+* **Kullanıcı Talebi:** *"birde bu yazıları vs biraz büyüt amk hersey ock kücük baslıyor ayar cek su UI kısmına"*
+* **Uygulanan Çözüm (`UIFrame.hpp`, `UIFrame.cpp`, `UIButton.cpp`):**
+  1. **Global UI Ölçeği:** `UIFrame::s_uiScale` varsayılan değeri `1.0f`'tan `1.15f`'a yükseltildi. Tüm metinler ve rozetler doğrudan %15 daha büyük ve belirgin başlar.
+  2. **Üst HUD Rozetleri:** `UIFrame::DrawStatBadge` etiket fontu 13px (ölçekle ~15px), değer fontu 18/21px (ölçekle ~24px) seviyesine çıkarıldı. Dikey hizalama optimize edildi.
+  3. **Buton Tipografisi:** `UIButton::Draw` içerisindeki başlık fontları 13.5px - 18.5px aralığına, alt başlık fontları 10.5px - 12.5px aralığına yükseltildi. Metin genişlik taşma kontrolleri dinamik tutularak butonların sınırlarından taşması engellendi.
+

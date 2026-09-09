@@ -62,7 +62,7 @@ int main() {
     // Boylece oyun masaustunden veya herhangi bir dizinden acilsa bile fontlar ve dokular eksiksiz yuklenir!
     ChangeDirectory(GetApplicationDirectory());
 
-    // 1. Ekran Cozunurlugunu Tespit Et (Dogrudan Tam Ekran Baslatma - Asla kucuk baslamaz!)
+    // 1. Ekran Cozunurlugunu Tespit Et (Dogrudan Monitor Olculerine Gore Orantili Baslat)
 #ifdef _WIN32
     int nativeScreenWidth = GetSystemMetrics(0);  // SM_CXSCREEN
     int nativeScreenHeight = GetSystemMetrics(1); // SM_CYSCREEN
@@ -73,19 +73,22 @@ int main() {
     if (nativeScreenWidth <= 0) nativeScreenWidth = 1920;
     if (nativeScreenHeight <= 0) nativeScreenHeight = 1080;
 
-    // Pencere Yapilandirmasi: Dogrudan monitorun tam cozunurlugunde baslat (Kucuk pencere acilmaz!)
-    constexpr int fallbackWidth = 1280;
-    constexpr int fallbackHeight = 720;
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI);
-    InitWindow(nativeScreenWidth, nativeScreenHeight, "GameOfTex - Crypto Mining & Energy Tycoon (Warehouse Edition)");
+    // Pencere Yapilandirmasi: Monitor boyutuna orantili (%80) pencere boyutlari (En az 1280x720)
+    int windowedWidth = std::max(1280, (nativeScreenWidth * 4) / 5);
+    int windowedHeight = std::max(720, (nativeScreenHeight * 4) / 5);
+    int windowedPosX = (nativeScreenWidth - windowedWidth) / 2;
+    int windowedPosY = (nativeScreenHeight - windowedHeight) / 2;
+
+    // FLAG_WINDOW_HIGHDPI kaldirildi (SetProcessDPIAware ile cift DPI olceklenip ekran kaymasi onlendi)
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
+    InitWindow(windowedWidth, windowedHeight, "GameOfTex - Crypto Mining & Energy Tycoon (Warehouse Edition)");
+    SetWindowPosition(windowedPosX, windowedPosY);
     SetWindowMinSize(1024, 600);
     SetTargetFPS(60);
     SetExitKey(KEY_NULL); // ESC tusunun oyunu aniden kapatmasini engelle
 
-    // Direkt Tam Ekran Baslat (Direct Native Fullscreen Launch - Sifir Bulaniklik)
-    if (!IsWindowFullscreen()) {
-        ToggleFullscreen();
-    }
+    // Direkt Tam Ekran Baslat (Borderless Fullscreen - Sifir Titreme, Sifir Kayma)
+    ToggleBorderlessWindowed();
 
     // 2. Yuksek Cozunurluklu Vektor Fontlarini Yukle (Turkce Genisletilmis Kod Noktalari ile)
     std::vector<int> codepoints;
@@ -240,24 +243,10 @@ int main() {
         auto& coolingManager = *activeFacility->coolingManager;
 
         auto toggleFullscreenNative = [&]() {
-            int monitor = GetCurrentMonitor();
-            if (IsWindowFullscreen()) {
-                ToggleFullscreen();
-                SetWindowSize(fallbackWidth, fallbackHeight);
-                int monW = GetMonitorWidth(monitor);
-                int monH = GetMonitorHeight(monitor);
-                SetWindowPosition((monW - fallbackWidth) / 2, (monH - fallbackHeight) / 2);
-            } else {
-                int monW = GetMonitorWidth(monitor);
-                int monH = GetMonitorHeight(monitor);
-                if (monW <= 0) monW = nativeScreenWidth;
-                if (monH <= 0) monH = nativeScreenHeight;
-                SetWindowSize(monW, monH);
-                ToggleFullscreen();
-            }
+            ToggleBorderlessWindowed();
         };
 
-        // F11: Tam Ekran Gecisi (Native Cozunurluk Gecisi - Sifir Bulaniklik)
+        // F11: Tam Ekran Gecisi (Pencere ve Fullscreen arasi sifir kayma ile gecis)
         if (IsKeyPressed(KEY_F11)) {
             toggleFullscreenNative();
         }
@@ -613,7 +602,7 @@ int main() {
 
         // Kart Tıklama Tespiti (Viewport içerisindeki GPU'ya tıklandı mı?)
         constexpr float rigBaseW = 720.0f;
-        const float rigX = pad + (leftW - rigBaseW) / 2.0f;
+        const float rigX = pad + std::max(0.0f, (leftW - rigBaseW) / 2.0f);
         const float rigY = contentY + 84.0f;
 
         if (!settingsModal.IsOpen() && !gpuInspectionModal.IsOpen() && !marketModal.IsOpen() && !taskModal.IsOpen() && !worldMapModal.IsOpen() && !cryptoExchangeModal.IsOpen() && activeRig && currentViewMode == WarehouseViewMode::RIG_DETAIL) {
@@ -999,7 +988,7 @@ int main() {
                                           "W / " + std::to_string(static_cast<int>(powerGrid.GetMaxCapacityWatts())) + "W";
 
             const float barW = std::min(rigBaseW, leftW - 40.0f);
-            const float barX = pad + (leftW - barW) / 2.0f;
+            const float barX = pad + std::max(0.0f, (leftW - barW) / 2.0f);
             const float barY = rigY + 332.0f;
 
             Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 26.0f}, powerRatio, powerColor, powerText);

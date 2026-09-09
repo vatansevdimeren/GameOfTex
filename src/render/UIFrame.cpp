@@ -115,21 +115,21 @@ void UIFrame::DrawStatBadge(float x, float y, float width, float height,
 
     // İkon ve Başlık
     std::string fullLabel = icon.empty() ? label : (icon + " " + label);
-    float labelSize = 12.0f;
+    float labelSize = 13.0f;
     float labelWidth = MeasureTextCustom(fullLabel, labelSize, false);
     if (labelWidth > availW && labelWidth > 0.0f) {
-        labelSize = std::max(9.0f, labelSize * (availW / labelWidth));
+        labelSize = std::max(9.5f, labelSize * (availW / labelWidth));
     }
-    float labelY = y + (height * 0.16f);
+    float labelY = y + (height * 0.14f);
     DrawTextCustom(fullLabel, x + padX, labelY, labelSize, Color{150, 165, 190, 255}, false);
 
     // Değer Metni (Genişlik ve yüksekliğe göre mükemmel dikey konumlandırma)
-    float valSize = (height < 50.0f) ? 16.0f : 18.0f;
+    float valSize = (height < 50.0f) ? 18.0f : 21.0f;
     float valWidth = MeasureTextCustom(value, valSize, true);
     if (valWidth > availW && valWidth > 0.0f) {
-        valSize = std::max(11.0f, valSize * (availW / valWidth));
+        valSize = std::max(11.5f, valSize * (availW / valWidth));
     }
-    float valY = y + (height * 0.50f);
+    float valY = y + (height * 0.48f);
     DrawTextCustom(value, x + padX, valY, valSize, valueColor, true);
 }
 

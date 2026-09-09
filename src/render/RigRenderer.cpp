@@ -98,39 +98,32 @@ void RigRenderer::DrawSingleGPU(const Core::GPU* gpu, double tempCelsius, int x,
         fanRgb = Color{255, 30, 30, 255}; // Dangerous Red
     }
 
-    // 1. Ekran Kartı Gövdesi
+    // 1. Ekran Karti Govdesi (Klasik Prosedurel Metalik Tasarim)
     if (isBurnt) {
         DrawRectangle(x, y, gpuWidth, gpuHeight, Color{18, 14, 14, 255});
         DrawRectangleLines(x, y, gpuWidth, gpuHeight, Color{140, 25, 25, 255});
-    } else if (textureManager && textureManager->HasGPUTexture()) {
-        textureManager->DrawGPUTexture(Rectangle{static_cast<float>(x), static_cast<float>(y),
-                                                 static_cast<float>(gpuWidth), static_cast<float>(gpuHeight)});
     } else {
         DrawRectangle(x, y, gpuWidth, gpuHeight, Color{30, 32, 38, 255});
         DrawRectangleLines(x, y, gpuWidth, gpuHeight, Color{70, 75, 85, 255});
 
+        // Aluminyum sogutma bloklari (Heatsink fins)
         for (int finY = y + 15; finY < y + gpuHeight - 15; finY += 6) {
             DrawLine(x + 8, finY, x + gpuWidth - 8, finY, Color{50, 55, 65, 255});
         }
     }
 
-    // 2. Dönen Fanlar (Elektrik varsa ve yanmadıysa döner)
+    // 2. Donen RGB Fanlar (Elektrik varsa ve yanmadiysa doner)
     if (hasActivePower) {
-        if (textureManager && textureManager->HasFanTexture()) {
-            textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 60.0f, 32.0f, currentAngle, fanRgb);
-            textureManager->DrawFanTexture(x + gpuWidth / 2.0f, y + 145.0f, 32.0f, -currentAngle, fanRgb);
-        } else {
-            DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, currentAngle, fanRgb);
-            DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, -currentAngle, fanRgb);
-        }
+        DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, currentAngle, fanRgb);
+        DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, -currentAngle, fanRgb);
     } else if (isBurnt) {
-        // Yanmış kartın üstüne alev/arıza etiketi
+        // Yanmis kartin ustune alev/ariza etiketi
         DrawRectangle(x + 6, y + 90, gpuWidth - 12, 40, Color{180, 20, 20, 230});
         UIFrame::DrawTextCustom("YANDI!", static_cast<float>(x + 18), static_cast<float>(y + 100), 16.0f, WHITE, true);
-        // Duman ve kor kıvılcım efektleri
+        // Duman ve kor kivilcim efektleri
         DrawSmokeAndSparks(x + gpuWidth / 2, y + 30, animTime);
     } else {
-        // Rig kapalıyken veya sigorta attığında durağan duran fanlar
+        // Rig kapaliyken veya sigorta attiginda duragan duran fanlar
         DrawSpinningFan(x + gpuWidth / 2, y + 60, 32.0f, 0.0f, Color{60, 65, 75, 255});
         DrawSpinningFan(x + gpuWidth / 2, y + 145, 32.0f, 0.0f, Color{60, 65, 75, 255});
     }

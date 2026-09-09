@@ -191,8 +191,6 @@ void GPUInspectionModal::Draw3DCardPreview(float centerX, float centerY, float h
             // Kömürleşmiş gövde
             DrawRectangleRounded(cardRect, 0.08f, 4, Color{15, 12, 12, 255});
             DrawRectangleRoundedLines(cardRect, 0.08f, 4, 2.0f, Color{80, 20, 20, 255});
-        } else if (textureManager && textureManager->HasGPUTexture()) {
-            textureManager->DrawGPUTexture(cardRect, WHITE);
         } else {
             // Şık karbon/metalik ön yüz
             DrawRectangleRounded(cardRect, 0.08f, 4, Color{28, 32, 42, 255});

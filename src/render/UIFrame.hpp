@@ -66,7 +66,7 @@ private:
     static inline Font s_fontRegular{};
     static inline Font s_fontBold{};
     static inline bool s_hasCustomFonts = false;
-    static inline float s_uiScale = 1.0f;
+    static inline float s_uiScale = 1.15f;
 };
 
 } // namespace Render
