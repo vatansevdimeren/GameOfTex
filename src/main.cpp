@@ -1,5 +1,7 @@
 #ifdef _WIN32
 extern "C" __declspec(dllimport) int __stdcall SetProcessDPIAware(void);
+extern "C" __declspec(dllimport) void* __stdcall GetConsoleWindow(void);
+extern "C" __declspec(dllimport) int __stdcall ShowWindow(void* hWnd, int nCmdShow);
 #endif
 
 #include "raylib.h"
@@ -48,6 +50,11 @@ int main() {
 #ifdef _WIN32
     // Windows DWM bitmap ölçekleme bulanıklığını tamamen devre dışı bırak
     SetProcessDPIAware();
+    // Arka planda konsol penceresi açıksa hemen gizle (Zero-Console GUI)
+    void* consoleWnd = GetConsoleWindow();
+    if (consoleWnd != nullptr) {
+        ShowWindow(consoleWnd, 0); // SW_HIDE = 0
+    }
 #endif
 
     // 1. Pencere Yapılandırması (Resize ve F11 Tam Ekran desteği)
@@ -179,8 +186,6 @@ int main() {
     Render::UIButton btnBuyRig(Rectangle{}, "YENI RIG SATIN AL", "Maliyet: $2,500 (6 Slotlu Raf)",
                               Color{30, 50, 40, 255}, Color{0, 255, 140, 255});
 
-    Render::UIButton btnPrevRig(Rectangle{}, "< ONCEKI", "", Color{30, 35, 45, 255}, Color{0, 200, 255, 255});
-    Render::UIButton btnNextRig(Rectangle{}, "SONRAKI >", "", Color{30, 35, 45, 255}, Color{0, 200, 255, 255});
     Render::UIButton btnToggleRigPower(Rectangle{}, "RIG'I KAPAT", "", Color{60, 25, 25, 255}, Color{255, 70, 70, 255});
     Render::UIButton btnSellRig(Rectangle{}, "RIG'I SAT", "+$1,200", Color{50, 40, 20, 255}, Color{255, 160, 0, 255});
 
@@ -541,15 +546,10 @@ int main() {
             }
         }
 
-        // Rig Gezinme ve Yönetim Butonları (Yalnızca RIG_DETAIL modunda, 2. satırda konumlandırılır, asla başlık veya sekmelerle çakışmaz)
+        // Rig Yonetim Butonlari (Yalnizca RIG_DETAIL modunda, 2. satirda konumlandirilir, asla baslik veya sekmelerle cakismaz)
         if (currentViewMode == WarehouseViewMode::RIG_DETAIL) {
-            btnPrevRig.SetBounds(Rectangle{pad + 16.0f, contentY + 45.0f, 85.0f, 32.0f});
-            btnNextRig.SetBounds(Rectangle{pad + 107.0f, contentY + 45.0f, 85.0f, 32.0f});
-            btnToggleRigPower.SetBounds(Rectangle{pad + leftW - 224.0f, contentY + 45.0f, 112.0f, 32.0f});
-            btnSellRig.SetBounds(Rectangle{pad + leftW - 106.0f, contentY + 45.0f, 94.0f, 32.0f});
-
-            btnPrevRig.SetTitle(Core::LocalizationManager::Tr("RIG_PREV"));
-            btnNextRig.SetTitle(Core::LocalizationManager::Tr("RIG_NEXT"));
+            btnToggleRigPower.SetBounds(Rectangle{pad + leftW - 256.0f, contentY + 45.0f, 136.0f, 32.0f});
+            btnSellRig.SetBounds(Rectangle{pad + leftW - 112.0f, contentY + 45.0f, 96.0f, 32.0f});
 
             if (activeRig) {
                 btnToggleRigPower.SetTitle(activeRig->IsPoweredOn() ? Core::LocalizationManager::Tr("RIG_POWER_OFF") : Core::LocalizationManager::Tr("RIG_POWER_ON"));
@@ -578,8 +578,8 @@ int main() {
                         activeRig = warehouse.GetActiveRig();
                     }
                 }
-                if (btnPrevRig.UpdateAndCheckClick()) warehouse.PreviousRig();
-                if (btnNextRig.UpdateAndCheckClick()) warehouse.NextRig();
+                if (IsKeyPressed(KEY_LEFT)) warehouse.PreviousRig();
+                if (IsKeyPressed(KEY_RIGHT)) warehouse.NextRig();
             }
         }
 
@@ -972,8 +972,6 @@ int main() {
         btnTabOverview.Draw();
 
         if (currentViewMode == WarehouseViewMode::RIG_DETAIL) {
-            btnPrevRig.Draw();
-            btnNextRig.Draw();
             btnToggleRigPower.Draw();
             btnSellRig.Draw();
 

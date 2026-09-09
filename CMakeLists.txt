@@ -107,4 +107,10 @@ add_custom_command(TARGET GameOfTex POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/assets
         $<TARGET_FILE_DIR:GameOfTex>/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:GameOfTex>
+        ${CMAKE_CURRENT_SOURCE_DIR}/GameOfTex.exe
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:GameOfTex>
+        ${CMAKE_CURRENT_SOURCE_DIR}/dist/GameOfTex-Windows/GameOfTex.exe
 )

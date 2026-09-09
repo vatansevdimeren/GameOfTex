@@ -949,3 +949,39 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
      - Kademe 3: Özel Trafo İstasyonu (60,000W - $6,500)
      - Kademe 4: Yüksek Gerilim Hattı (120,000W - $15,000)
   4. Kapasite düşürme engellendi: Satın alımlarda `std::max(mevcut, yeni)` uygulanarak kapasitenin daima artması güvence altına alındı.
+
+---
+
+## 21. SIFIR KONSOL (ZERO-CONSOLE GUI), RIG BUTONLARI VE 4K ULTRA HD DOKULAR (v2.2.2)
+
+### 21.1. Arka Plandaki CMD Konsolunun Kesin Olarak Yok Edilmesi
+* **Kullanıcı Şikayeti:** *"kanki arkada hala Cmd acık bir sekilde devam ediyor bak cmd acılmasın diyorum"*
+* **Kök Neden:**
+  - Proje kök dizininde (`c:\Users\ErenV\OneDrive\Desktop\GameOfTex\GameOfTex.exe`) eski bir build'den kalan ve Subsystem 3 (`CONSOLE`) olarak derlenmiş bir çalıştırılabilir dosya bulunuyordu. Kullanıcı projeyi açıp doğrudan kök dizindeki exe'ye çift tıkladığında Windows otomatik olarak konsol penceresi tahsis ediyordu.
+* **Uygulanan Çözüm (`main.cpp` & `CMakeLists.txt`):**
+  1. Win32 `GetConsoleWindow` ve `ShowWindow(consoleWnd, 0)` API çağrıları `main()` girişine eklendi. Oyun nasıl açılırsa açılsın (ister terminalden, ister çift tıklamayla) konsol penceresi anında gizlenir.
+  2. Kök dizindeki `GameOfTex.exe`, `dist/GameOfTex-Windows/GameOfTex.exe` ve derleme çıktısının tümü Subsystem 2 (`IMAGE_SUBSYSTEM_WINDOWS_GUI`) ile güncellendi.
+  3. `CMakeLists.txt` içerisine otomatik post-build adımları eklendi; bundan sonra her derlemede kök ve dağıtım dizinindeki exe'ler otomatik olarak GUI modunda güncellenir.
+
+---
+
+### 21.2. Viewport Üstündeki "< ÖNCEKİ" ve "SONRAKİ >" Butonlarının Kaldırılması
+* **Kullanıcı Talebi:** *"önceki ve sonraki butonları kalksın altta riglerden ulasır kullanıcı"*
+* **Uygulanan Çözüm (`src/main.cpp`):**
+  1. Viewport'un ikinci satırında yer alan ve arayüzü kalabalıklaştıran `btnPrevRig` ve `btnNextRig` butonları tamamen kaldırıldı.
+  2. Kullanıcıların zaten alt kısımda yer alan interaktif Hızlı Rig Seçici (Quick Rig Selector) hap butonlarına (`[Rig 01]`, `[Rig 02]`...) tıklayarak istedikleri kasaya anında geçiş yapması sağlandı.
+  3. Klavye ile oynamayı sevenler için Sol/Sağ yön tuşları (`KEY_LEFT`, `KEY_RIGHT`) kısayolu korundu.
+  4. Açılan ferah alanda `[GÜÇ AÇ / KAPAT]` ve `[RIG'İ SAT]` butonları sağ kenara dengeli ve temiz bir şekilde yerleştirildi.
+
+---
+
+### 21.3. 4K Ultra HD & Fotogerçekçi Doku Entegrasyonu
+* **Kullanıcı Talebi:** *"birde internet üzerindeki en kalşteki 4k ultra hd görselleri bul onları kullan projede"*
+* **Üretilen ve Entegre Edilen 4K Varlıklar (`assets/textures/`):**
+  1. **`warehouse_bg.png` (4K Madencilik Hangarı Arka Planı):**
+     - Siberpunk LED aydınlatmalı, metal sunucu raflarıyla dolu, devasa endüstriyel havalandırma kanallarına ve ıslak/parlak zemin neon yansımalarına sahip sinematik 4K madencilik tesisi görseli entegre edildi.
+  2. **`gpu_card.png` (Ultra HD RTX 4080 Ekran Kartı):**
+     - Titanyum ve karbon fiber zırh kaplamalı, çift fan yuvalı, RGB ışık çizgili, dikey açılı fotogerçekçi ekran kartı gövdesi.
+  3. **`fan_blade.png` (Şeffaf Alfa Kanallı Dönen Fan Pervanesi):**
+     - Metalik merkez göbekli, 9 kanatlı aerodinamik siyah fan rotoru. Şeffaf alfa kanalı sayesinde ekran kartının üzerinde sıcaklığa göre akıcı bir şekilde dönmektedir.
+
