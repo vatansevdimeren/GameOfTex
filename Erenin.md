@@ -1312,3 +1312,72 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
     * Harcanan Elektrik Faturası (-$XX.XX).
     * Net Elde Edilen Kar (+$XX.XX).
     * `[HASILATI TOPLA VE DEVAM ET]` aksiyon butonu.
+
+---
+
+## 28. İPEKSİ TRILINEAR MIPMAP FONT RENDER, BÜYÜTÜLMÜŞ MARKET & HUD ARAYÜZÜ, ÇAKIŞMA ÖNLEYİCİ AKILLI METİN VE KALİBRE EDİLMİŞ AYARLAR ÖLÇEĞİ (v2.6.1)
+
+### 28.1. Kullanıcı Geri Bildirimi ve Problemler
+* **Kullanıcı Talebi:**
+  *"krall bak yazılar cok ama cok kücük duruyor oyunu ilk defa actıklarında yazılar biraz daha büyük olması gerekiyor cok kücük duruyor birde buradaki yazıların kalitelerini arttırmak lazım kral birde ekstradan ayarlar kısmındaki bölmeden UI kısmın büyültüp kücülttüğüm zaman yazılar birbirine giriyor bunlarıda kontrol edip yeni bir ayar cekmen gerekiyor"*
+* **Tespit Edilen 3 Kritik Aksaklık:**
+  1. **Küçük Yazılar:** Oyun ilk açıldığında `MarketModal` donanım kartları, barlar, butonlar ve HUD etiketleri 10-13px taban boyutlarında kalarak yüksek çözünürlüklü tam ekranda küçük görünüyordu.
+  2. **Yazı Kalitesi & Pikselleşme:** Segoe UI 48px font atlasından 11-13px boyutuna downscale yapılırken `GenTextureMipmaps` çağrılmadığı ve sadece `TEXTURE_FILTER_BILINEAR` kullanıldığı için OpenGL'de GL_LINEAR minification sonucu harf çizgileri kayboluyor, parıldıyor ve piksel piksel kırılıyordu.
+  3. **Ölçekleme Çakışmaları:** Ayarlar menüsünden UI ölçeği (%150, %175, %200) artırıldığında, yalnızca font büyüklüğü artıyor; ancak buton yükseklikleri, satır aralıkları ve rozet konumları sabit kaldığı için başlıklar alt başlıkların üstüne biniyor, butonlardan taşıyor ve metinler birbirine giriyordu.
+
+---
+
+### 28.2. İpeksi Pürüzsüz Font Kalitesi & Trilinear Mipmap Filtreleme (`main.cpp`)
+* **56px Ultra Yüksek Çözünürlüklü Vektör Atlası:**
+  - Segoe UI, Inter ve Arial fontları 56px ultra yüksek çözünürlükte rasterize edildi.
+  - Kod noktalarına Türk Lirası (`₺` / 0x20BA), Tether (`₮` / 0x20AE), Euro (`€` / 0x20AC), menü okları ve onay işaretleri eklendi.
+* **Trilinear Mipmapping (`GenTextureMipmaps` & `TEXTURE_FILTER_TRILINEAR`):**
+  - Font dokusu yüklendikten sonra OpenGL mipmap piramidi (`GenTextureMipmaps`) oluşturuldu.
+  - Doku filtrelemesi `TEXTURE_FILTER_TRILINEAR` (`GL_LINEAR_MIPMAP_LINEAR`) moduna geçirildi.
+  - Sonuç: 56px'ten 11px veya 14px'e küçültülürken hiçbir harf çizgisi incelip kaybolmaz, harf kenarlarında pikselleşme veya titreme sıfıra iner; ipeksi pürüzsüzlükte kristal netliğinde tipografi elde edildi.
+
+---
+
+### 28.3. Donanım Marketi & HUD Tipografi Büyütmeleri (`MarketModal.cpp`, `main.cpp`)
+* **Ferah ve Geniş Kart Tasarımı (`MarketModal`):**
+  - Kart yüksekliği (`cardH`): **74px -> 88px** seviyesine çıkarıldı.
+  - GPU & CPU İsimleri: **18px Bold** yapıldı (önceden 16px).
+  - Tier ve Algoritma Etiketleri: **13px** yapıldı (önceden 11px).
+  - Gerekli Tesis Seviyesi: **12.5px** yapıldı.
+  - Performans Barları (`barH`): **13px -> 17px** seviyesine büyütüldü (`barGap = 5px`). Metinler bar içinde dinamik dikey ortalandı (`12.5px`).
+  - Satın Alma Butonu: **36px -> 42px yükseklik, 155px genişlik** ile belirginleştirildi.
+  - Fiyat Etiketi: **20px Bold** yeşil olarak büyütüldü.
+  - Tier Filtre Butonları: **26px -> 34px** seviyesine çıkarıldı.
+  - Kategori Sekmeleri: **38px -> 42px** seviyesine çıkarıldı.
+* **Ana Ekran HUD & Alt Bilgi:**
+  - Üst rozet etiketleri (`labelSize`): **14.5px** yapıldı.
+  - Üst rozet değerleri (`valSize`): **21px - 24px Bold** yapıldı.
+  - Alt bilgi ipucu (`TIP_FOOTER`): **14.5px** ve yüksek kontrastlı parlak renkle (`Color{215, 230, 255, 255}`) okunaklı kılındı.
+
+---
+
+### 28.4. Çakışma Önleyici Akıllı Metin ve Dikey Ortalama (`UIButton.cpp`, `UIFrame.cpp`)
+* **Butonlarda Sıfır Çakışma Garantisi (`UIButton::Draw`):**
+  - Başlık ve alt başlığın toplam çizim yüksekliği (`totalH = titleDrawnH + gap + subDrawnH`) hesaplanır.
+  - Eğer toplam yükseklik buton alanını aşarsa (`totalH > bounds.height - 6px`), her iki metin otomatik olarak tam sığacak oranda küçültülür (`vRatio = availH / totalH`).
+  - Dikey konumlandırma matematiksel olarak ortalanır:
+    `startY = bounds.y + (bounds.height - totalH) * 0.5f`
+    `titleY = startY`
+    `subY = startY + titleDrawnH + gap`
+  - Bu formül sayesinde UI ölçeği ne kadar büyütülürse büyütülsün başlık ve alt başlığın üst üste binmesi veya buton kenarından taşması imkansız hale getirildi.
+  - Tek satırlı butonlar dikey ve yatayda kusursuz ortalandı.
+* **Rozetlerde Çakışma Önleme (`UIFrame::DrawStatBadge`):**
+  - İkon/Etiket ve Değer metinleri arasındaki dikey mesafe dinamik hesaplanır. Toplam yükseklik rozet sınırını aşarsa otomatik auto-fit küçültme uygulanır.
+
+---
+
+### 28.5. Kalibre Edilmiş Ayarlar UI Ölçek Menüsü (`SettingsModal.cpp`, `UIFrame.hpp`)
+* **Varsayılan Ölçek:** `s_uiScale` taban değeri `1.30f` (%130) olarak ayarlandı; oyun ilk kez açıldığında dahi arayüz geniş, büyük ve son derece rahat okunur.
+* **5 Kademeli Optimize Ölçek Adımları:**
+  - `%100 (1.00x) Standart` - Kompakt ekranlar
+  - `%115 (1.15x) Orta` - Dengeli boyut
+  - `%130 (1.30x) Büyük [Önerilen / Varsayılan]`
+  - `%145 (1.45x) Çok Büyük` - Geniş monitörler
+  - `%160 (1.60x) Maksimum` - Ultra net font
+* **Görsel Geri Bildirim:** Aktif seçili ölçek butonu parlak altın sarısı bir çerçeveyle işaretlenerek oyuncunun hangi boyutta olduğunu anında görmesi sağlandı.
+

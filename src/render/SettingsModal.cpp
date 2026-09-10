@@ -8,16 +8,16 @@ namespace Render {
 SettingsModal::SettingsModal()
     : m_isOpen(false)
     , m_btnClose(Rectangle{}, "KAPAT VE DEVAM ET", "", Color{140, 30, 30, 255}, Color{255, 70, 70, 255})
-    , m_btnScale100(Rectangle{}, "1.0x STANDART", "Normal Boyut", Color{30, 35, 45, 255}, Color{0, 200, 255, 255})
-    , m_btnScale125(Rectangle{}, "1.25x BUYUK", "Daha Okunakli", Color{30, 35, 45, 255}, Color{0, 220, 255, 255})
-    , m_btnScale150(Rectangle{}, "1.50x COK BUYUK", "Buyuk Ekranlar Icin", Color{30, 35, 45, 255}, Color{0, 240, 255, 255})
-    , m_btnScale175(Rectangle{}, "1.75x DEV", "Ultra Genis Font", Color{30, 35, 45, 255}, Color{100, 255, 200, 255})
-    , m_btnScale200(Rectangle{}, "2.0x ULTRA", "Maksimum Boyut", Color{30, 35, 45, 255}, Color{255, 200, 0, 255})
+    , m_btnScale100(Rectangle{}, "1.00x STANDART", "Kompakt Boyut", Color{30, 35, 45, 255}, Color{0, 200, 255, 255})
+    , m_btnScale125(Rectangle{}, "1.15x ORTA", "Dengeli Boyut", Color{30, 35, 45, 255}, Color{0, 220, 255, 255})
+    , m_btnScale150(Rectangle{}, "1.30x BUYUK", "Onerilen (Varsayilan)", Color{25, 45, 45, 255}, Color{0, 255, 180, 255})
+    , m_btnScale175(Rectangle{}, "1.45x COK BUYUK", "Genis Monitorler", Color{30, 35, 45, 255}, Color{100, 255, 200, 255})
+    , m_btnScale200(Rectangle{}, "1.60x MAKSIMUM", "Ultra Net Font", Color{30, 35, 45, 255}, Color{255, 200, 0, 255})
     , m_btnToggleFullscreen(Rectangle{}, "TAM EKRAN (F11)", "Pencere / Fullscreen", Color{35, 45, 60, 255}, Color{0, 220, 255, 255})
     , m_btnToggleLanguage(Rectangle{}, "DIL: TURKCE 🇹🇷", "Degistir / Switch", Color{25, 45, 50, 255}, Color{0, 240, 180, 255})
     , m_btnToggleCurrency(Rectangle{}, "PARA BIRIMI: USD ($)", "USDT / TRY / EUR", Color{45, 38, 20, 255}, Color{255, 200, 0, 255})
-    , m_btnSaveGame(Rectangle{}, "[+] OYUNU KAYDET", "Ilerlemeyi Kaydet", Color{20, 50, 35, 255}, Color{0, 255, 140, 255})
-    , m_btnMainMenu(Rectangle{}, "[<] ANA MENUYE DON", "Kaydet ve Cik", Color{45, 30, 25, 255}, Color{255, 160, 40, 255})
+    , m_btnSaveGame(Rectangle{}, "OYUNU KAYDET", "Ilerlemeyi Kaydet", Color{20, 50, 35, 255}, Color{0, 255, 140, 255})
+    , m_btnMainMenu(Rectangle{}, "ANA MENUYE DON", "Kaydet ve Cik", Color{45, 30, 25, 255}, Color{255, 160, 40, 255})
 {
 }
 
@@ -77,16 +77,16 @@ SettingsAction SettingsModal::Update(Core::EconomyManager& economy) {
     m_btnToggleLanguage.SetTitle(std::string("DIL / LANG: ") + Core::LocalizationManager::Get().GetLanguageName());
     std::string curTitle = std::string(Core::LocalizationManager::Tr("SETTINGS_CURRENCY")) + economy.GetCurrencyCode() + " (" + economy.GetCurrencySymbol() + ")";
     m_btnToggleCurrency.SetTitle(curTitle);
-    m_btnSaveGame.SetTitle(isTR ? "[+] OYUNU KAYDET" : "[+] SAVE GAME");
-    m_btnMainMenu.SetTitle(isTR ? "[<] ANA MENUYE DON" : "[<] MAIN MENU");
+    m_btnSaveGame.SetTitle(isTR ? "OYUNU KAYDET" : "SAVE GAME");
+    m_btnMainMenu.SetTitle(isTR ? "ANA MENUYE DON" : "MAIN MENU");
     m_btnClose.SetTitle(Core::LocalizationManager::Tr("SETTINGS_CLOSE"));
 
-    // Tıklamaları işle
-    if (m_btnScale100.UpdateAndCheckClick()) UIFrame::SetUIScale(1.0f);
-    if (m_btnScale125.UpdateAndCheckClick()) UIFrame::SetUIScale(1.25f);
-    if (m_btnScale150.UpdateAndCheckClick()) UIFrame::SetUIScale(1.50f);
-    if (m_btnScale175.UpdateAndCheckClick()) UIFrame::SetUIScale(1.75f);
-    if (m_btnScale200.UpdateAndCheckClick()) UIFrame::SetUIScale(2.0f);
+    // Tıklamaları işle (Kalibre edilmiş kademeli ölçekler)
+    if (m_btnScale100.UpdateAndCheckClick()) UIFrame::SetUIScale(1.00f);
+    if (m_btnScale125.UpdateAndCheckClick()) UIFrame::SetUIScale(1.15f);
+    if (m_btnScale150.UpdateAndCheckClick()) UIFrame::SetUIScale(1.30f);
+    if (m_btnScale175.UpdateAndCheckClick()) UIFrame::SetUIScale(1.45f);
+    if (m_btnScale200.UpdateAndCheckClick()) UIFrame::SetUIScale(1.60f);
 
     if (m_btnToggleFullscreen.UpdateAndCheckClick()) {
         ToggleBorderlessWindowed();
@@ -146,6 +146,20 @@ void SettingsModal::Draw(const Core::EconomyManager& economy) const {
     m_btnScale150.Draw();
     m_btnScale175.Draw();
     m_btnScale200.Draw();
+
+    // Aktif seçili ölçek butonuna parlak altın çerçeve
+    float curScale = UIFrame::GetUIScale();
+    const UIButton* activeBtn = nullptr;
+    if (curScale <= 1.05f) activeBtn = &m_btnScale100;
+    else if (curScale <= 1.20f) activeBtn = &m_btnScale125;
+    else if (curScale <= 1.35f) activeBtn = &m_btnScale150;
+    else if (curScale <= 1.50f) activeBtn = &m_btnScale175;
+    else activeBtn = &m_btnScale200;
+
+    if (activeBtn) {
+        Rectangle ab = activeBtn->GetBounds();
+        DrawRectangleRoundedLines(ab, 0.2f, 4, 2.5f, Color{255, 215, 0, 255});
+    }
 
     m_btnToggleFullscreen.Draw();
     m_btnToggleLanguage.Draw();

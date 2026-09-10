@@ -95,10 +95,17 @@ void UIFrame::DrawProgressBar(Rectangle bounds, float progressRatio, Color barCo
 
     // Büyük ve okunaklı ortalanmış metin
     if (!labelText.empty()) {
-        float textWidth = MeasureTextCustom(labelText, 16.0f, true);
-        float textX = bounds.x + (bounds.width / 2.0f) - (textWidth / 2.0f);
-        float textY = bounds.y + (bounds.height / 2.0f) - 9.0f;
-        DrawTextCustom(labelText, textX, textY, 16.0f, WHITE, true);
+        float baseSize = 16.0f;
+        float textWidth = MeasureTextCustom(labelText, baseSize, true);
+        float maxW = std::max(10.0f, bounds.width - 16.0f);
+        if (textWidth > maxW && textWidth > 0.0f) {
+            baseSize = std::max(11.0f, baseSize * (maxW / textWidth));
+            textWidth = MeasureTextCustom(labelText, baseSize, true);
+        }
+        float textHeight = baseSize * s_uiScale;
+        float textX = bounds.x + (bounds.width - textWidth) * 0.5f;
+        float textY = bounds.y + (bounds.height - textHeight) * 0.5f;
+        DrawTextCustom(labelText, textX, textY, baseSize, WHITE, true);
     }
 }
 
@@ -115,21 +122,42 @@ void UIFrame::DrawStatBadge(float x, float y, float width, float height,
 
     // İkon ve Başlık
     std::string fullLabel = icon.empty() ? label : (icon + " " + label);
-    float labelSize = 13.0f;
+    float labelSize = 14.5f;
     float labelWidth = MeasureTextCustom(fullLabel, labelSize, false);
     if (labelWidth > availW && labelWidth > 0.0f) {
-        labelSize = std::max(9.5f, labelSize * (availW / labelWidth));
+        labelSize = std::max(10.0f, labelSize * (availW / labelWidth));
     }
-    float labelY = y + (height * 0.14f);
-    DrawTextCustom(fullLabel, x + padX, labelY, labelSize, Color{150, 165, 190, 255}, false);
 
-    // Değer Metni (Genişlik ve yüksekliğe göre mükemmel dikey konumlandırma)
-    float valSize = (height < 50.0f) ? 18.0f : 21.0f;
+    // Değer Metni (Genişlik sınırlarına göre akıllı ölçekleme)
+    float valSize = (height < 50.0f) ? 20.0f : 23.0f;
     float valWidth = MeasureTextCustom(value, valSize, true);
     if (valWidth > availW && valWidth > 0.0f) {
         valSize = std::max(11.5f, valSize * (availW / valWidth));
     }
-    float valY = y + (height * 0.48f);
+
+    // Dikey Yükseklik ve Çakışma Önleme (Anti-Collision Dynamic Stacking)
+    float labelDrawnH = labelSize * s_uiScale;
+    float valDrawnH = valSize * s_uiScale;
+    const float gap = 3.0f;
+    float totalH = labelDrawnH + gap + valDrawnH;
+    const float availH = std::max(10.0f, height - 10.0f);
+
+    // Eğer toplam metin yüksekliği rozetten taşıyorsa, ikisini de orantılı küçült
+    if (totalH > availH && totalH > 0.0f) {
+        float vScale = availH / totalH;
+        labelSize = std::max(9.0f, labelSize * vScale);
+        valSize = std::max(10.5f, valSize * vScale);
+        labelDrawnH = labelSize * s_uiScale;
+        valDrawnH = valSize * s_uiScale;
+        totalH = labelDrawnH + gap + valDrawnH;
+    }
+
+    // Dikeyde tam ortalama ve sıfır çakışma
+    float startY = y + (height - totalH) * 0.5f;
+    float labelY = startY;
+    float valY = startY + labelDrawnH + gap;
+
+    DrawTextCustom(fullLabel, x + padX, labelY, labelSize, Color{165, 185, 215, 255}, false);
     DrawTextCustom(value, x + padX, valY, valSize, valueColor, true);
 }
 

@@ -125,33 +125,63 @@ void UIButton::Draw() const {
     const float padX = (m_bounds.width < 110.0f) ? 8.0f : 14.0f;
     const float maxW = std::max(10.0f, m_bounds.width - (padX * 2.0f));
     const float textX = m_bounds.x + padX;
+    const float scale = UIFrame::GetUIScale();
 
     if (!m_subtitle.empty()) {
-        float titleSize = (m_bounds.height < 42.0f) ? 13.0f : 16.0f;
-        float subSize = (m_bounds.height < 42.0f) ? 10.5f : 12.5f;
+        float titleSize = (m_bounds.height < 44.0f) ? 14.0f : 16.5f;
+        float subSize = (m_bounds.height < 44.0f) ? 11.0f : 13.0f;
 
+        // Yatay sınırlama
         float tW = UIFrame::MeasureTextCustom(m_title, titleSize, true);
         if (tW > maxW && tW > 0.0f) titleSize = std::max(9.5f, titleSize * (maxW / tW));
 
         float sW = UIFrame::MeasureTextCustom(m_subtitle, subSize, false);
         if (sW > maxW && sW > 0.0f) subSize = std::max(8.5f, subSize * (maxW / sW));
 
-        float titleY = (m_bounds.height < 42.0f)
-            ? (m_bounds.y + (m_bounds.height * 0.16f))
-            : (m_bounds.y + (m_bounds.height / 2.0f) - titleSize - 1.0f);
-        float subY = (m_bounds.height < 42.0f)
-            ? (m_bounds.y + (m_bounds.height * 0.54f))
-            : (m_bounds.y + (m_bounds.height / 2.0f) + 3.0f);
+        // Dikey sınırlama & Çakışma Önleme (Vertical Dynamic Bounding)
+        float titleDrawnH = titleSize * scale;
+        float subDrawnH = subSize * scale;
+        const float gap = 2.0f;
+        float totalH = titleDrawnH + gap + subDrawnH;
+        const float availH = std::max(10.0f, m_bounds.height - 6.0f);
+
+        if (totalH > availH && totalH > 0.0f) {
+            float vRatio = availH / totalH;
+            titleSize = std::max(8.5f, titleSize * vRatio);
+            subSize = std::max(7.5f, subSize * vRatio);
+            titleDrawnH = titleSize * scale;
+            subDrawnH = subSize * scale;
+            totalH = titleDrawnH + gap + subDrawnH;
+        }
+
+        float startY = m_bounds.y + (m_bounds.height - totalH) * 0.5f;
+        float titleY = startY;
+        float subY = startY + titleDrawnH + gap;
 
         UIFrame::DrawTextCustom(m_title, textX, titleY, titleSize, textColor, true);
         UIFrame::DrawTextCustom(m_subtitle, textX, subY, subSize, subTextColor, false);
     } else {
-        float titleSize = (m_bounds.height < 34.0f) ? 13.5f : ((m_bounds.height < 44.0f) ? 16.0f : 18.5f);
+        float titleSize = (m_bounds.height < 34.0f) ? 14.0f : ((m_bounds.height < 46.0f) ? 16.5f : 19.0f);
         float tW = UIFrame::MeasureTextCustom(m_title, titleSize, true);
         if (tW > maxW && tW > 0.0f) titleSize = std::max(10.0f, titleSize * (maxW / tW));
 
-        float titleY = m_bounds.y + (m_bounds.height / 2.0f) - (titleSize * 0.52f);
-        UIFrame::DrawTextCustom(m_title, textX, titleY, titleSize, textColor, true);
+        // Dikey sınırlama
+        float titleDrawnH = titleSize * scale;
+        const float availH = std::max(8.0f, m_bounds.height - 6.0f);
+        if (titleDrawnH > availH && titleDrawnH > 0.0f) {
+            titleSize = std::max(8.5f, titleSize * (availH / titleDrawnH));
+            titleDrawnH = titleSize * scale;
+        }
+
+        // Kısa/aksiyon butonlarında metni otomatik yatay ortala
+        float finalTW = UIFrame::MeasureTextCustom(m_title, titleSize, true);
+        float drawX = textX;
+        if (m_bounds.width < 170.0f && finalTW < maxW) {
+            drawX = m_bounds.x + (m_bounds.width - finalTW) * 0.5f;
+        }
+
+        float titleY = m_bounds.y + (m_bounds.height - titleDrawnH) * 0.5f;
+        UIFrame::DrawTextCustom(m_title, drawX, titleY, titleSize, textColor, true);
     }
 }
 

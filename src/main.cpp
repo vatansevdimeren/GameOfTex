@@ -102,39 +102,51 @@ int main() {
     for (int i = 160; i <= 255; ++i) codepoints.push_back(i);
     // Latin Extended-A (0x0100 - 0x017F): ğ, Ğ, ı, İ, ş, Ş, vb.
     for (int i = 0x0100; i <= 0x017F; ++i) codepoints.push_back(i);
+    // Currency & UI Symbols (₺: 0x20BA, €: 0x20AC, ₮: 0x20AE, ▶: 0x25B6, ◀: 0x25C0)
+    codepoints.push_back(0x20BA); // Turkish Lira ₺
+    codepoints.push_back(0x20AC); // Euro €
+    codepoints.push_back(0x20AE); // Tugrik / Tether ₮
+    codepoints.push_back(0x25B6); // ▶
+    codepoints.push_back(0x25C0); // ◀
+    codepoints.push_back(0x2714); // ✔
+    codepoints.push_back(0x2716); // ✖
 
-    // Oncelik 1: Segoe UI (48px yuksek cozunurluk - ipeksi puruzsuzluk, sifir pikcellesme)
-    Font fontRegular = LoadFontEx("assets/fonts/SegoeUI-Regular.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
-    Font fontBold = LoadFontEx("assets/fonts/SegoeUI-Bold.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+    // Oncelik 1: Segoe UI (56px ultra yuksek cozunurluk - ipeksi puruzsuzluk, sifir pikcellesme)
+    Font fontRegular = LoadFontEx("assets/fonts/SegoeUI-Regular.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
+    Font fontBold = LoadFontEx("assets/fonts/SegoeUI-Bold.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
 
     // Yedek 1: Windows Sistem Segoe UI Fontu
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("C:/Windows/Fonts/segoeui.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("C:/Windows/Fonts/segoeuib.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 2: Google Inter Fontu
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("assets/fonts/Inter.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("assets/fonts/Inter.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("assets/fonts/Inter.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("assets/fonts/Inter.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 3: Windows Arial
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("C:/Windows/Fonts/arial.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("C:/Windows/Fonts/arialbd.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
     // Yedek 4: Rajdhani
     if (fontRegular.texture.id == 0) {
-        fontRegular = LoadFontEx("assets/fonts/Rajdhani-Medium.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
-        fontBold = LoadFontEx("assets/fonts/Rajdhani-Bold.ttf", 48, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontRegular = LoadFontEx("assets/fonts/Rajdhani-Medium.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
+        fontBold = LoadFontEx("assets/fonts/Rajdhani-Bold.ttf", 56, codepoints.data(), static_cast<int>(codepoints.size()));
     }
 
-    // Bilinear filtreleme: Mipmap cagirisi yapilmaz (harfler asla bulaniklasmaz ve pikselleşmez!)
+    // Trilinear Mipmap Filtreleme: Her cozunurlukte pürüzsüz anti-aliased vektor hissi, sifir piksel kirilmasi
     if (fontRegular.texture.id > 0) {
-        SetTextureFilter(fontRegular.texture, TEXTURE_FILTER_BILINEAR);
-        SetTextureFilter(fontBold.texture, TEXTURE_FILTER_BILINEAR);
+        GenTextureMipmaps(&fontRegular.texture);
+        SetTextureFilter(fontRegular.texture, TEXTURE_FILTER_TRILINEAR);
+        if (fontBold.texture.id > 0) {
+            GenTextureMipmaps(&fontBold.texture);
+            SetTextureFilter(fontBold.texture, TEXTURE_FILTER_TRILINEAR);
+        }
         Render::UIFrame::InitTheme(fontRegular, fontBold);
     }
 
@@ -1221,13 +1233,13 @@ int main() {
         DrawRectangle(0, static_cast<int>(screenH - footerH), static_cast<int>(screenW), static_cast<int>(footerH), Color{14, 17, 23, 250});
         DrawLine(0, static_cast<int>(screenH - footerH), static_cast<int>(screenW), static_cast<int>(screenH - footerH), Color{35, 42, 56, 255});
 
-        const float footerTextY = screenH - footerH + ((footerH - 14.0f) / 2.0f);
+        const float footerTextY = screenH - footerH + ((footerH - 16.0f) / 2.0f);
         Render::UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("TIP_FOOTER"),
-                                       pad + 10.0f, footerTextY, 13.0f, Color{150, 165, 190, 255}, false);
+                                       pad + 10.0f, footerTextY, 14.5f, Color{215, 230, 255, 255}, false);
 
-        std::string verTag = "GameOfTex v1.9.2 [Segoe UI Native F11]";
-        float verW = Render::UIFrame::MeasureTextCustom(verTag, 13.0f, false);
-        Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, footerTextY, 13.0f, Color{100, 120, 150, 255}, false);
+        std::string verTag = "GameOfTex v2.6.0 [Trilinear High-DPI F11]";
+        float verW = Render::UIFrame::MeasureTextCustom(verTag, 13.5f, false);
+        Render::UIFrame::DrawTextCustom(verTag, screenW - verW - pad - 10.0f, footerTextY, 13.5f, Color{140, 170, 210, 255}, false);
 
         // 5. GPU 360 İNCELEME MODALI (AÇIKSA EN ÜSTTE ÇİZİLİR)
         if (gpuInspectionModal.IsOpen()) {

@@ -87,10 +87,10 @@ MarketPurchaseAction MarketModal::Update(
 
     // Kategori Sekmeleri (5 Sekme: GPU, CPU, GUC, SOGUTMA, TESIS)
     bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
-    const float tabY = modalY + 54.0f;
+    const float tabY = modalY + 52.0f;
     const float tabGap = 8.0f;
     const float tabW = (modalW - 40.0f - (4.0f * tabGap)) / 5.0f;
-    const float tabH = 38.0f;
+    const float tabH = 42.0f;
 
     m_btnTabGPUs.SetBounds(Rectangle{modalX + 20.0f + 0 * (tabW + tabGap), tabY, tabW, tabH});
     m_btnTabCPUs.SetBounds(Rectangle{modalX + 20.0f + 1 * (tabW + tabGap), tabY, tabW, tabH});
@@ -118,7 +118,7 @@ MarketPurchaseAction MarketModal::Update(
     // Kategoriye Göre Satın Alma İşlemleri
     if (m_currentCategory == MarketCategory::GPUS) {
         const float filterY = contentY + 22.0f;
-        const float filterH = 26.0f;
+        const float filterH = 34.0f;
         const float filterW = (contentW - 32.0f) / 5.0f;
 
         m_btnTierAll.SetBounds(Rectangle{contentX, filterY, filterW, filterH});
@@ -133,12 +133,12 @@ MarketPurchaseAction MarketModal::Update(
         if (m_btnTier3.UpdateAndCheckClick()) { m_gpuTierFilter = 3; m_gpuScrollOffset = 0.0f; }
         if (m_btnTier4.UpdateAndCheckClick()) { m_gpuTierFilter = 4; m_gpuScrollOffset = 0.0f; }
 
-        const float cardsAreaY = filterY + filterH + 8.0f;
+        const float cardsAreaY = filterY + filterH + 10.0f;
         const float cardsAreaH = contentH - (cardsAreaY - contentY);
         Rectangle cardsAreaRec{contentX, cardsAreaY, contentW, cardsAreaH};
 
         if (CheckCollisionPointRec(GetMousePosition(), cardsAreaRec)) {
-            m_gpuScrollOffset += GetMouseWheelMove() * 38.0f;
+            m_gpuScrollOffset += GetMouseWheelMove() * 42.0f;
         }
 
         const auto& gpuModels = catalog.GetGPUModels();
@@ -147,8 +147,8 @@ MarketPurchaseAction MarketModal::Update(
             if (m_gpuTierFilter == 0 || m.tier == m_gpuTierFilter) visibleCount++;
         }
 
-        const float cardH = 74.0f;
-        const float gap = 6.0f;
+        const float cardH = 88.0f;
+        const float gap = 8.0f;
         const float totalCardsH = visibleCount * (cardH + gap);
         const float maxScroll = std::max(0.0f, totalCardsH - cardsAreaH);
         m_gpuScrollOffset = std::clamp(m_gpuScrollOffset, -maxScroll, 0.0f);
@@ -168,8 +168,8 @@ MarketPurchaseAction MarketModal::Update(
             }
         }
         const bool hasRigSpace = (targetRigIndex >= 0);
-        const float buyBtnW = 145.0f;
-        const float buyBtnH = 36.0f;
+        const float buyBtnW = 155.0f;
+        const float buyBtnH = 42.0f;
 
         if (m_gpuBuyButtons.size() < gpuModels.size()) {
             m_gpuBuyButtons.resize(gpuModels.size(), UIButton(Rectangle{0, 0, 0, 0}, "SATIN AL", "", Color{20, 70, 50, 255}, Color{40, 210, 120, 255}));
@@ -185,7 +185,7 @@ MarketPurchaseAction MarketModal::Update(
 
             const float itemY = cardsAreaY + m_gpuScrollOffset + (displayIdx * (cardH + gap));
             const float btnX = contentX + contentW - buyBtnW - 14.0f;
-            const float btnY = itemY + 19.0f;
+            const float btnY = itemY + 23.0f;
             m_gpuBuyButtons[i].SetBounds(Rectangle{btnX, btnY, buyBtnW, buyBtnH});
 
             bool canAfford = economy.GetFiatBalance() >= model.priceUSD;
@@ -222,24 +222,24 @@ MarketPurchaseAction MarketModal::Update(
         Rectangle cardsAreaRec{contentX, cardsAreaY, contentW, cardsAreaH};
 
         if (CheckCollisionPointRec(GetMousePosition(), cardsAreaRec)) {
-            m_cpuScrollOffset += GetMouseWheelMove() * 38.0f;
+            m_cpuScrollOffset += GetMouseWheelMove() * 42.0f;
         }
 
-        const float cardH = 76.0f;
-        const float gap = 6.0f;
+        const float cardH = 88.0f;
+        const float gap = 8.0f;
         const float totalCardsH = cpuModels.size() * (cardH + gap);
         const float maxScroll = std::max(0.0f, totalCardsH - cardsAreaH);
         m_cpuScrollOffset = std::clamp(m_cpuScrollOffset, -maxScroll, 0.0f);
 
         const auto* activeRig = warehouse.GetActiveRig();
-        const float buyBtnW = 160.0f;
-        const float buyBtnH = 38.0f;
+        const float buyBtnW = 165.0f;
+        const float buyBtnH = 42.0f;
 
         for (size_t i = 0; i < cpuModels.size(); ++i) {
             const auto& cpu = cpuModels[i];
             const float itemY = cardsAreaY + m_cpuScrollOffset + (i * (cardH + gap));
             const float btnX = contentX + contentW - buyBtnW - 14.0f;
-            const float btnY = itemY + 19.0f;
+            const float btnY = itemY + 23.0f;
             m_cpuBuyButtons[i].SetBounds(Rectangle{btnX, btnY, buyBtnW, buyBtnH});
 
             bool alreadyInstalled = (activeRig && activeRig->GetCPUName() == cpu.name);
@@ -462,19 +462,23 @@ void MarketModal::DrawStatBar(
     ratio = std::clamp(ratio, 0.0f, 1.0f);
 
     // Arka plan
-    DrawRectangleRounded(Rectangle{x, y, w, h}, 0.3f, 4, Color{16, 22, 34, 255});
-    DrawRectangleRoundedLines(Rectangle{x, y, w, h}, 0.3f, 4, 1.2f, Color{40, 52, 75, 255});
+    DrawRectangleRounded(Rectangle{x, y, w, h}, 0.35f, 4, Color{14, 20, 30, 255});
+    DrawRectangleRoundedLines(Rectangle{x, y, w, h}, 0.35f, 4, 1.2f, Color{45, 60, 85, 255});
 
     // Dolu kısım
     float fillW = w * ratio;
     if (fillW > 4.0f) {
-        DrawRectangleRounded(Rectangle{x + 1, y + 1, fillW - 2, h - 2}, 0.3f, 4, barColor);
+        DrawRectangleRounded(Rectangle{x + 1, y + 1, fillW - 2, h - 2}, 0.35f, 4, barColor);
     }
 
-    // Metinler
-    UIFrame::DrawTextCustom(labelLeft, x + 6.0f, y + 1.0f, 11.0f, Color{200, 220, 245, 255}, false);
-    float rW = UIFrame::MeasureTextCustom(labelRight, 11.0f, true);
-    UIFrame::DrawTextCustom(labelRight, x + w - rW - 6.0f, y + 1.0f, 11.0f, Color{255, 255, 255, 255}, true);
+    // Metinler - Dikeyde ortalanmış, net ve belirgin
+    float textSize = 12.5f;
+    float textHeight = textSize * UIFrame::GetUIScale();
+    float textY = y + (h - textHeight) * 0.5f;
+
+    UIFrame::DrawTextCustom(labelLeft, x + 8.0f, textY, textSize, Color{220, 235, 255, 255}, false);
+    float rW = UIFrame::MeasureTextCustom(labelRight, textSize, true);
+    UIFrame::DrawTextCustom(labelRight, x + w - rW - 8.0f, textY, textSize, Color{255, 255, 255, 255}, true);
 }
 
 void MarketModal::DrawGPUsCategory(
@@ -512,7 +516,7 @@ void MarketModal::DrawGPUsCategory(
         rigInfo += std::string(Core::LocalizationManager::Tr("MARKET_RIG_FULL")) + " (Sag Panelden Yeni Rig Satin Alin)";
         rigColor = Color{255, 110, 110, 255};
     }
-    UIFrame::DrawTextCustom(rigInfo, startX + 8.0f, startY - 2.0f, 14.0f, rigColor, true);
+    UIFrame::DrawTextCustom(rigInfo, startX + 8.0f, startY - 2.0f, 15.0f, rigColor, true);
 
     // 2. Tier Filtre Butonları
     m_btnTierAll.Draw();
@@ -536,16 +540,16 @@ void MarketModal::DrawGPUsCategory(
 
     // 3. Scissor Mode ile Kaydırılabilir Kart Alanı
     const float filterY = startY + 22.0f;
-    const float filterH = 26.0f;
-    const float cardsAreaY = filterY + filterH + 8.0f;
+    const float filterH = 34.0f;
+    const float cardsAreaY = filterY + filterH + 10.0f;
     const float cardsAreaH = height - (cardsAreaY - startY);
     Rectangle cardsAreaRec{startX, cardsAreaY, width, cardsAreaH};
 
     BeginScissorMode((int)cardsAreaRec.x, (int)cardsAreaRec.y, (int)cardsAreaRec.width, (int)cardsAreaRec.height);
 
-    const float cardH = 74.0f;
-    const float gap = 6.0f;
-    const float buyBtnW = 145.0f;
+    const float cardH = 88.0f;
+    const float gap = 8.0f;
+    const float buyBtnW = 155.0f;
 
     int displayIdx = 0;
     for (size_t i = 0; i < gpuModels.size(); ++i) {
@@ -567,48 +571,48 @@ void MarketModal::DrawGPUsCategory(
         DrawRectangleRoundedLines(Rectangle{startX, itemY, width, cardH}, 0.12f, 4, 1.5f, model.accentColor);
 
         // Sol Kısım: GPU Adı ve Tier Rozeti
-        UIFrame::DrawTextCustom(model.name, startX + 16.0f, itemY + 10.0f, 16.0f, Color{245, 250, 255, 255}, true);
+        UIFrame::DrawTextCustom(model.name, startX + 16.0f, itemY + 12.0f, 18.0f, Color{245, 250, 255, 255}, true);
 
         std::string tierText = "[" + std::string(Core::LocalizationManager::Tr(model.tierKey)) + " - Tier " + std::to_string(model.tier) + "]";
-        UIFrame::DrawTextCustom(tierText, startX + 16.0f, itemY + 30.0f, 11.0f, model.accentColor, false);
+        UIFrame::DrawTextCustom(tierText, startX + 16.0f, itemY + 36.0f, 13.0f, model.accentColor, false);
 
         // Gerekli Tesis Seviyesi
         if (model.minFacilityTier > 1) {
             std::string facReq = "Gereken Tesis: Seviye " + std::to_string(model.minFacilityTier);
-            UIFrame::DrawTextCustom(facReq, startX + 16.0f, itemY + 48.0f, 11.0f, Color{160, 175, 195, 220}, false);
+            UIFrame::DrawTextCustom(facReq, startX + 16.0f, itemY + 58.0f, 12.5f, Color{160, 175, 195, 220}, false);
         }
 
         // Orta Kısım: 3 Adet Performans Barı
         const float barX = startX + 270.0f;
         const float barW = width - 270.0f - buyBtnW - 140.0f;
-        const float barH = 13.0f;
-        const float barGap = 4.0f;
+        const float barH = 17.0f;
+        const float barGap = 5.0f;
 
         // 1. Kazım Gücü Barı (Max 550 MH/s ölçeği)
         std::ostringstream ssHash;
         ssHash << std::fixed << std::setprecision(0) << model.hashrate << " MH/s";
         float hashRatio = static_cast<float>(model.hashrate / 550.0);
-        DrawStatBar(barX, itemY + 8.0f, barW, barH, hashRatio, Color{45, 200, 240, 220},
+        DrawStatBar(barX, itemY + 11.0f, barW, barH, hashRatio, Color{45, 200, 240, 220},
                     Core::LocalizationManager::Tr("MARKET_HASH_BAR"), ssHash.str().c_str());
 
         // 2. Güç Çekişi Barı (Max 750 W ölçeği)
         std::ostringstream ssPower;
         ssPower << std::fixed << std::setprecision(0) << model.powerWatts << " W";
         float powerRatio = static_cast<float>(model.powerWatts / 750.0);
-        DrawStatBar(barX, itemY + 8.0f + barH + barGap, barW, barH, powerRatio, Color{255, 175, 45, 220},
+        DrawStatBar(barX, itemY + 11.0f + barH + barGap, barW, barH, powerRatio, Color{255, 175, 45, 220},
                     Core::LocalizationManager::Tr("MARKET_POWER_BAR"), ssPower.str().c_str());
 
         // 3. Verimlilik Barı (Max 0.75 MH/W ölçeği)
         std::ostringstream ssEff;
         ssEff << std::fixed << std::setprecision(2) << model.efficiency << " MH/W";
         float effRatio = static_cast<float>(model.efficiency / 0.75);
-        DrawStatBar(barX, itemY + 8.0f + (2 * (barH + barGap)), barW, barH, effRatio, Color{50, 225, 140, 220},
+        DrawStatBar(barX, itemY + 11.0f + (2 * (barH + barGap)), barW, barH, effRatio, Color{50, 225, 140, 220},
                     Core::LocalizationManager::Tr("MARKET_EFF_BAR"), ssEff.str().c_str());
 
         // Sağ Kısım: Fiyat ve Satın Al Butonu
         const float priceX = barX + barW + 16.0f;
         std::string priceStr = economy.FormatFiat(model.priceUSD);
-        UIFrame::DrawTextCustom(priceStr, priceX, itemY + 24.0f, 17.0f, Color{100, 255, 160, 255}, true);
+        UIFrame::DrawTextCustom(priceStr, priceX, itemY + 28.0f, 20.0f, Color{100, 255, 160, 255}, true);
 
         if (i < m_gpuBuyButtons.size()) {
             m_gpuBuyButtons[i].Draw();
@@ -638,7 +642,7 @@ void MarketModal::DrawCPUsCategory(
     } else {
         rigInfo += "Kasa Bulunamadi";
     }
-    UIFrame::DrawTextCustom(rigInfo, startX + 8.0f, startY - 2.0f, 14.0f, Color{0, 230, 160, 255}, true);
+    UIFrame::DrawTextCustom(rigInfo, startX + 8.0f, startY - 2.0f, 15.0f, Color{0, 230, 160, 255}, true);
 
     // 2. Scissor Mode ile Kaydırılabilir CPU Kart Alanı
     const float cardsAreaY = startY + 22.0f;
@@ -647,9 +651,9 @@ void MarketModal::DrawCPUsCategory(
 
     BeginScissorMode((int)cardsAreaRec.x, (int)cardsAreaRec.y, (int)cardsAreaRec.width, (int)cardsAreaRec.height);
 
-    const float cardH = 76.0f;
-    const float gap = 6.0f;
-    const float buyBtnW = 160.0f;
+    const float cardH = 88.0f;
+    const float gap = 8.0f;
+    const float buyBtnW = 165.0f;
 
     for (size_t i = 0; i < cpuModels.size(); ++i) {
         const auto& cpu = cpuModels[i];
@@ -665,40 +669,40 @@ void MarketModal::DrawCPUsCategory(
         DrawRectangleRoundedLines(Rectangle{startX, itemY, width, cardH}, 0.12f, 4, 1.5f, cpu.accentColor);
 
         // Sol Kısım: CPU Adı, Çekirdek/İzlek Bilgisi ve Algoritma Rozeti
-        UIFrame::DrawTextCustom(cpu.name, startX + 16.0f, itemY + 10.0f, 16.0f, Color{245, 250, 255, 255}, true);
+        UIFrame::DrawTextCustom(cpu.name, startX + 16.0f, itemY + 12.0f, 18.0f, Color{245, 250, 255, 255}, true);
 
         std::string subInfo = "[" + cpu.cores + "] - RandomX / GhostRider Algoritmasi (Monero & Raptoreum)";
-        UIFrame::DrawTextCustom(subInfo, startX + 16.0f, itemY + 32.0f, 11.0f, cpu.accentColor, false);
+        UIFrame::DrawTextCustom(subInfo, startX + 16.0f, itemY + 36.0f, 13.0f, cpu.accentColor, false);
 
         bool isCurrent = (activeRig && activeRig->GetCPUName() == cpu.name);
         if (isCurrent) {
-            UIFrame::DrawTextCustom("[BU KASADA TAKILI]", startX + 16.0f, itemY + 52.0f, 11.0f, Color{50, 230, 140, 255}, true);
+            UIFrame::DrawTextCustom("[BU KASADA TAKILI]", startX + 16.0f, itemY + 58.0f, 12.5f, Color{50, 230, 140, 255}, true);
         }
 
         // Orta Kısım: Performans Barları (KH/s ve TDP Watt)
         const float barX = startX + 320.0f;
         const float barW = width - 320.0f - buyBtnW - 140.0f;
-        const float barH = 15.0f;
-        const float barGap = 6.0f;
+        const float barH = 18.0f;
+        const float barGap = 8.0f;
 
         // 1. RandomX KH/s Barı (Max 120 KH/s ölçeği)
         std::ostringstream ssHash;
         ssHash << std::fixed << std::setprecision(1) << cpu.hashrateKH << " KH/s";
         float hashRatio = static_cast<float>(cpu.hashrateKH / 120.0);
-        DrawStatBar(barX, itemY + 12.0f, barW, barH, hashRatio, Color{0, 220, 160, 220},
+        DrawStatBar(barX, itemY + 16.0f, barW, barH, hashRatio, Color{0, 220, 160, 220},
                     "CPU Kazimi (RandomX):", ssHash.str().c_str());
 
         // 2. Güç Tüketimi Barı (Max 400 W ölçeği)
         std::ostringstream ssPower;
         ssPower << std::fixed << std::setprecision(0) << cpu.powerWatts << " W";
         float powerRatio = static_cast<float>(cpu.powerWatts / 400.0);
-        DrawStatBar(barX, itemY + 12.0f + barH + barGap, barW, barH, powerRatio, Color{255, 160, 40, 220},
+        DrawStatBar(barX, itemY + 16.0f + barH + barGap, barW, barH, powerRatio, Color{255, 160, 40, 220},
                     "TDP Gucu:", ssPower.str().c_str());
 
         // Sağ Kısım: Fiyat ve Buton
         const float priceX = barX + barW + 16.0f;
         std::string priceStr = economy.FormatFiat(cpu.priceUSD);
-        UIFrame::DrawTextCustom(priceStr, priceX, itemY + 24.0f, 17.0f, Color{100, 255, 160, 255}, true);
+        UIFrame::DrawTextCustom(priceStr, priceX, itemY + 28.0f, 20.0f, Color{100, 255, 160, 255}, true);
 
         if (i < m_cpuBuyButtons.size()) {
             m_cpuBuyButtons[i].Draw();
