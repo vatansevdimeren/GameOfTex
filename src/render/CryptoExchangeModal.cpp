@@ -48,8 +48,8 @@ void CryptoExchangeModal::Update(Core::EconomyManager& economy, Core::TaskManage
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
 
-    float modalW = std::min(960.0f, screenW - 30.0f);
-    float modalH = std::min(640.0f, screenH - 40.0f);
+    float modalW = std::min(980.0f, screenW - 20.0f);
+    float modalH = std::min(660.0f, screenH - 24.0f);
     float modalX = (screenW - modalW) * 0.5f;
     float modalY = (screenH - modalH) * 0.5f;
 
@@ -66,12 +66,14 @@ void CryptoExchangeModal::Update(Core::EconomyManager& economy, Core::TaskManage
         m_selectedCoinIndex = 0;
     }
 
-    // Update Coin Tab Buttons
+    // Update Coin Tab Buttons (Clean 2-Row 4-Column Grid, Zero Overflow!)
+    const int cols = 4;
     float tabStartX = modalX + 16.0f;
-    float tabY = modalY + 52.0f;
-    float tabGap = 8.0f;
-    float tabW = (modalW - 32.0f - (tabGap * 4.0f)) / 5.0f;
-    float tabH = 34.0f;
+    float tabY = modalY + 50.0f;
+    float tabGapX = 8.0f;
+    float tabGapY = 6.0f;
+    float tabW = (modalW - 32.0f - (tabGapX * (cols - 1))) / static_cast<float>(cols);
+    float tabH = 30.0f;
 
     if (m_coinTabButtons.size() < coins.size()) {
         m_coinTabButtons.resize(coins.size(), UIButton(Rectangle{0, 0, 0, 0}, "", "", Color{22, 30, 45, 255}, Color{50, 170, 240, 255}));
@@ -79,10 +81,14 @@ void CryptoExchangeModal::Update(Core::EconomyManager& economy, Core::TaskManage
 
     size_t mostProfitableIndex = economy.GetMostProfitableCoinIndex();
     for (size_t i = 0; i < coins.size(); ++i) {
-        float tx = tabStartX + i * (tabW + tabGap);
-        m_coinTabButtons[i].SetBounds(Rectangle{tx, tabY, tabW, tabH});
+        int r = static_cast<int>(i / cols);
+        int c = static_cast<int>(i % cols);
+        float tx = tabStartX + c * (tabW + tabGapX);
+        float ty = tabY + r * (tabH + tabGapY);
+        m_coinTabButtons[i].SetBounds(Rectangle{tx, ty, tabW, tabH});
         std::string star = (i == mostProfitableIndex) ? "* " : "";
-        std::string tabTitle = star + coins[i].symbol + "  " + economy.FormatPrice(coins[i].priceUSD);
+        std::string cpuTag = coins[i].isCPUCoin ? " (CPU)" : "";
+        std::string tabTitle = star + coins[i].symbol + cpuTag + "  " + economy.FormatPrice(coins[i].priceUSD);
         m_coinTabButtons[i].SetTitle(tabTitle);
 
         if (m_coinTabButtons[i].UpdateAndCheckClick()) {
@@ -90,9 +96,10 @@ void CryptoExchangeModal::Update(Core::EconomyManager& economy, Core::TaskManage
         }
     }
 
-    // Layout
+    // Content Layout
+    int numRows = static_cast<int>((coins.size() + cols - 1) / cols);
     float contentX = modalX + 16.0f;
-    float contentY = tabY + tabH + 10.0f;
+    float contentY = tabY + numRows * tabH + (numRows - 1) * tabGapY + 10.0f;
     float contentW = modalW - 32.0f;
     float contentH = modalH - (contentY - modalY) - 14.0f;
 
@@ -100,30 +107,45 @@ void CryptoExchangeModal::Update(Core::EconomyManager& economy, Core::TaskManage
     float deskX = contentX + chartW + 12.0f;
     float deskW = contentW - chartW - 12.0f;
 
-    // Mine This Coin button
-    float mineBtnW = 150.0f;
-    float mineBtnH = 28.0f;
-    m_btnMineThis.SetBounds(Rectangle{contentX + chartW - mineBtnW - 10.0f, contentY + 6.0f, mineBtnW, mineBtnH});
+    // Mine This Coin button (Independent GPU vs CPU targeting!)
+    float mineBtnW = 165.0f;
+    float mineBtnH = 30.0f;
+    m_btnMineThis.SetBounds(Rectangle{contentX + chartW - mineBtnW - 12.0f, contentY + 10.0f, mineBtnW, mineBtnH});
     
-    bool isCurrentlyMining = (economy.GetActiveCoinIndex() == m_selectedCoinIndex);
-    if (isCurrentlyMining) {
-        m_btnMineThis.SetTitle(Core::LocalizationManager::Tr("EXCHANGE_MINING_ACTIVE"));
-        m_btnMineThis.SetDisabled(true);
+    bool isSelectedCPUCoin = coins[m_selectedCoinIndex].isCPUCoin;
+    bool isCurrentlyMining = false;
+    if (isSelectedCPUCoin) {
+        isCurrentlyMining = (economy.GetActiveCpuCoinIndex() == m_selectedCoinIndex);
+        if (isCurrentlyMining) {
+            m_btnMineThis.SetTitle("CPU KAZIMI AKTIF");
+            m_btnMineThis.SetDisabled(true);
+        } else {
+            m_btnMineThis.SetTitle("CPU ILE KAZ");
+            m_btnMineThis.SetDisabled(false);
+        }
+        if (m_btnMineThis.UpdateAndCheckClick()) {
+            economy.SetActiveCpuCoinIndex(m_selectedCoinIndex);
+        }
     } else {
-        m_btnMineThis.SetTitle(Core::LocalizationManager::Tr("EXCHANGE_MINE_THIS"));
-        m_btnMineThis.SetDisabled(false);
+        isCurrentlyMining = (economy.GetActiveGpuCoinIndex() == m_selectedCoinIndex);
+        if (isCurrentlyMining) {
+            m_btnMineThis.SetTitle("GPU KAZIMI AKTIF");
+            m_btnMineThis.SetDisabled(true);
+        } else {
+            m_btnMineThis.SetTitle("GPU ILE KAZ");
+            m_btnMineThis.SetDisabled(false);
+        }
+        if (m_btnMineThis.UpdateAndCheckClick()) {
+            economy.SetActiveGpuCoinIndex(m_selectedCoinIndex);
+        }
     }
 
-    if (m_btnMineThis.UpdateAndCheckClick()) {
-        economy.SetActiveCoinIndex(m_selectedCoinIndex);
-    }
-
-    // Chart display mode buttons: [MUM] & [ÇİZGİ]
-    float modeBtnW = 82.0f;
-    float modeBtnH = 24.0f;
-    float modeBtnY = contentY + 70.0f;
-    m_btnModeCandle.SetBounds(Rectangle{contentX + chartW - (modeBtnW * 2.0f) - 16.0f, modeBtnY, modeBtnW, modeBtnH});
-    m_btnModeLine.SetBounds(Rectangle{contentX + chartW - modeBtnW - 10.0f, modeBtnY, modeBtnW, modeBtnH});
+    // Chart display mode buttons: MUM & CIZGI (Placed safely without text collision!)
+    float modeBtnW = 84.0f;
+    float modeBtnH = 26.0f;
+    float modeBtnY = contentY + 52.0f;
+    m_btnModeCandle.SetBounds(Rectangle{contentX + chartW - (modeBtnW * 2.0f) - 18.0f, modeBtnY, modeBtnW, modeBtnH});
+    m_btnModeLine.SetBounds(Rectangle{contentX + chartW - modeBtnW - 12.0f, modeBtnY, modeBtnW, modeBtnH});
 
     if (m_btnModeCandle.UpdateAndCheckClick()) {
         m_chartMode = ChartDisplayMode::CANDLESTICK;
@@ -187,8 +209,8 @@ void CryptoExchangeModal::Draw(const Core::EconomyManager& economy) const {
     // Dark backdrop
     DrawRectangle(0, 0, screenW, screenH, Color{10, 14, 22, 225});
 
-    float modalW = std::min(960.0f, screenW - 30.0f);
-    float modalH = std::min(640.0f, screenH - 40.0f);
+    float modalW = std::min(980.0f, screenW - 20.0f);
+    float modalH = std::min(660.0f, screenH - 24.0f);
     float modalX = (screenW - modalW) * 0.5f;
     float modalY = (screenH - modalH) * 0.5f;
 
@@ -208,8 +230,13 @@ void CryptoExchangeModal::Draw(const Core::EconomyManager& economy) const {
     if (m_selectedCoinIndex < coins.size()) {
         const auto& coin = coins[m_selectedCoinIndex];
 
+        const int cols = 4;
+        int numRows = static_cast<int>((coins.size() + cols - 1) / cols);
+        float tabY = modalY + 50.0f;
+        float tabH = 30.0f;
+        float tabGapY = 6.0f;
         float contentX = modalX + 16.0f;
-        float contentY = modalY + 52.0f + 34.0f + 10.0f;
+        float contentY = tabY + numRows * tabH + (numRows - 1) * tabGapY + 10.0f;
         float contentW = modalW - 32.0f;
         float contentH = modalH - (contentY - modalY) - 14.0f;
 
@@ -281,7 +308,7 @@ void CryptoExchangeModal::DrawPriceChart(
         bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
         std::string headline = isTR ? ev.headlineTR : ev.headlineEN;
         char durBuf[32];
-        snprintf(durBuf, sizeof(durBuf), " [%.0fs]", ev.remainingSeconds);
+        snprintf(durBuf, sizeof(durBuf), " (%.0fs)", ev.remainingSeconds);
         headline += durBuf;
 
         Rectangle evRec{chartX + 12.0f, infoY, chartW - 24.0f, 24.0f};
@@ -295,7 +322,8 @@ void CryptoExchangeModal::DrawPriceChart(
     }
 
     // Top Info Bar
-    std::string coinFullName = coin.name + " (" + coin.symbol + ")";
+    std::string coinTypeStr = coin.isCPUCoin ? " [CPU]" : " [GPU]";
+    std::string coinFullName = coin.name + " (" + coin.symbol + ")" + coinTypeStr;
     UIFrame::DrawTextCustom(coinFullName, chartX + 14.0f, infoY, 17.0f, Color{255, 255, 255, 255}, true);
 
     std::string priceStr = economy.FormatPrice(coin.priceUSD);
@@ -310,7 +338,7 @@ void CryptoExchangeModal::DrawPriceChart(
     // Mine button
     m_btnMineThis.Draw();
 
-    // Chart mode selector buttons: [MUM] & [ÇİZGİ]
+    // Chart mode selector buttons: MUM & CIZGI
     m_btnModeCandle.Draw();
     m_btnModeLine.Draw();
     if (m_chartMode == ChartDisplayMode::CANDLESTICK) {
@@ -322,40 +350,34 @@ void CryptoExchangeModal::DrawPriceChart(
     }
 
     // Stats Grid & Verimlilik Metrikleri (Efficiency & Yield)
-    float statsY = infoY + 48.0f;
+    float statsY = infoY + 52.0f;
     
     // Verimlilik: 100 MH/s başına getiri ve Karlılık Endeksi
     double dailyUSD = economy.CalculateDailyYieldUSDPer100MH(coin);
     double profPct = economy.CalculateProfitabilityPercent(coin);
     
     std::ostringstream ssYield;
-    ssYield << "Verimlilik (100 MH/s): " << economy.FormatFiat(dailyUSD) << " / gun";
+    if (coin.isCPUCoin) {
+        ssYield << "CPU Verim: " << economy.FormatFiat(dailyUSD) << " / gun";
+    } else {
+        ssYield << "Verim (100 MH/s): " << economy.FormatFiat(dailyUSD) << " / gun";
+    }
     UIFrame::DrawTextCustom(ssYield.str(), chartX + 14.0f, statsY, 12.0f, Color{80, 240, 170, 255}, true);
 
     std::ostringstream ssProf;
-    ssProf << "Karlilik Endeksi: %" << std::fixed << std::setprecision(0) << profPct;
+    ssProf << "Karlilik: %" << std::fixed << std::setprecision(0) << profPct;
     Color profCol = (profPct >= 100.0) ? Color{60, 225, 130, 255} : Color{240, 160, 60, 255};
-    UIFrame::DrawTextCustom(ssProf.str(), chartX + 270.0f, statsY, 12.0f, profCol, true);
-
-    if (m_selectedCoinIndex == economy.GetMostProfitableCoinIndex()) {
-        bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
-        const char* starBadge = isTR ? "* GUNUN EN KARLI COINI *" : "* TOP PROFIT COIN TODAY *";
-        float badgeW = UIFrame::MeasureTextCustom(starBadge, 11.0f, true) + 16.0f;
-        Rectangle starRec{chartX + chartW - badgeW - 14.0f, statsY - 2.0f, badgeW, 20.0f};
-        DrawRectangleRounded(starRec, 0.3f, 4, Color{255, 200, 30, 40});
-        DrawRectangleRoundedLines(starRec, 0.3f, 4, 1.0f, Color{255, 215, 50, 230});
-        UIFrame::DrawTextCustom(starBadge, starRec.x + 8.0f, starRec.y + 3.0f, 11.0f, Color{255, 220, 60, 255}, true);
-    }
+    UIFrame::DrawTextCustom(ssProf.str(), chartX + 225.0f, statsY, 12.0f, profCol, true);
 
     std::string highLowStr = "24s Y: " + economy.FormatPrice(coin.high24h) + "  D: " + economy.FormatPrice(coin.low24h);
-    UIFrame::DrawTextCustom(highLowStr, chartX + 14.0f, statsY + 18.0f, 11.0f, Color{150, 170, 195, 255}, false);
+    UIFrame::DrawTextCustom(highLowStr, chartX + 14.0f, statsY + 20.0f, 11.0f, Color{150, 170, 195, 255}, false);
 
     std::string algoDiffStr = "Algoritma: " + coin.algorithm + " | Ag: " + std::to_string(static_cast<int>(coin.difficulty / 1000.0)) + "k";
-    UIFrame::DrawTextCustom(algoDiffStr, chartX + 270.0f, statsY + 18.0f, 11.0f, Color{150, 170, 195, 255}, false);
+    UIFrame::DrawTextCustom(algoDiffStr, chartX + 225.0f, statsY + 20.0f, 11.0f, Color{150, 170, 195, 255}, false);
 
     // Actual Chart Area
     float cAreaX = chartX + 12.0f;
-    float cAreaY = statsY + 38.0f;
+    float cAreaY = statsY + 42.0f;
     float cAreaW = chartW - 24.0f;
     float cAreaH = chartH - (cAreaY - chartY) - 12.0f;
 

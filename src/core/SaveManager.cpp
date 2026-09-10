@@ -162,6 +162,7 @@ bool SaveManager::SaveGame(const std::string& filepath,
     file << "magic=GAMEOFTEX_SAVE\n";
     file << "version=1\n";
     file << "timestamp=" << GetCurrentTimestampString() << "\n";
+    file << "epochTimestamp=" << static_cast<long long>(std::time(nullptr)) << "\n";
     file << "companyName=" << profile.GetCompanyName() << "\n";
     file << "avatarIndex=" << profile.GetAvatarIndex() << "\n";
     file << "claimedBonus=" << (profile.HasClaimedBonus() ? "1" : "0") << "\n";
@@ -301,7 +302,8 @@ bool SaveManager::LoadGame(const std::string& filepath,
                            FacilityManager& facilityManager,
                            TaskManager& taskManager,
                            MarketCatalog& marketCatalog,
-                           ResearchManager* researchManager) {
+                           ResearchManager* researchManager,
+                           OfflineMiningReport* outReport) {
     if (!HasSaveFile(filepath)) return false;
 
     auto kv = ParseKeyValueFile(filepath);
@@ -464,6 +466,85 @@ bool SaveManager::LoadGame(const std::string& filepath,
             else if (tId == "tech_immersion") researchManager->SetTechLevel(TechType::IMMERSION_NANO, lvl);
             else if (tId == "tech_green_power") researchManager->SetTechLevel(TechType::GREEN_POWER, lvl);
             else if (tId == "tech_automation") researchManager->SetTechLevel(TechType::SMART_AUTOMATION, lvl);
+        }
+    }
+
+    // 7. OFFLINE IDLE MINING (AFK Madencilik Simülasyonu)
+    long long savedEpoch = 0;
+    auto epIt = kv.find("HEADER.epochTimestamp");
+    if (epIt != kv.end()) {
+        try {
+            savedEpoch = std::stoll(epIt->second);
+        } catch (...) {}
+    }
+
+    if (savedEpoch > 0 && outReport) {
+        std::time_t now = std::time(nullptr);
+        double diffSec = std::difftime(now, static_cast<std::time_t>(savedEpoch));
+        if (diffSec >= 30.0) {
+            // Cap at 24 hours (86,400 seconds)
+            double simSec = std::min(diffSec, 86400.0);
+
+            double totalCompanyGPUHash = 0.0;
+            double totalCompanyCPUHash = 0.0;
+            double totalPowerWatts = 0.0;
+            int runningRigs = 0;
+
+            for (size_t f = 0; f < facilityManager.GetFacilityCount(); ++f) {
+                auto* fac = facilityManager.GetFacility(f);
+                if (fac && fac->isPurchased && fac->powerGrid && !fac->powerGrid->IsBreakerTripped() && fac->warehouse) {
+                    for (const auto& rig : fac->warehouse->GetAllRigs()) {
+                        if (rig && rig->IsPoweredOn()) {
+                            totalCompanyGPUHash += rig->CalculateTotalHashrate();
+                            totalCompanyCPUHash += rig->CalculateTotalCPUHashrateKH();
+                            totalPowerWatts += rig->CalculateTotalPowerWatts();
+                            runningRigs++;
+                        }
+                    }
+                }
+            }
+
+            if (runningRigs > 0 && (totalCompanyGPUHash > 0.0 || totalCompanyCPUHash > 0.0)) {
+                double profitMult = researchManager ? researchManager->GetProfitMultiplier() : 1.0;
+                double hashMult = researchManager ? researchManager->GetHashrateMultiplier() : 1.0;
+
+                double minedGPU = 0.0;
+                if (totalCompanyGPUHash > 0.0) {
+                    minedGPU = economy.MineCoins(totalCompanyGPUHash * hashMult, simSec * profitMult);
+                }
+                double minedCPU = 0.0;
+                if (totalCompanyCPUHash > 0.0) {
+                    minedCPU = economy.MineCPUShare(totalCompanyCPUHash * hashMult, simSec * profitMult);
+                }
+
+                const auto* gpuCoin = economy.GetActiveGpuCoin();
+                const auto* cpuCoin = economy.GetActiveCpuCoin();
+                double gpuVal = gpuCoin ? (minedGPU * gpuCoin->priceUSD) : 0.0;
+                double cpuVal = cpuCoin ? (minedCPU * cpuCoin->priceUSD) : 0.0;
+
+                // Elektrik gideri hesabı (~$0.10 / kWh)
+                double powerKWh = (totalPowerWatts * (simSec / 3600.0)) / 1000.0;
+                double elecCost = powerKWh * 0.10;
+
+                if (economy.GetFiatBalance() >= elecCost) {
+                    economy.DeductFiat(elecCost);
+                } else {
+                    elecCost = economy.GetFiatBalance();
+                    economy.SetFiatBalance(0.0);
+                }
+
+                outReport->hasReport = true;
+                outReport->elapsedSeconds = diffSec;
+                outReport->totalRigsRunning = runningRigs;
+                outReport->gpuCoinSymbol = gpuCoin ? gpuCoin->symbol : "TEX";
+                outReport->gpuCoinsMined = minedGPU;
+                outReport->gpuCoinsValueUSD = gpuVal;
+                outReport->cpuCoinSymbol = cpuCoin ? cpuCoin->symbol : "XMR";
+                outReport->cpuCoinsMined = minedCPU;
+                outReport->cpuCoinsValueUSD = cpuVal;
+                outReport->electricityCostUSD = elecCost;
+                outReport->netEarningsUSD = (gpuVal + cpuVal) - elecCost;
+            }
         }
     }
 

@@ -104,6 +104,10 @@ public:
     [[nodiscard]] double GetCryptoBalance() const;
     [[nodiscard]] const std::string& GetCoinSymbol() const;
 
+    // SI Hashrate Formatters (T, G, M, K)
+    [[nodiscard]] static std::string FormatHashrate(double hashrateMHS);
+    [[nodiscard]] static std::string FormatCPUHashrate(double cpuHashrateKH);
+
     // Multi-Coin Accessors
     [[nodiscard]] std::vector<CryptoCoin>& GetCoins();
     [[nodiscard]] const std::vector<CryptoCoin>& GetCoins() const;
@@ -115,6 +119,17 @@ public:
     [[nodiscard]] const CryptoCoin* GetCoin(size_t index) const;
     [[nodiscard]] CryptoCoin* GetCoinById(const std::string& id);
     [[nodiscard]] const CryptoCoin* GetCoinById(const std::string& id) const;
+
+    // GPU and CPU Dedicated Mining Targets
+    [[nodiscard]] size_t GetActiveGpuCoinIndex() const;
+    void SetActiveGpuCoinIndex(size_t index);
+    [[nodiscard]] CryptoCoin* GetActiveGpuCoin();
+    [[nodiscard]] const CryptoCoin* GetActiveGpuCoin() const;
+
+    [[nodiscard]] size_t GetActiveCpuCoinIndex() const;
+    void SetActiveCpuCoinIndex(size_t index);
+    [[nodiscard]] CryptoCoin* GetActiveCpuCoin();
+    [[nodiscard]] const CryptoCoin* GetActiveCpuCoin() const;
 
     // Currency controls
     void SetCurrency(CurrencyType curr);
@@ -176,6 +191,11 @@ public:
     [[nodiscard]] double CalculateHourlyElectricityCostUSD(double powerWatts, double electricityRateKWh) const;
     [[nodiscard]] double CalculateHourlyNetProfitUSD(double hashrateMHS, double powerWatts, double electricityRateKWh) const;
 
+    // Rig Özel Kazanç Metrikleri
+    [[nodiscard]] double CalculateRigHourlyRevenueUSD(double gpuHashMHS, double cpuHashKH) const;
+    [[nodiscard]] double CalculateRigDailyRevenueUSD(double gpuHashMHS, double cpuHashKH) const;
+    [[nodiscard]] double CalculateRigDailyProfitUSD(double gpuHashMHS, double cpuHashKH, double powerWatts, double electricityRateKWh) const;
+
     // Coin Başına Özel Karlılık ve Verimlilik Metrikleri
     [[nodiscard]] double CalculateDailyYieldCoinsPer100MH(const CryptoCoin& coin) const;
     [[nodiscard]] double CalculateDailyYieldUSDPer100MH(const CryptoCoin& coin) const;
@@ -196,7 +216,8 @@ private:
     MarketEvent m_activeEvent;
 
     std::vector<CryptoCoin> m_coins;
-    size_t m_activeCoinIndex{0};
+    size_t m_activeCoinIndex{0};     // Default active GPU coin index
+    size_t m_activeCpuCoinIndex{5};  // Default active CPU coin index (XMR)
 };
 
 } // namespace Core

@@ -84,6 +84,8 @@ add_executable(GameOfTex
     src/core/ResearchManager.cpp
     src/render/ResearchModal.hpp
     src/render/ResearchModal.cpp
+    src/render/OfflineEarningsModal.hpp
+    src/render/OfflineEarningsModal.cpp
 )
 
 target_include_directories(GameOfTex PRIVATE

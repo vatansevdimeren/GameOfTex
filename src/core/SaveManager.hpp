@@ -24,6 +24,20 @@ struct SaveMetadata {
     bool isValid{false};
 };
 
+struct OfflineMiningReport {
+    bool hasReport{false};
+    double elapsedSeconds{0.0};
+    int totalRigsRunning{0};
+    std::string gpuCoinSymbol{"TEX"};
+    double gpuCoinsMined{0.0};
+    double gpuCoinsValueUSD{0.0};
+    std::string cpuCoinSymbol{"XMR"};
+    double cpuCoinsMined{0.0};
+    double cpuCoinsValueUSD{0.0};
+    double electricityCostUSD{0.0};
+    double netEarningsUSD{0.0};
+};
+
 /**
  * @class SaveManager
  * @brief Manages serializing and deserializing complete game state to/from disk.
@@ -59,6 +73,7 @@ public:
 
     /**
      * @brief Loads the full game state from disk into live objects.
+     * @param outReport Optional pointer to receive offline idle mining simulation results.
      * @return True if loaded successfully.
      */
     static bool LoadGame(const std::string& filepath,
@@ -67,7 +82,8 @@ public:
                          FacilityManager& facilityManager,
                          TaskManager& taskManager,
                          MarketCatalog& marketCatalog,
-                         ResearchManager* researchManager = nullptr);
+                         ResearchManager* researchManager = nullptr,
+                         OfflineMiningReport* outReport = nullptr);
 
     /**
      * @brief Deletes the save file for starting completely fresh.

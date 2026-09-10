@@ -37,6 +37,7 @@ extern "C" __declspec(dllimport) int __stdcall GetSystemMetrics(int nIndex);
 #include "core/MultiplierManager.hpp"
 #include "core/ResearchManager.hpp"
 #include "render/ResearchModal.hpp"
+#include "render/OfflineEarningsModal.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -173,6 +174,7 @@ int main() {
 
     Core::ResearchManager researchManager;
     Render::ResearchModal researchModal;
+    Render::OfflineEarningsModal offlineEarningsModal;
 
     auto triggerSave = [&](const std::string& customMsg = "") {
         bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
@@ -262,7 +264,9 @@ int main() {
 
         // ESC Tusu: Acik modal varsa kapat (Tam ekrandan cikmak icin F11 kullanilir)
         if (IsKeyPressed(KEY_ESCAPE)) {
-            if (researchModal.IsOpen()) {
+            if (offlineEarningsModal.IsOpen()) {
+                offlineEarningsModal.Close();
+            } else if (researchModal.IsOpen()) {
                 researchModal.Close();
             } else if (newsModal.IsOpen()) {
                 newsModal.Close();
@@ -294,12 +298,16 @@ int main() {
             } else {
                 auto action = mainMenuScreen.Update(dt);
                 if (action == Render::MainMenuAction::CONTINUE_GAME) {
+                    Core::OfflineMiningReport offlineReport;
                     bool ok = Core::SaveManager::LoadGame(Core::SaveManager::DEFAULT_SAVE_PATH,
-                                                          userProfile, economy, facilityManager, taskManager, marketCatalog, &researchManager);
+                                                          userProfile, economy, facilityManager, taskManager, marketCatalog, &researchManager, &offlineReport);
                     if (ok) {
                         bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
-                        triggerSaveToast(isTR ? "[OK] OYUN BASARIYLA YUKLENDI" : "[OK] GAME LOADED SUCCESSFULLY");
+                        triggerSaveToast(isTR ? "OYUN BASARIYLA YUKLENDI" : "GAME LOADED SUCCESSFULLY");
                         currentState = GameState::GAMEPLAY;
+                        if (offlineReport.hasReport) {
+                            offlineEarningsModal.Show(offlineReport);
+                        }
                     }
                 } else if (action == Render::MainMenuAction::START_NEW_GAME) {
                     currentState = GameState::LOGIN;
@@ -458,6 +466,11 @@ int main() {
             researchModal.Update(researchManager, economy, warehouse);
         }
 
+        // Çevrimdışı Madencilik Raporu Modalı Açıksa Güncelle
+        if (offlineEarningsModal.IsOpen()) {
+            offlineEarningsModal.Update();
+        }
+
         // Ayarlar Modalı Açıksa Güncelle
         if (settingsModal.IsOpen()) {
             auto sAct = settingsModal.Update(economy);
@@ -465,7 +478,7 @@ int main() {
                 triggerSave();
             } else if (sAct == Render::SettingsAction::RETURN_TO_MAIN_MENU) {
                 bool isTR = (Core::LocalizationManager::Get().GetLanguage() == Core::Language::TURKISH);
-                triggerSave(isTR ? "[OK] OYUN KAYDEDILDI - MENÜYE DONULDU" : "[OK] GAME SAVED - RETURNED TO MENU");
+                triggerSave(isTR ? "OYUN KAYDEDILDI - MENÜYE DONULDU" : "GAME SAVED - RETURNED TO MENU");
                 currentState = GameState::MAIN_MENU;
                 mainMenuScreen.RefreshSaveState();
             }
@@ -495,13 +508,13 @@ int main() {
 
         curBtnX -= (badgeGap + saveBtnW);
         btnQuickSave.SetBounds(Rectangle{curBtnX, badgeY, saveBtnW, badgeH});
-        btnQuickSave.SetTitle(std::string("[S] ") + Core::LocalizationManager::Tr("BTN_SAVE"));
+        btnQuickSave.SetTitle(Core::LocalizationManager::Tr("BTN_SAVE"));
         btnQuickSave.SetSubtitle("F5");
 
         curBtnX -= (badgeGap + researchBtnW);
         btnOpenResearch.SetBounds(Rectangle{curBtnX, badgeY, researchBtnW, badgeH});
-        btnOpenResearch.SetTitle("[R] AR-GE");
-        btnOpenResearch.SetSubtitle("Tekno & IPO");
+        btnOpenResearch.SetTitle("AR-GE & IPO");
+        btnOpenResearch.SetSubtitle("Teknoloji");
 
         curBtnX -= (badgeGap + taskBtnW);
         btnOpenTasks.SetBounds(Rectangle{curBtnX, badgeY, taskBtnW, badgeH});
@@ -511,30 +524,31 @@ int main() {
 
         curBtnX -= (badgeGap + worldMapBtnW);
         btnOpenWorldMap.SetBounds(Rectangle{curBtnX, badgeY, worldMapBtnW, badgeH});
-        btnOpenWorldMap.SetTitle(std::string("[M] ") + Core::LocalizationManager::Tr("BTN_WORLD_MAP"));
+        btnOpenWorldMap.SetTitle(Core::LocalizationManager::Tr("BTN_WORLD_MAP"));
 
         size_t unclaimedCount = taskManager.GetUnclaimedCompletedCount();
         if (unclaimedCount > 0) {
-            btnOpenTasks.SetTitle(std::string("[*] ") + Core::LocalizationManager::Tr("BTN_TASKS") + " (" + std::to_string(unclaimedCount) + ")");
+            btnOpenTasks.SetTitle(std::string(Core::LocalizationManager::Tr("BTN_TASKS")) + " (" + std::to_string(unclaimedCount) + ")");
             btnOpenTasks.SetAccentColor(Color{255, 215, 0, 255});
         } else {
-            btnOpenTasks.SetTitle(std::string("[+] ") + Core::LocalizationManager::Tr("BTN_TASKS"));
+            btnOpenTasks.SetTitle(Core::LocalizationManager::Tr("BTN_TASKS"));
             btnOpenTasks.SetAccentColor(Color{60, 160, 240, 255});
         }
 
         size_t unreadNews = newsManager.GetUnreadCount();
         if (unreadNews > 0) {
-            btnOpenNews.SetTitle(std::string("[N] ") + Core::LocalizationManager::Tr("TOP_HUD_NEWS") + " (" + std::to_string(unreadNews) + ")");
+            btnOpenNews.SetTitle(std::string(Core::LocalizationManager::Tr("TOP_HUD_NEWS")) + " (" + std::to_string(unreadNews) + ")");
             btnOpenNews.SetAccentColor(Color{255, 65, 80, 255});
         } else {
-            btnOpenNews.SetTitle(std::string("[N] ") + Core::LocalizationManager::Tr("TOP_HUD_NEWS"));
+            btnOpenNews.SetTitle(Core::LocalizationManager::Tr("TOP_HUD_NEWS"));
             btnOpenNews.SetAccentColor(Color{60, 180, 255, 255});
         }
 
         const bool isAnyModalOpen = settingsModal.IsOpen() || gpuInspectionModal.IsOpen() || 
                                     marketModal.IsOpen() || taskModal.IsOpen() || 
                                     worldMapModal.IsOpen() || cryptoExchangeModal.IsOpen() || 
-                                    newsModal.IsOpen() || researchModal.IsOpen();
+                                    newsModal.IsOpen() || researchModal.IsOpen() ||
+                                    offlineEarningsModal.IsOpen();
 
         if (!isAnyModalOpen) {
             if (btnOpenSettings.UpdateAndCheckClick()) {
@@ -700,7 +714,7 @@ int main() {
             }
 
             // 1. Donanım ve Tesis Marketi
-            btnBuyGPU.SetTitle(isTR ? "[MARKET] DONANIM VE TESIS" : "[STORE] HARDWARE & SITES");
+            btnBuyGPU.SetTitle(isTR ? "DONANIM VE TESIS MARKETI" : "HARDWARE & SITES STORE");
             std::string gpuSub = isTR ? "Farkli Modeller, Trafo ve Tesis" : "Different Models, Power & Facilities";
             btnBuyGPU.SetSubtitle(gpuSub);
             btnBuyGPU.SetDisabled(false);
@@ -749,9 +763,9 @@ int main() {
             }
 
             // 4. Kripto Borsa & Canlı Grafik Masası
-            btnSellCrypto.SetTitle(isTR ? "[BORSA] KRIPTO AL / SAT" : "[EXCHANGE] TRADE & CHARTS");
+            btnSellCrypto.SetTitle(isTR ? "KRIPTO BORSASI - AL / SAT" : "CRYPTO EXCHANGE - TRADE");
             const double totalPortfolioUSD = economy.GetTotalPortfolioValueUSD();
-            std::string cryptoSub = (isTR ? "Portfoy: " : "Portfolio: ") + economy.FormatFiat(totalPortfolioUSD) + (isTR ? " (5 Coin)" : " (5 Coins)");
+            std::string cryptoSub = (isTR ? "Portfoy: " : "Portfolio: ") + economy.FormatFiat(totalPortfolioUSD) + " (" + std::to_string(economy.GetCoins().size()) + (isTR ? " Coin)" : " Coins)");
             btnSellCrypto.SetSubtitle(cryptoSub);
             btnSellCrypto.SetDisabled(false);
             if (btnSellCrypto.UpdateAndCheckClick()) {
@@ -991,26 +1005,28 @@ int main() {
         DrawRectangle(0, 0, static_cast<int>(screenW), static_cast<int>(headerH), Color{15, 18, 24, 245});
         DrawLine(0, static_cast<int>(headerH), static_cast<int>(screenW), static_cast<int>(headerH), Color{38, 46, 62, 255});
 
-        const char* avatarIcons[] = {"[SIBER]", "[SANAYI]", "[UZAY]"};
+        const char* avatarIcons[] = {"SIBER", "SANAYI", "UZAY"};
         const char* currentAvatar = avatarIcons[userProfile.GetAvatarIndex() % 3];
 
-        std::ostringstream ssCrypto, ssHash, ssTemp;
+        std::ostringstream ssCrypto, ssTemp;
         ssCrypto << std::fixed << std::setprecision(4) << economy.GetCryptoBalance() << " " << economy.GetCoinSymbol();
 
         double globalHashMult = multiplierManager.GetGlobalHashMultiplier() * researchManager.GetHashrateMultiplier();
         double displayHash = warehouse.CalculateTotalHashrate() * globalHashMult;
-        ssHash << std::fixed << std::setprecision(1) << displayHash << " MH/s";
+        std::string ssHashStr = Core::EconomyManager::FormatHashrate(displayHash);
         if (globalHashMult > 1.0) {
-            ssHash << " [x" << std::fixed << std::setprecision(1) << globalHashMult << "]";
+            char mBuf[32];
+            snprintf(mBuf, sizeof(mBuf), " (x%.1f)", globalHashMult);
+            ssHashStr += mBuf;
         }
 
         ssTemp << std::fixed << std::setprecision(1) << thermalModel.GetAmbientTemperature() << " C";
 
         Render::UIFrame::DrawStatBadge(pad + (0 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, currentAvatar, Core::LocalizationManager::Tr("BADGE_COMPANY"), userProfile.GetCompanyName(), Color{0, 230, 255, 255});
-        Render::UIFrame::DrawStatBadge(pad + (1 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[CASH]", Core::LocalizationManager::Tr("BADGE_CASH"), economy.FormatFiat(economy.GetFiatBalance()), Color{0, 255, 150, 255});
-        Render::UIFrame::DrawStatBadge(pad + (2 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[WALLET]", Core::LocalizationManager::Tr("BADGE_CRYPTO"), ssCrypto.str(), Color{255, 210, 50, 255});
-        Render::UIFrame::DrawStatBadge(pad + (3 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[MARKET]", std::string("1 ") + economy.GetCoinSymbol(), economy.FormatPrice(economy.GetCryptoPrice()), Color{170, 200, 255, 255});
-        Render::UIFrame::DrawStatBadge(pad + (4 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "[SPEED]", Core::LocalizationManager::Tr("BADGE_SPEED"), ssHash.str(), Color{100, 230, 255, 255});
+        Render::UIFrame::DrawStatBadge(pad + (1 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "$", Core::LocalizationManager::Tr("BADGE_CASH"), economy.FormatFiat(economy.GetFiatBalance()), Color{0, 255, 150, 255});
+        Render::UIFrame::DrawStatBadge(pad + (2 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "CRYPTO", Core::LocalizationManager::Tr("BADGE_CRYPTO"), ssCrypto.str(), Color{255, 210, 50, 255});
+        Render::UIFrame::DrawStatBadge(pad + (3 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "PIYASA", std::string("1 ") + economy.GetCoinSymbol(), economy.FormatPrice(economy.GetCryptoPrice()), Color{170, 200, 255, 255});
+        Render::UIFrame::DrawStatBadge(pad + (4 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "HASH", Core::LocalizationManager::Tr("BADGE_SPEED"), ssHashStr, Color{100, 230, 255, 255});
 
         // Wallet veya Market rozetine tıklayarak doğrudan Borsayı açma
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !isAnyModalOpen) {
@@ -1047,8 +1063,8 @@ int main() {
 
         // Küresel Ağ Zorluk ve Güç Sıçraması (Mining Spike) Canlı Uyarısı
         if (powerGrid.IsNetworkSpikeActive()) {
-            std::string spikeText = isTR ? "[ALARM] [KURESEL AG GUC ZIRVESI! +25% ANLIK WATT CEKISI & +40% KAZIM ODULU!] "
-                                         : "[ALARM] [GLOBAL NETWORK MINING SPIKE! +25% POWER DRAW & +40% HASH REWARD!] ";
+            std::string spikeText = isTR ? "ALARM: KURESEL AG GUC ZIRVESI! +25% ANLIK WATT & +40% KAZIM ODULU! "
+                                         : "ALERT: GLOBAL NETWORK MINING SPIKE! +25% POWER DRAW & +40% HASH REWARD! ";
             spikeText += std::to_string(static_cast<int>(powerGrid.GetNetworkSpikeRemainingSeconds()) + 1) + "s";
             DrawRectangle(0, static_cast<int>(headerH - 2), static_cast<int>(screenW), 20, Color{235, 145, 20, 240});
             float tW = Render::UIFrame::MeasureTextCustom(spikeText, 12.0f, true);
@@ -1061,10 +1077,10 @@ int main() {
         // 2. SOL PANEL: VIEWPORT ÇERÇEVESİ (SEÇİLİ RİG DETAYI VEYA DEPO KUŞBAKIŞI)
         const Rectangle viewportRect{pad, contentY, leftW, contentH};
         double roomTemp = thermalModel.GetAmbientTemperature();
-        std::string tempTag = (roomTemp <= 0.0) ? "[SOGUK] " : ((roomTemp >= 28.0) ? "[SICAK] " : "[ILIK] ");
+        std::string tempTag = (roomTemp <= 0.0) ? "SOGUK | " : ((roomTemp >= 28.0) ? "SICAK | " : "ILIK | ");
         std::string viewportTitle = (currentViewMode == WarehouseViewMode::RIG_DETAIL)
-            ? (warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " RIG | " + tempTag + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)")
-            : ("DEPO GENEL BAKIS - " + warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + " RIG | " + tempTag + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)");
+            ? (warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " Rig | " + tempTag + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)")
+            : ("DEPO GENEL BAKIS - " + warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + " Rig | " + tempTag + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)");
         Render::UIFrame::DrawCard(viewportRect, "", Color{0, 220, 255, 255});
 
         // Üst Başlık ve Ayrım Çizgisi (Sekmelerle asla üst üste binmez)
@@ -1108,6 +1124,38 @@ int main() {
 
             Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 26.0f}, powerRatio, powerColor, powerText);
 
+            // Rig Saatlik ve Günlük Kazanç & Elektrik Maliyeti Gösterge Şeridi (Earnings Telemetry)
+            if (activeRig && activeRig->IsPoweredOn() && !powerGrid.IsBreakerTripped()) {
+                double rigHash = activeRig->CalculateTotalHashrate();
+                double cpuHash = activeRig->CalculateTotalCPUHashrateKH();
+                double rigWatts = activeRig->CalculateTotalPowerWatts();
+                double hourlyRev = economy.CalculateRigHourlyRevenueUSD(rigHash, cpuHash);
+                double dailyRev = hourlyRev * 24.0;
+                double hourlyCost = (rigWatts / 1000.0) * activeFacility->gridPricePerKwh;
+                double dailyCost = hourlyCost * 24.0;
+                double dailyProfit = dailyRev - dailyCost;
+
+                float earnY = barY + 34.0f;
+                if (activeRig->IsInStartupSurge() || shaderManager.IsThermalActive()) {
+                    earnY += 38.0f;
+                }
+                Rectangle earnRec{barX, earnY, barW, 34.0f};
+                DrawRectangleRounded(earnRec, 0.2f, 4, Color{18, 26, 38, 235});
+                DrawRectangleRoundedLines(earnRec, 0.2f, 4, 1.2f, Color{45, 140, 240, 200});
+
+                char earnBuf[160];
+                snprintf(earnBuf, sizeof(earnBuf),
+                         "KAZANC: %s / sa  |  %s / gun    ELEKTRIK: -%s / gun    NET KAR: %s%s / gun",
+                         economy.FormatFiat(hourlyRev).c_str(),
+                         economy.FormatFiat(dailyRev).c_str(),
+                         economy.FormatFiat(dailyCost).c_str(),
+                         dailyProfit >= 0 ? "+" : "",
+                         economy.FormatFiat(dailyProfit).c_str());
+                Color earnColor = (dailyProfit >= 0) ? Color{80, 255, 160, 255} : Color{255, 100, 100, 255};
+                float tLen = Render::UIFrame::MeasureTextCustom(earnBuf, 13.0f, true);
+                Render::UIFrame::DrawTextCustom(earnBuf, earnRec.x + std::max(10.0f, (earnRec.width - tLen) * 0.5f), earnRec.y + 9.0f, 13.0f, earnColor, true);
+            }
+
             // Termal, Demeraj veya Sigorta Bildirim Kutusu
             if (powerGrid.IsBreakerTripped()) {
                 DrawRectangleRounded(Rectangle{barX, barY + 32.0f, barW, 36.0f}, 0.2f, 4, Color{190, 20, 20, 240});
@@ -1115,12 +1163,12 @@ int main() {
                                                barX + 24.0f, barY + 42.0f, 15.0f, WHITE, true);
             } else if (activeRig && activeRig->IsInStartupSurge()) {
                 DrawRectangleRounded(Rectangle{barX, barY + 32.0f, barW, 36.0f}, 0.2f, 4, Color{180, 110, 15, 230});
-                Render::UIFrame::DrawTextCustom("[DEMERAJ] KALKIS AKIMI AKTIF: +30% GUC CEKISI - FANLAR VE KAPASITORLER",
+                Render::UIFrame::DrawTextCustom("KALKIS AKIMI (DEMERAJ) AKTIF: +30% GUC CEKISI - FANLAR VE KAPASITORLER",
                                                barX + 24.0f, barY + 42.0f, 14.0f, WHITE, true);
             } else if (shaderManager.IsThermalActive()) {
                 DrawRectangleRounded(Rectangle{barX, barY + 32.0f, barW, 36.0f}, 0.2f, 4, Color{32, 16, 52, 230});
                 DrawRectangleRoundedLines(Rectangle{barX, barY + 32.0f, barW, 36.0f}, 0.2f, 4, 1.4f, Color{220, 0, 255, 255});
-                Render::UIFrame::DrawTextCustom("[CANLI TERMAL FLIR VIZYONU AKTIF] - Isi dagilimi fragment shader ile renklendiriliyor",
+                Render::UIFrame::DrawTextCustom("CANLI TERMAL VIZYON AKTIF: Isi dagilimi renk haritasi ile gosteriliyor",
                                                barX + 24.0f, barY + 42.0f, 14.0f, Color{230, 130, 255, 255}, true);
             }
 
@@ -1221,7 +1269,12 @@ int main() {
             researchModal.Draw(researchManager, economy);
         }
 
-        // 13. HABER BILDIRIM TOASTI (En ustte son haber uyarisi)
+        // 13. OFFLINE IDLE MINING HARVEST MODAL PENCERESI
+        if (offlineEarningsModal.IsOpen()) {
+            offlineEarningsModal.Draw(economy);
+        }
+
+        // 14. HABER BILDIRIM TOASTI (En ustte son haber uyarisi)
         if (newsManager.HasRecentToast() && !newsModal.IsOpen()) {
             std::string toastStr = newsManager.GetLatestToastMessage(isTR);
             float toastW = Render::UIFrame::MeasureTextCustom(toastStr.c_str(), 13.0f, true) + 36.0f;

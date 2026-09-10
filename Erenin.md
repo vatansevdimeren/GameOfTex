@@ -1234,5 +1234,81 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   - **Kilitli Tesis Göstergesi:** Henüz satın alınmamış tesislerin görevleri koyu kırmızı/kehribar kilit rozetiyle (`[KİLİTLİ - İzlanda Tesisi Satın Alındığında Açılır]`) gösterilir ve oyuncuya net bir hedef sunar.
   - **Akıcı Kaydırma (Scroll):** Çok sayıda görev sorunsuz biçimde fare tekerleğiyle taranabilir.
 
+---
 
+## 27. UI TEMİZLİĞİ (PARANTEZSİZ SADE ARAYÜZ), 2 KATLI BORSA IZGARASI, HIZLI KAZIM DENGESİ, SI BİRİM DÖNÜŞÜMÜ (T / G / M), AYRIK CPU/GPU KAZIMI VE GERÇEK DÜNYA SAATLİ ÇEVRİMDIŞI (AFK) MADENCİLİK (v2.6.0)
 
+### 27.1. Problem ve Kullanıcı Talebi
+* **Kullanıcı Talebi:**
+  *"kanki bu uyugulamamızla birlikte burada sağa doğru cıkmıs UI kısmı bok gibi olsun birde üst menülerde [] parantezler içerisinde birşeyler yazma cok kötü duruyor neyse direkt onu yaz daha kaliteli dursun program birde kanki Kazım gücü her makina aldığında artıyorda cok ama cok yavas crypto kazıyoruz bunu daha efektif bir hala nasısl getireibliriz mesela kullanıcı oyunda değpilkjen bile rigler calısmaya devam etsin birde biz bu CPUları aldıkta bunlarla neler kazılıyor sanıırm bir hata var hem GPU hemde CPU ile XLM mi ne kazılıyor mesela bunlara dikkat et amk birde riglerde kac T kazdığını vs göster birde atıuyorum 1293MH mı ne oluyor ya onu trilyona cevir T olsun 1000 den snra ekstra yeni harf gelsin anladın sen onu sonrasında riglerin saaatlik vede gündelik kazanclarını alıp böyle bir sistem yapalım UI kısmında görsün oyuncu bunları birde bu oyunda yokken kazım işini nasıl yapıcaz suanki girdiği vakti dünya saati bazında alırız sonra saat hesa..."*
+
+* **Çözülen 7 Temel Madde:**
+  1. **Borsa Modalında Sağa Taşma ve Çakışma Düzeltmesi:** 8 kripto para tek satıra dizildiğinde sağ pencere çerçevesinden dışarı taşıyordu ve CANDLESTICK/LINE mod butonlarıyla çakışıyordu.
+  2. **Köşeli Parantez `[...]` Temizliği:** Üst HUD, butonlar, rozetler ve rig başlıklarındaki tüm `[MARKET]`, `[BORSA]`, `[CASH]`, `[SPEED]`, `[S]`, `[R]`, `[M]`, `[*]`, `[SICAK]` ibareleri kaldırılarak temiz, modern ve kurumsal bir tasarım diline geçildi.
+  3. **Aşırı Yavaş Kazım Hissiyatı & Zorluk Eğrisi Revizyonu:** Daha önce uygulanan lineer zorluk ölçeklemesi (`effectiveHash * 160.0`) oyuncu GPU aldıkça kazımı anlamsız şekilde yavaşlatıyordu. Bu formül karekök tabanlı (`std::sqrt(effectiveHash) * 45.0`) alt-lineer ölçeklemeye ve yükseltilmiş blok çarpanlarına dönüştürülerek donanım yatırımlarının anında hissedilir derecede ödüllendirici olması sağlandı.
+  4. **Ayrık GPU ve CPU Kazım Hedefleri:** GPU ile kazılan coinler (TEX, RVN, ETC, ETHW, BTC, SOL) ile CPU ile kazılan coinler (XMR, RTM) tamamen birbirinden ayrıldı. Borsa ekranında seçilen coine göre buton dinamik olarak `GPU ILE KAZ` / `CPU ILE KAZ` durumuna geçer.
+  5. **SI Birim Hashrate Biçimlendirmesi (T, G, M, K, P, E):** 1000 MH/s aşıldığında GH/s, 1000 GH/s aşıldığında kullanıcının talep ettiği Trilyon / TeraHash seviyesi ("T" veya "TH/s"), ardından PetaHash ("P") ve ExaHash ("E") otomatik formatlanır.
+  6. **Saatlik ve Günlük Rig Kazanç/Gider Telemetri Şeridi:** Aktif rig panelinde `KAZANC: +$X.XX / sa | +$Y.YY / gun`, `ELEKTRIK: -$Z.ZZ / gun` ve `NET KAR: +$W.WW / gun` canlı telemetri şeridi eklendi.
+  7. **Gerçek Dünya Saatli Çevrimdışı (AFK) Madencilik Motoru:** Oyun kapalıyken geçen gerçek dünya süresi Unix epoch timestamp (`std::time(nullptr)`) ile tespit edilir. 24 saate kadar açık riglerin elektrik tüketimi ve GPU/CPU kazımları simüle edilerek oyuncu geri döndüğünde şık bir "Hasat Raporu" (`OfflineEarningsModal`) ile karşılanır.
+
+---
+
+### 27.2. Kripto Borsa Modalı 2 Katlı Dinamik Izgara (`CryptoExchangeModal`)
+* **Düzen:** Tek satırlık 8 butonluk taşan yapı kaldırıldı; 2 satır 4 sütunluk (2x4) mükemmel hizalı bir ızgara oluşturuldu:
+  - **1. Satır (GPU):** TEX, RVN, ETC, ETHW
+  - **2. Satır (GPU & CPU):** BTC, SOL, XMR (CPU), RTM (CPU)
+* **Grafik & İstatistik Çakışması:** CANDLESTICK ve LINE butonları grafiğin sağ üst köşesine estetik şekilde çekildi; algoritma bilgisi, zorluk ve 24 saatlik fiyat aralıkları butonların altına yerleştirildi.
+* **Akıllı Kazım Butonu:**
+  - GPU coini seçildiğinde: `GPU ILE KAZ` / `GPU KAZIMI AKTIF` (Neon Mavi).
+  - CPU coini (XMR, RTM) seçildiğinde: `CPU ILE KAZ` / `CPU KAZIMI AKTIF` (Neon Sarı).
+
+---
+
+### 27.3. UI Tipografi ve Parantezlerin Kaldırılması
+* **Üst Menü ve Butonlar:**
+  - `[MARKET]` -> `DONANIM VE TESIS MARKETI`
+  - `[BORSA]` -> `KRIPTO BORSASI - AL / SAT`
+  - `[R] AR-GE (Tekno & IPO)` -> `AR-GE & IPO`
+  - `[M] DÜNYA HARİTASI` -> `DÜNYA HARİTASI`
+  - `[*] GÖREVLER` -> `GÖREVLER`
+  - `[HABERLER]` -> `HABERLER`
+  - `[S] KAYDET` -> `KAYDET`
+* **HUD Rozetleri:** `[NAKİT]`, `[CRYPTO]`, `[PİYASA]`, `[HASH]` gibi köşeli parantez etiketleri sade ve kaliteli metin formatına çevrildi.
+* **Rig Başlığı ve Durumlar:** `[! SALTER ATTI !]` -> `! SALTER ATTI !`, `[- Celik Pro Sasi]` -> `- Celik Pro Sasi`.
+
+---
+
+### 27.4. SI Prefix Hashrate Formatlayıcı & Hızlı Kazım Matematiği
+* **Fonksiyonlar (`EconomyManager.hpp` / `.cpp`):**
+  - `FormatHashrate(double mhs)`:
+    * `< 1.0`: `XX.X KH/s`
+    * `< 1,000.0`: `XX.X MH/s`
+    * `< 1,000,000.0`: `XX.X GH/s`
+    * `< 1,000,000,000.0`: `XX.X TH/s` (Kullanıcının talep ettiği 'T' trilyon seviyesi)
+    * `< 1,000,000,000,000.0`: `XX.X PH/s` ('P')
+    * `EH/s` ('E')
+  - `FormatCPUHashrate(double khs)`: KH/s, MH/s, GH/s, TH/s dönüşümleri.
+* **Kazım Hızı ve Ödül Dengesi:**
+  - `MineCoins` formülü sublinear karekök ölçekleme ile güncellendi: Çok sayıda kart takıldığında zorluk duvara çarpmadan hashrate ile orantılı blok çözümü yapılır.
+  - Saatlik ve günlük getiri tahmin fonksiyonları (`CalculateRigHourlyRevenueUSD`, `CalculateRigDailyRevenueUSD`, `CalculateRigDailyProfitUSD`) gerçek anlık piyasa fiyatlarıyla entegre edildi.
+
+---
+
+### 27.5. Gerçek Dünya Saatli Çevrimdışı (AFK) Madencilik & Hasat Modalı
+* **Epoch Zaman Damgası (`SaveManager.hpp` / `.cpp`):**
+  - Oyun kaydedildiğinde `[HEADER]` bölümüne `epochTimestamp=<unix_time>` yazılır.
+  - Oyun açıldığında `currentEpoch - savedEpoch` hesaplanır.
+  - Eğer fark 10 saniyeden fazlaysa (maksimum 24 saat = 86.400 saniye sınırı ile) simülasyon başlatılır:
+    * Çalışır durumdaki tüm riglerin GPU ve CPU kazımları işletilir.
+    * Tesisin kWh elektrik birim fiyatına göre elektrik maliyeti hesaplanır ve şirketin nakit kasasından düşülür (kasada para biterse rigler durur).
+    * Kazanılan coinler cüzdan bakiyelerine eklenir.
+    * `OfflineMiningReport` nesnesi doldurulur.
+* **Hasat Raporu Modalı (`OfflineEarningsModal.hpp` / `.cpp`):**
+  - Oyuncu oyuna girdiğinde karşısına şık, yarı saydam altın-siyan çerçeveli AFK karşılama ekranı açılır:
+    * Çevrimdışı Kalınan Süre (saat, dakika, saniye).
+    * Aktif Çalışan Rig Sayısı.
+    * GPU Madencilik Hasatı (Coin miktarı ve USD karşılığı).
+    * CPU Madencilik Hasatı (XMR/RTM miktarı ve USD karşılığı).
+    * Harcanan Elektrik Faturası (-$XX.XX).
+    * Net Elde Edilen Kar (+$XX.XX).
+    * `[HASILATI TOPLA VE DEVAM ET]` aksiyon butonu.

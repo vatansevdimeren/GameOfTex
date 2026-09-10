@@ -1,5 +1,6 @@
 #include "RigRenderer.hpp"
 #include "UIFrame.hpp"
+#include "../core/EconomyManager.hpp"
 #include <cmath>
 #include <string>
 #include <algorithm>
@@ -233,16 +234,16 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
     std::string title = rig.GetName();
     Color titleColor;
     if (isBreakerTripped) {
-        title += "  [! SALTER ATTI !]";
+        title += "  ! SALTER ATTI !";
         titleColor = Color{255, 60, 60, 255};
     } else if (rig.IsPSUOverloaded()) {
-        title += "  [! PSU ASIRI YUK !]";
+        title += "  ! PSU ASIRI YUK !";
         titleColor = Color{255, 120, 20, 255};
     } else if (isPowered) {
-        title += "  [" + rig.GetRigLevelName() + "]";
+        title += " - " + rig.GetRigLevelName();
         titleColor = (rigLevel == 5) ? Color{0, 255, 230, 255} : ((rigLevel == 4) ? Color{255, 160, 40, 255} : Color{0, 240, 160, 255});
     } else {
-        title += "  [KAPALI]";
+        title += " - KAPALI";
         titleColor = Color{200, 70, 70, 255};
     }
     UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 15.0f, titleColor, true);
@@ -509,7 +510,7 @@ void RigRenderer::DrawWarehouseOverviewGrid(const Core::Warehouse& warehouse, co
         // 2. Alt Satır (Orta): Metrikler (Hashrate, Watt, Max Isı) - Asla butonların üzerine taşmaz!
         const float metricsX = slotStartX + 6.0f * (slotBoxW + slotGap) + 14.0f;
         std::ostringstream ssM;
-        ssM << "Kazim: " << std::fixed << std::setprecision(1) << rig->CalculateTotalHashrate() << " MH/s   |   "
+        ssM << "Kazim: " << Core::EconomyManager::FormatHashrate(rig->CalculateTotalHashrate()) << "   |   "
             << "Guc: " << static_cast<int>(rig->CalculateTotalPowerWatts()) << "W   |   "
             << "Max: " << static_cast<int>(maxTemp) << " C";
         UIFrame::DrawTextCustom(ssM.str(), metricsX, cy + 50.0f, 13.0f, Color{175, 205, 235, 255}, false);
@@ -595,7 +596,7 @@ void RigRenderer::DrawQuickRigSelector(const Core::Warehouse& warehouse, const C
         UIFrame::DrawTextCustom(label, px + 8.0f, bounds.y + 4.0f, 12.0f, textColor, true);
 
         double avgT = rigs[i]->CalculateAverageTemperature(thermalModel);
-        std::string sub = isPowered ? (std::to_string(static_cast<int>(rigs[i]->CalculateTotalHashrate())) + "M | " + std::to_string(static_cast<int>(avgT)) + "C") : "OFF";
+        std::string sub = isPowered ? (Core::EconomyManager::FormatHashrate(rigs[i]->CalculateTotalHashrate()) + " | " + std::to_string(static_cast<int>(avgT)) + "C") : "OFF";
         UIFrame::DrawTextCustom(sub, px + 8.0f, bounds.y + 18.0f, 11.0f, isPowered ? Color{100, 220, 150, 255} : Color{180, 80, 80, 255}, false);
 
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && isHovered) {

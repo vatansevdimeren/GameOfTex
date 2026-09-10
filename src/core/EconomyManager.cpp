@@ -306,6 +306,98 @@ void EconomyManager::SetActiveCoinIndex(size_t index) {
     }
 }
 
+std::string EconomyManager::FormatHashrate(double hashrateMHS) {
+    if (hashrateMHS <= 0.0) {
+        return "0.0 MH/s";
+    }
+    char buf[64];
+    if (hashrateMHS < 0.001) {
+        snprintf(buf, sizeof(buf), "%.1f KH/s", hashrateMHS * 1000.0);
+    } else if (hashrateMHS < 1000.0) {
+        snprintf(buf, sizeof(buf), "%.1f MH/s", hashrateMHS);
+    } else if (hashrateMHS < 1000000.0) { // 1,000 to 999,999 MH/s -> GH/s
+        snprintf(buf, sizeof(buf), "%.2f GH/s", hashrateMHS / 1000.0);
+    } else if (hashrateMHS < 1000000000.0) { // 1,000,000 to 999,999,999 MH/s -> TH/s (T)
+        snprintf(buf, sizeof(buf), "%.2f TH/s", hashrateMHS / 1000000.0);
+    } else if (hashrateMHS < 1000000000000.0) { // PH/s (P)
+        snprintf(buf, sizeof(buf), "%.2f PH/s", hashrateMHS / 1000000000.0);
+    } else { // EH/s (E)
+        snprintf(buf, sizeof(buf), "%.2f EH/s", hashrateMHS / 1000000000000.0);
+    }
+    return std::string(buf);
+}
+
+std::string EconomyManager::FormatCPUHashrate(double cpuHashrateKH) {
+    if (cpuHashrateKH <= 0.0) {
+        return "0.0 KH/s";
+    }
+    char buf[64];
+    if (cpuHashrateKH < 1000.0) {
+        snprintf(buf, sizeof(buf), "%.1f KH/s", cpuHashrateKH);
+    } else if (cpuHashrateKH < 1000000.0) {
+        snprintf(buf, sizeof(buf), "%.2f MH/s", cpuHashrateKH / 1000.0);
+    } else if (cpuHashrateKH < 1000000000.0) {
+        snprintf(buf, sizeof(buf), "%.2f GH/s", cpuHashrateKH / 1000000.0);
+    } else {
+        snprintf(buf, sizeof(buf), "%.2f TH/s", cpuHashrateKH / 1000000000.0);
+    }
+    return std::string(buf);
+}
+
+size_t EconomyManager::GetActiveGpuCoinIndex() const {
+    return m_activeCoinIndex;
+}
+
+void EconomyManager::SetActiveGpuCoinIndex(size_t index) {
+    if (index < m_coins.size() && !m_coins[index].isCPUCoin) {
+        m_activeCoinIndex = index;
+    }
+}
+
+CryptoCoin* EconomyManager::GetActiveGpuCoin() {
+    if (m_activeCoinIndex < m_coins.size()) {
+        return &m_coins[m_activeCoinIndex];
+    }
+    return m_coins.empty() ? nullptr : &m_coins[0];
+}
+
+const CryptoCoin* EconomyManager::GetActiveGpuCoin() const {
+    if (m_activeCoinIndex < m_coins.size()) {
+        return &m_coins[m_activeCoinIndex];
+    }
+    return m_coins.empty() ? nullptr : &m_coins[0];
+}
+
+size_t EconomyManager::GetActiveCpuCoinIndex() const {
+    return m_activeCpuCoinIndex;
+}
+
+void EconomyManager::SetActiveCpuCoinIndex(size_t index) {
+    if (index < m_coins.size() && m_coins[index].isCPUCoin) {
+        m_activeCpuCoinIndex = index;
+    }
+}
+
+CryptoCoin* EconomyManager::GetActiveCpuCoin() {
+    if (m_activeCpuCoinIndex < m_coins.size()) {
+        return &m_coins[m_activeCpuCoinIndex];
+    }
+    for (auto& c : m_coins) {
+        if (c.symbol == "XMR") return &c;
+    }
+    return nullptr;
+}
+
+const CryptoCoin* EconomyManager::GetActiveCpuCoin() const {
+    if (m_activeCpuCoinIndex < m_coins.size()) {
+        return &m_coins[m_activeCpuCoinIndex];
+    }
+    for (const auto& c : m_coins) {
+        if (c.symbol == "XMR") return &c;
+    }
+    return nullptr;
+}
+
 CryptoCoin* EconomyManager::GetActiveCoin() {
     if (m_activeCoinIndex < m_coins.size()) {
         return &m_coins[m_activeCoinIndex];
@@ -721,16 +813,16 @@ double EconomyManager::MineCoins(double hashrateMHS, double deltaTimeSeconds) {
         return 0.0;
     }
 
-    CryptoCoin* active = GetActiveCoin();
+    CryptoCoin* active = GetActiveGpuCoin();
     if (!active) return 0.0;
 
     // Unit conversion: GH/s coins (like BTC) receive 1/1000 hashrate from MH/s rigs
     const double effectiveHash = (active->unit == "GH/s" ? (hashrateMHS / 1000.0) : hashrateMHS) * active->profitabilityMultiplier;
 
-    // Difficulty adjusts smoothly with player's hashrate
-    active->difficulty = active->baseDifficulty + (effectiveHash * 160.0);
+    // Sublinear difficulty curve: adding GPUs scales up rewards smoothly and feels fast & satisfying!
+    active->difficulty = active->baseDifficulty + (std::sqrt(std::max(0.0, effectiveHash)) * 45.0);
 
-    const double mintedCoins = (effectiveHash * deltaTimeSeconds) / active->difficulty;
+    const double mintedCoins = (effectiveHash * deltaTimeSeconds * 1.6) / active->difficulty;
     active->balance += mintedCoins;
     return mintedCoins;
 }
@@ -740,39 +832,25 @@ double EconomyManager::MineCPUShare(double cpuHashrateKH, double deltaTimeSecond
         return 0.0;
     }
 
-    // Hedef CPU coini: Aktif coin bir CPU coini ise onu kaz, değilse otomatik olarak Monero (XMR) kaz!
-    CryptoCoin* target = nullptr;
-    CryptoCoin* active = GetActiveCoin();
-    if (active && active->isCPUCoin) {
-        target = active;
-    } else {
-        for (auto& c : m_coins) {
-            if (c.symbol == "XMR") {
-                target = &c;
-                break;
-            }
-        }
-    }
-
+    CryptoCoin* target = GetActiveCpuCoin();
     if (!target) return 0.0;
 
     const double effectiveHash = cpuHashrateKH * target->profitabilityMultiplier;
-    target->difficulty = target->baseDifficulty + (effectiveHash * 45.0);
+    target->difficulty = target->baseDifficulty + (std::sqrt(std::max(0.0, effectiveHash)) * 15.0);
 
-    const double minted = (effectiveHash * deltaTimeSeconds) / target->difficulty;
+    const double minted = (effectiveHash * deltaTimeSeconds * 1.5) / target->difficulty;
     target->balance += minted;
     return minted;
 }
 
 double EconomyManager::GetCPUCoinBalance() const {
-    for (const auto& c : m_coins) {
-        if (c.symbol == "XMR") return c.balance;
-    }
-    return 0.0;
+    const CryptoCoin* cpuCoin = GetActiveCpuCoin();
+    return cpuCoin ? cpuCoin->balance : 0.0;
 }
 
 std::string EconomyManager::GetCPUCoinSymbol() const {
-    return "XMR";
+    const CryptoCoin* cpuCoin = GetActiveCpuCoin();
+    return cpuCoin ? cpuCoin->symbol : "XMR";
 }
 
 bool EconomyManager::SellCrypto(double amount) {
@@ -780,14 +858,14 @@ bool EconomyManager::SellCrypto(double amount) {
 }
 
 double EconomyManager::CalculateHourlyCoins(double hashrateMHS) const {
-    const CryptoCoin* active = GetActiveCoin();
+    const CryptoCoin* active = GetActiveGpuCoin();
     if (!active || hashrateMHS <= 0.0 || active->difficulty <= 0.0) return 0.0;
     const double effectiveHash = (active->unit == "GH/s" ? (hashrateMHS / 1000.0) : hashrateMHS) * active->profitabilityMultiplier;
-    return (effectiveHash * 3600.0) / active->difficulty;
+    return (effectiveHash * 3600.0 * 1.6) / active->difficulty;
 }
 
 double EconomyManager::CalculateHourlyRevenueUSD(double hashrateMHS) const {
-    const CryptoCoin* active = GetActiveCoin();
+    const CryptoCoin* active = GetActiveGpuCoin();
     if (!active) return 0.0;
     return CalculateHourlyCoins(hashrateMHS) * active->priceUSD;
 }
@@ -803,6 +881,33 @@ double EconomyManager::CalculateHourlyElectricityCostUSD(double powerWatts, doub
 
 double EconomyManager::CalculateHourlyNetProfitUSD(double hashrateMHS, double powerWatts, double electricityRateKWh) const {
     return CalculateHourlyRevenueUSD(hashrateMHS) - CalculateHourlyElectricityCostUSD(powerWatts, electricityRateKWh);
+}
+
+double EconomyManager::CalculateRigHourlyRevenueUSD(double gpuHashMHS, double cpuHashKH) const {
+    double revenue = 0.0;
+    const CryptoCoin* gpuCoin = GetActiveGpuCoin();
+    if (gpuCoin && gpuHashMHS > 0.0 && gpuCoin->difficulty > 0.0) {
+        const double effectiveHash = (gpuCoin->unit == "GH/s" ? (gpuHashMHS / 1000.0) : gpuHashMHS) * gpuCoin->profitabilityMultiplier;
+        double hourlyCoins = (effectiveHash * 3600.0 * 1.6) / gpuCoin->difficulty;
+        revenue += hourlyCoins * gpuCoin->priceUSD;
+    }
+    const CryptoCoin* cpuCoin = GetActiveCpuCoin();
+    if (cpuCoin && cpuHashKH > 0.0 && cpuCoin->difficulty > 0.0) {
+        const double effectiveHash = cpuHashKH * cpuCoin->profitabilityMultiplier;
+        double hourlyCoins = (effectiveHash * 3600.0 * 1.5) / cpuCoin->difficulty;
+        revenue += hourlyCoins * cpuCoin->priceUSD;
+    }
+    return revenue;
+}
+
+double EconomyManager::CalculateRigDailyRevenueUSD(double gpuHashMHS, double cpuHashKH) const {
+    return CalculateRigHourlyRevenueUSD(gpuHashMHS, cpuHashKH) * 24.0;
+}
+
+double EconomyManager::CalculateRigDailyProfitUSD(double gpuHashMHS, double cpuHashKH, double powerWatts, double electricityRateKWh) const {
+    double dailyRev = CalculateRigDailyRevenueUSD(gpuHashMHS, cpuHashKH);
+    double dailyCost = (powerWatts * 24.0 / 1000.0) * electricityRateKWh;
+    return dailyRev - dailyCost;
 }
 
 double EconomyManager::CalculateDailyYieldCoinsPer100MH(const CryptoCoin& coin) const {
