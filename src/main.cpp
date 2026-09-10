@@ -214,45 +214,36 @@ int main() {
     Render::MultiplierManager multiplierManager;
     double animTime = 0.0;
 
-    // 6. İnteraktif Butonlar
-    Render::UIButton btnBuyGPU(Rectangle{}, "GPU SATIN AL", "Maliyet: $600",
-                              Color{25, 45, 60, 255}, Color{0, 200, 255, 255});
+    // 6. İnteraktif Butonlar - Sade, şık, göz yormayan profesyonel koyu tema
+    const Color cardBg{22, 28, 38, 255};
+    const Color borderSubtle{48, 60, 80, 255};
+    const Color borderCyan{45, 140, 240, 255};
 
-    Render::UIButton btnBuyRig(Rectangle{}, "YENI RIG SATIN AL", "Maliyet: $2,500 (6 Slotlu Raf)",
-                              Color{30, 50, 40, 255}, Color{0, 255, 140, 255});
+    Render::UIButton btnBuyGPU(Rectangle{}, "DONANIM MARKETS", "", cardBg, borderCyan);
+    Render::UIButton btnBuyRig(Rectangle{}, "YENI RIG SATIN AL", "", cardBg, Color{34, 197, 94, 255});
 
-    Render::UIButton btnToggleRigPower(Rectangle{}, "RIG'I KAPAT", "", Color{60, 25, 25, 255}, Color{255, 70, 70, 255});
-    Render::UIButton btnSellRig(Rectangle{}, "RIG'I SAT", "+$1,200", Color{50, 40, 20, 255}, Color{255, 160, 0, 255});
-    Render::UIButton btnUpgradeRigFrame(Rectangle{}, "KASAYI YUKSELT", "", Color{25, 45, 65, 255}, Color{60, 200, 255, 255});
+    Render::UIButton btnToggleRigPower(Rectangle{}, "RIG'I KAPAT", "", Color{45, 24, 28, 255}, Color{239, 68, 68, 255});
+    Render::UIButton btnSellRig(Rectangle{}, "RIG'I SAT", "+$1,200", cardBg, Color{217, 119, 6, 255});
+    Render::UIButton btnUpgradeRigFrame(Rectangle{}, "KASAYI YUKSELT", "", cardBg, borderCyan);
 
-    Render::UIButton btnTabRigDetail(Rectangle{}, "DETAYLI RIG", "", Color{30, 50, 75, 255}, Color{0, 220, 255, 255});
-    Render::UIButton btnTabOverview(Rectangle{}, "DEPO GENEL BAKIS", "", Color{25, 30, 42, 255}, Color{0, 220, 255, 255});
+    Render::UIButton btnTabRigDetail(Rectangle{}, "DETAYLI RIG", "", Color{30, 44, 64, 255}, borderCyan);
+    Render::UIButton btnTabOverview(Rectangle{}, "DEPO GENEL BAKIS", "", cardBg, borderSubtle);
 
-    Render::UIButton btnSellCrypto(Rectangle{}, "KRIPTO PARALARI SAT", "Anlik Deger: $0.00",
-                                  Color{45, 40, 20, 255}, Color{255, 200, 0, 255});
+    Render::UIButton btnSellCrypto(Rectangle{}, "KRIPTO BORSASI", "", cardBg, Color{234, 179, 8, 255});
+    Render::UIButton btnUpgradeCooling(Rectangle{}, "SOGUTMAYI YUKSELT", "", cardBg, borderCyan);
 
-    Render::UIButton btnUpgradeCooling(Rectangle{}, "SOGUTMAYI YUKSELT", "",
-                                      Color{20, 45, 50, 255}, Color{0, 240, 200, 255});
+    Render::UIButton btnOverclock(Rectangle{}, "HIZ ASIRTMA (+5% OC)", "Daha Fazla MH/s", cardBg, borderSubtle);
+    Render::UIButton btnUndervolt(Rectangle{}, "VOLTAJ DUSUR (-5% UV)", "Daha Az Guc ve Isi", cardBg, borderSubtle);
+    Render::UIButton btnThermalToggle(Rectangle{}, "TERMAL VIZYON MODU", "FLIR Isı Haritasi", cardBg, borderSubtle);
+    Render::UIButton btnResetBreaker(Rectangle{}, "SIGORTA SALTERINI AC", "Sistem Normal", Color{45, 24, 28, 255}, Color{239, 68, 68, 255});
 
-    Render::UIButton btnOverclock(Rectangle{}, "HIZ ASIRTMA (+5% OC)", "Daha Fazla MH/s",
-                                 Color{45, 30, 25, 255}, Color{255, 120, 0, 255});
-
-    Render::UIButton btnUndervolt(Rectangle{}, "VOLTAJ DUSUR (-5% UV)", "Daha Az Guc ve Isi",
-                                 Color{25, 35, 45, 255}, Color{100, 180, 255, 255});
-
-    Render::UIButton btnThermalToggle(Rectangle{}, "TERMAL VIZYON MODU", "FLIR Isı Haritasi Shader",
-                                     Color{35, 25, 45, 255}, Color{200, 0, 255, 255});
-
-    Render::UIButton btnResetBreaker(Rectangle{}, "SIGORTA SALTERINI AC", "Sistem Normal",
-                                    Color{45, 20, 25, 255}, Color{255, 50, 50, 255});
-
-    Render::UIButton btnOpenSettings(Rectangle{}, "AYARLAR", "", Color{35, 42, 56, 255}, Color{0, 220, 255, 255});
-    Render::UIButton btnQuickSave(Rectangle{}, "KAYDET", "F5", Color{20, 50, 36, 255}, Color{0, 255, 140, 255});
-    Render::UIButton btnOpenResearch(Rectangle{}, "[R] AR-GE", "Teknoloji & IPO", Color{30, 45, 68, 255}, Color{0, 230, 255, 255});
-    Render::UIButton btnOpenTasks(Rectangle{}, "GOREVLER", "", Color{30, 40, 58, 255}, Color{255, 200, 40, 255});
-    Render::UIButton btnOpenNews(Rectangle{}, "HABERLER", "", Color{30, 40, 65, 255}, Color{80, 180, 255, 255});
-    Render::UIButton btnOpenWorldMap(Rectangle{}, "HARITA", "", Color{25, 45, 65, 255}, Color{0, 220, 255, 255});
-    Render::UIButton btnUpgradePSU(Rectangle{}, "PSU YUKSELT", "", Color{40, 32, 58, 255}, Color{200, 100, 255, 255});
+    Render::UIButton btnOpenSettings(Rectangle{}, "AYARLAR", "", cardBg, borderSubtle);
+    Render::UIButton btnQuickSave(Rectangle{}, "KAYDET", "F5", Color{20, 40, 30, 255}, Color{34, 197, 94, 255});
+    Render::UIButton btnOpenResearch(Rectangle{}, "AR-GE & IPO", "Teknoloji", cardBg, borderCyan);
+    Render::UIButton btnOpenTasks(Rectangle{}, "GOREVLER", "", cardBg, Color{234, 179, 8, 255});
+    Render::UIButton btnOpenNews(Rectangle{}, "HABERLER", "", cardBg, borderCyan);
+    Render::UIButton btnOpenWorldMap(Rectangle{}, "HARITA", "", cardBg, borderSubtle);
+    Render::UIButton btnUpgradePSU(Rectangle{}, "PSU YUKSELT", "", cardBg, borderCyan);
 
     // 7. Ana Oyun Döngüsü
     while (!WindowShouldClose()) {
@@ -694,7 +685,7 @@ int main() {
         btnResetBreaker.SetBounds(Rectangle{btnX, startBtnY + (8 * (btnH + btnGap)), btnW, btnH});
 
         // Kart Tıklama Tespiti (Viewport içerisindeki GPU'ya tıklandı mı?)
-        constexpr float rigBaseW = 720.0f;
+        const float rigBaseW = std::clamp(leftW - 40.0f, 740.0f, 1040.0f);
         const float rigX = pad + std::max(0.0f, (leftW - rigBaseW) / 2.0f);
         const float rigY = contentY + 84.0f;
 
@@ -1003,14 +994,14 @@ int main() {
 
         // --- ÇİZİM AŞAMASI ---
         BeginDrawing();
-        ClearBackground(Color{10, 12, 16, 255});
+        ClearBackground(Color{11, 15, 22, 255});
 
-        // Arka Plan
-        if (textureManager.HasWarehouseBackground()) {
-            textureManager.DrawBackground(Rectangle{0, 0, screenW, screenH});
-        } else {
-            for (int x = 0; x < static_cast<int>(screenW); x += 48) DrawLine(x, 0, x, static_cast<int>(screenH), Color{16, 19, 26, 255});
-            for (int y = 0; y < static_cast<int>(screenH); y += 48) DrawLine(0, y, static_cast<int>(screenW), y, Color{16, 19, 26, 255});
+        // Arka Plan: Minimalist, temiz ve teknik koyu grid (Yapay zeka çamurlu resimleri kaldırıldı)
+        for (int x = 0; x < static_cast<int>(screenW); x += 64) {
+            DrawLine(x, 0, x, static_cast<int>(screenH), Color{22, 30, 42, 140});
+        }
+        for (int y = 0; y < static_cast<int>(screenH); y += 64) {
+            DrawLine(0, y, static_cast<int>(screenW), y, Color{22, 30, 42, 140});
         }
 
         // 1. ÜST HUD PANELİ
@@ -1093,15 +1084,15 @@ int main() {
         std::string viewportTitle = (currentViewMode == WarehouseViewMode::RIG_DETAIL)
             ? (warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetActiveRigIndex() + 1) + "/" + std::to_string(warehouse.GetRigCount()) + " Rig | " + tempTag + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)")
             : ("DEPO GENEL BAKIS - " + warehouse.GetFacilityName() + " (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + " Rig | " + tempTag + "Oda: " + std::to_string(static_cast<int>(roomTemp)) + "C)");
-        Render::UIFrame::DrawCard(viewportRect, "", Color{0, 220, 255, 255});
+        Render::UIFrame::DrawCard(viewportRect, "", Color{56, 160, 240, 255});
 
         // Üst Başlık ve Ayrım Çizgisi (Sekmelerle asla üst üste binmez)
-        DrawRectangle(static_cast<int>(viewportRect.x + 16), static_cast<int>(viewportRect.y + 12), 4, 20, Color{0, 220, 255, 255});
+        DrawRectangle(static_cast<int>(viewportRect.x + 16), static_cast<int>(viewportRect.y + 12), 4, 20, Color{56, 160, 240, 255});
         float maxTitleW = std::max(100.0f, leftW - 275.0f);
-        float titleSize = 16.0f;
+        float titleSize = 17.5f;
         float vTitleW = Render::UIFrame::MeasureTextCustom(viewportTitle, titleSize, true);
         if (vTitleW > maxTitleW && vTitleW > 0.0f) {
-            titleSize = std::max(10.5f, titleSize * (maxTitleW / vTitleW));
+            titleSize = std::max(11.0f, titleSize * (maxTitleW / vTitleW));
         }
         Render::UIFrame::DrawTextCustom(viewportTitle, viewportRect.x + 26.0f, viewportRect.y + 13.0f, titleSize, RAYWHITE, true);
         DrawLine(static_cast<int>(viewportRect.x + 16), static_cast<int>(viewportRect.y + 40),
@@ -1126,7 +1117,7 @@ int main() {
 
             // Güç Gösterge Barı
             const float powerRatio = static_cast<float>(powerGrid.GetTotalConsumptionWatts() / powerGrid.GetMaxCapacityWatts());
-            const Color powerColor = (powerRatio > 0.85f) ? Color{255, 50, 50, 255} : ((powerRatio > 0.60f) ? Color{255, 180, 0, 255} : Color{0, 230, 130, 255});
+            const Color powerColor = (powerRatio > 0.85f) ? Color{239, 68, 68, 240} : ((powerRatio > 0.60f) ? Color{245, 158, 11, 240} : Color{16, 185, 129, 240});
             const std::string powerText = "DEPO SEBEKE YUKU: " + std::to_string(static_cast<int>(powerGrid.GetTotalConsumptionWatts())) +
                                           "W / " + std::to_string(static_cast<int>(powerGrid.GetMaxCapacityWatts())) + "W";
 
@@ -1134,7 +1125,7 @@ int main() {
             const float barX = pad + std::max(0.0f, (leftW - barW) / 2.0f);
             const float barY = rigY + 332.0f;
 
-            Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 26.0f}, powerRatio, powerColor, powerText);
+            Render::UIFrame::DrawProgressBar(Rectangle{barX, barY, barW, 30.0f}, powerRatio, powerColor, powerText);
 
             // Rig Saatlik ve Günlük Kazanç & Elektrik Maliyeti Gösterge Şeridi (Earnings Telemetry)
             if (activeRig && activeRig->IsPoweredOn() && !powerGrid.IsBreakerTripped()) {
@@ -1147,11 +1138,11 @@ int main() {
                 double dailyCost = hourlyCost * 24.0;
                 double dailyProfit = dailyRev - dailyCost;
 
-                float earnY = barY + 34.0f;
+                float earnY = barY + 38.0f;
                 if (activeRig->IsInStartupSurge() || shaderManager.IsThermalActive()) {
-                    earnY += 38.0f;
+                    earnY += 44.0f;
                 }
-                Rectangle earnRec{barX, earnY, barW, 34.0f};
+                Rectangle earnRec{barX, earnY, barW, 40.0f};
                 DrawRectangleRounded(earnRec, 0.2f, 4, Color{18, 26, 38, 235});
                 DrawRectangleRoundedLines(earnRec, 0.2f, 4, 1.2f, Color{45, 140, 240, 200});
 
@@ -1163,9 +1154,9 @@ int main() {
                          economy.FormatFiat(dailyCost).c_str(),
                          dailyProfit >= 0 ? "+" : "",
                          economy.FormatFiat(dailyProfit).c_str());
-                Color earnColor = (dailyProfit >= 0) ? Color{80, 255, 160, 255} : Color{255, 100, 100, 255};
-                float tLen = Render::UIFrame::MeasureTextCustom(earnBuf, 13.0f, true);
-                Render::UIFrame::DrawTextCustom(earnBuf, earnRec.x + std::max(10.0f, (earnRec.width - tLen) * 0.5f), earnRec.y + 9.0f, 13.0f, earnColor, true);
+                Color earnColor = (dailyProfit >= 0) ? Color{16, 185, 129, 255} : Color{239, 68, 68, 255};
+                float tLen = Render::UIFrame::MeasureTextCustom(earnBuf, 15.5f, true);
+                Render::UIFrame::DrawTextCustom(earnBuf, earnRec.x + std::max(10.0f, (earnRec.width - tLen) * 0.5f), earnRec.y + 11.0f, 15.5f, earnColor, true);
             }
 
             // Termal, Demeraj veya Sigorta Bildirim Kutusu
@@ -1217,7 +1208,7 @@ int main() {
 
         // 3. SAĞ PANEL: KONTROL VE YÜKSELTME MERKEZİ
         const Rectangle managementRect{rightX, contentY, rightW, contentH};
-        Render::UIFrame::DrawCard(managementRect, "DEPO VE OPERASYON MERKEZI", Color{255, 200, 0, 255});
+        Render::UIFrame::DrawCard(managementRect, "DEPO VE OPERASYON MERKEZI", Color{56, 160, 240, 255});
 
         btnBuyGPU.Draw();
         btnBuyRig.Draw();

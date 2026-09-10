@@ -246,7 +246,7 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
         title += " - KAPALI";
         titleColor = Color{200, 70, 70, 255};
     }
-    UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 26), 15.0f, titleColor, true);
+    UIFrame::DrawTextCustom(title, static_cast<float>(posX + 24), static_cast<float>(posY + 23), 17.5f, titleColor, true);
 
     // Sağ Üst: Ortalama Sıcaklık ve PSU Güç Rozetleri
     double avgTemp = rig.CalculateAverageTemperature(thermalModel);
@@ -260,17 +260,17 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
     snprintf(psuBuf, sizeof(psuBuf), "PSU: %.0fW / %.0fW", rigWatts, psuMax);
     Color psuCol = (rigWatts > psuMax) ? Color{255, 50, 50, 255} : ((rigWatts > psuMax * 0.85) ? Color{255, 180, 40, 255} : Color{80, 200, 255, 255});
 
-    float badgeW1 = UIFrame::MeasureTextCustom(tempBuf, 13.0f, true) + 20.0f;
-    Rectangle badgeTempRec{static_cast<float>(posX + rigWidth - badgeW1 - 18.0f), static_cast<float>(posY + 23.0f), badgeW1, 24.0f};
+    float badgeW1 = UIFrame::MeasureTextCustom(tempBuf, 14.0f, true) + 20.0f;
+    Rectangle badgeTempRec{static_cast<float>(posX + rigWidth - badgeW1 - 18.0f), static_cast<float>(posY + 20.0f), badgeW1, 26.0f};
     DrawRectangleRounded(badgeTempRec, 0.3f, 4, Color{28, 36, 50, 240});
     DrawRectangleRoundedLines(badgeTempRec, 0.3f, 4, 1.0f, tempCol);
-    UIFrame::DrawTextCustom(tempBuf, badgeTempRec.x + 10.0f, badgeTempRec.y + 4.0f, 13.0f, tempCol, true);
+    UIFrame::DrawTextCustom(tempBuf, badgeTempRec.x + 10.0f, badgeTempRec.y + 4.5f, 14.0f, tempCol, true);
 
-    float badgeW2 = UIFrame::MeasureTextCustom(psuBuf, 13.0f, true) + 20.0f;
-    Rectangle badgePsuRec{badgeTempRec.x - badgeW2 - 8.0f, static_cast<float>(posY + 23.0f), badgeW2, 24.0f};
+    float badgeW2 = UIFrame::MeasureTextCustom(psuBuf, 14.0f, true) + 20.0f;
+    Rectangle badgePsuRec{badgeTempRec.x - badgeW2 - 8.0f, static_cast<float>(posY + 20.0f), badgeW2, 26.0f};
     DrawRectangleRounded(badgePsuRec, 0.3f, 4, Color{28, 36, 50, 240});
     DrawRectangleRoundedLines(badgePsuRec, 0.3f, 4, 1.0f, psuCol);
-    UIFrame::DrawTextCustom(psuBuf, badgePsuRec.x + 10.0f, badgePsuRec.y + 4.0f, 13.0f, psuCol, true);
+    UIFrame::DrawTextCustom(psuBuf, badgePsuRec.x + 10.0f, badgePsuRec.y + 4.5f, 14.0f, psuCol, true);
 
     // 2. Dinamik Slot Yerleşimi (Kapasiteye göre kart genişliği ve aralığı)
     int cardW = (capacity <= 2) ? 90 : ((capacity <= 4) ? 90 : ((capacity <= 6) ? 90 : ((capacity <= 8) ? 74 : 60)));
@@ -304,34 +304,34 @@ void RigRenderer::DrawRig(const Core::MiningRig& rig, const Core::ThermalModel& 
         } else {
             // Boş PCIe Yuvası
             DrawRectangleLines(cardX, gpuY, cardW, 220, Color{45, 50, 60, 180});
-            float emptyTW = UIFrame::MeasureTextCustom("BOS", 13.0f, false);
-            UIFrame::DrawTextCustom("BOS", static_cast<float>(cardX + (cardW - emptyTW) / 2), static_cast<float>(gpuY + 100), 13.0f, Color{80, 90, 105, 255}, false);
+            float emptyTW = UIFrame::MeasureTextCustom("BOS", 16.0f, true);
+            UIFrame::DrawTextCustom("BOS", static_cast<float>(cardX + (cardW - emptyTW) / 2), static_cast<float>(gpuY + 98), 16.0f, Color{130, 150, 180, 255}, true);
         }
     }
 
     // 3. Kasa Sinerji ve Kombo Rozeti
     if (!synergyLabel.empty()) {
-        float synW = UIFrame::MeasureTextCustom(synergyLabel, 12.0f, true) + 16.0f;
-        Rectangle synRec{static_cast<float>(posX + 24), static_cast<float>(posY + rigHeight - 24), synW, 20.0f};
+        float synW = UIFrame::MeasureTextCustom(synergyLabel, 13.0f, true) + 16.0f;
+        Rectangle synRec{static_cast<float>(posX + 24), static_cast<float>(posY + rigHeight - 26), synW, 22.0f};
         DrawRectangleRounded(synRec, 0.3f, 4, Color{36, 30, 10, 230});
         DrawRectangleRoundedLines(synRec, 0.3f, 4, 1.2f, Color{255, 215, 0, 255});
-        UIFrame::DrawTextCustom(synergyLabel, synRec.x + 8.0f, synRec.y + 3.0f, 12.0f, Color{255, 225, 60, 255}, true);
+        UIFrame::DrawTextCustom(synergyLabel, synRec.x + 8.0f, synRec.y + 3.5f, 13.0f, Color{255, 225, 60, 255}, true);
     }
 
     // 4. CPU Madenciliği ve Anakart Soket Alanı (Sol/Orta Alt Çerçeve)
-    int cpuX = posX + rigWidth - 285;
-    int cpuY = posY + rigHeight - 25;
-    Rectangle cpuRec{static_cast<float>(cpuX), static_cast<float>(cpuY), 268.0f, 22.0f};
+    int cpuX = posX + rigWidth - 305;
+    int cpuY = posY + rigHeight - 28;
+    Rectangle cpuRec{static_cast<float>(cpuX), static_cast<float>(cpuY), 288.0f, 25.0f};
     DrawRectangleRounded(cpuRec, 0.35f, 4, Color{18, 30, 24, 235});
     DrawRectangleRoundedLines(cpuRec, 0.35f, 4, 1.0f, isPowered ? Color{0, 230, 160, 255} : Color{80, 90, 85, 255});
 
     // Küçük Dönen İşlemci Fanı
     float cpuAngle = isPowered ? std::fmod(static_cast<float>(animTime * 1800.0), 360.0f) : 0.0f;
-    DrawSpinningFan(cpuX + 13, cpuY + 11, 8.0f, cpuAngle, isPowered ? Color{0, 255, 180, 255} : Color{70, 80, 75, 255});
+    DrawSpinningFan(cpuX + 14, cpuY + 12, 9.0f, cpuAngle, isPowered ? Color{0, 255, 180, 255} : Color{70, 80, 75, 255});
 
     std::ostringstream ssCpu;
     ssCpu << "CPU: " << rig.GetCPUName() << " | " << std::fixed << std::setprecision(1) << (isPowered ? rig.GetCPUHashrateKH() : 0.0) << " KH/s";
-    UIFrame::DrawTextCustom(ssCpu.str(), static_cast<float>(cpuX + 26), static_cast<float>(cpuY + 4), 11.0f, isPowered ? Color{180, 255, 215, 255} : Color{140, 150, 145, 255}, true);
+    UIFrame::DrawTextCustom(ssCpu.str(), static_cast<float>(cpuX + 28), static_cast<float>(cpuY + 5.0f), 13.0f, isPowered ? Color{180, 255, 215, 255} : Color{140, 150, 145, 255}, true);
 }
 
 int RigRenderer::GetClickedGPUIndex(int posX, int posY, size_t gpuCount, Vector2 mousePos, size_t capacity) const {

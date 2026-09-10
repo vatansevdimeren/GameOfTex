@@ -1381,3 +1381,44 @@ Bu dosya, projedeki her bir dosyanın, sınıfın ve fonksiyonun **Clean Code** 
   - `%160 (1.60x) Maksimum` - Ultra net font
 * **Görsel Geri Bildirim:** Aktif seçili ölçek butonu parlak altın sarısı bir çerçeveyle işaretlenerek oyuncunun hangi boyutta olduğunu anında görmesi sağlandı.
 
+---
+
+## 🎨 29. 1.45x Tabanlı Doğal Büyük UI & Sade Teknik Grid Tema (v2.6.0)
+
+Kullanıcının geri bildirimi doğrultusunda oyunun açılışındaki yazıların küçük kalması problemi kökten çözülmüş, önceki 1.45x ölçeği artık doğrudan sistemin **%100 (1.00x) Standart Temel Ölçeği** haline getirilmiştir. Ayrıca yapay zeka tarafından üretilen çamurlu arka plan ve karmaşık neon renk paleti tamamen kaldırılarak, modern, profesyonel ve koyu slate/charcoal bir tema inşa edilmiştir.
+
+### 29.1. 1.45x Tabanlı Yeni Sistem Ölçeği (`UIFrame.hpp`, `SettingsModal.cpp`)
+* **Yeni Taban Ölçek:** `s_uiScale` varsayılan değeri **1.45f** yapıldı. Böylelikle oyun açılır açılmaz tüm tipografi, butonlar, modallar ve rozetler gözü yormayan, son derece net ve büyük bir ölçekle başlar.
+* **Ayarlar Modalı Kalibrasyonu:**
+  - `%100 (1.00x) Standart (Geniş & Net - Varsayılan)` -> `1.45f`
+  - `%115 (1.15x) Büyük (Ekstra Okunaklı)` -> `1.65f`
+  - `%130 (1.30x) Çok Büyük (2K/4K Monitörler)` -> `1.85f`
+  - `%145 (1.45x) Maksimum (Dev Tipografi)` -> `2.05f`
+  - `%85 (0.85x) Kompakt (Küçük Laptop)` -> `1.20f`
+* **Göreceli Yüzde Hesabı:** Ayarlar modalında görüntülenen ölçek değeri formülü:
+  `int displayPct = static_cast<int>((UIFrame::GetUIScale() / 1.45f) * 100.0f + 0.5f);`
+  Oyuncu doğrudan %100, %115, %130 gibi standart değerleri görür.
+
+### 29.2. AI Çamurlu Arka Planın Kaldırılması ve Sade Teknik Grid (`main.cpp`)
+* **Arka Plan Değişimi:** Çamurlu AI dokusu (`warehouse_bg.png`) tamamen devre dışı bırakıldı.
+* **Minimalist Teknik Izgara:** Koyu lacivert/füme zemin (`Color{11, 15, 22, 255}`) üzerine 64px adımlarla hafif saydam teknik ızgara çizgileri (`Color{22, 30, 42, 140}`) çizilerek oyun içi panellerin öne çıkması ve profesyonel endüstriyel bir hava kazanması sağlandı.
+
+### 29.3. Renk Paletinin Sadeleştirilmesi ve Rainbow Neon Etkilerinin Temizlenmesi (`main.cpp`)
+* Rastgele sarı, mor, camgöbeği ve yeşil neon kenarlıklar yerine tutarlı koyu kurşuni/slate tonlar (`Color{22, 28, 38, 255}`) ve zarif kenarlıklar (`Color{48, 60, 80, 255}`) benimsendi.
+* İşlevsel aksan renkleri:
+  - Satın Alma / Upgrade: Zümrüt Yeşili (`Color{16, 185, 129, 255}`)
+  - İnceleme / Donanım / Detay: Buz Mavisi / Çelik Siyan (`Color{56, 160, 240, 255}`)
+  - Aşırı Yükleme / Şalter: Canlı Kırmızı (`Color{239, 68, 68, 255}`)
+  - Sıcaklık / Frenzy: Kehribar Turuncusu (`Color{245, 158, 11, 255}`)
+
+### 29.4. Dinamik Rig Görünümü & Tipografi Büyütmeleri (`main.cpp`, `RigRenderer.cpp`)
+* **Dinamik Rig Genişliği:** `rigBaseW` sabit 720px'den, ekran ve sol viewport genişliğine uyum sağlayan `std::clamp(leftW - 40.0f, 740.0f, 1040.0f)` formülüne geçirildi. Sol paneldeki gereksiz boşluklar ortadan kalktı.
+* **Rig Başlığı ve Boş Yuva Metinleri:**
+  - Rig Başlığı: **17.5px Bold**
+  - Boş Yuva ("BOŞ"): **16.0f Bold** ve belirgin renk (`Color{130, 150, 180}`)
+  - CPU Soket Şeridi: **288x25px**, **13.0px Bold**
+* **Şebeke Güç Barı & Kazanç Şeridi:**
+  - Güç barı yüksekliği **30px** yapıldı.
+  - Kazanç ve gider gösterge şeridi yüksekliği **40px**, yazı boyutu **15.5px Bold** yapılarak anında okunabilir kılındı.
+
+

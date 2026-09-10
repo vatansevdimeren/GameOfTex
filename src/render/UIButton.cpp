@@ -80,13 +80,13 @@ void UIButton::Draw() const {
     Color fillColor = m_baseColor;
     Color borderColor = m_accentColor;
     Color textColor = WHITE;
-    Color subTextColor = LIGHTGRAY;
+    Color subTextColor = Color{185, 205, 230, 255};
 
     if (m_isDisabled) {
-        fillColor = Color{25, 28, 35, 180};
-        borderColor = Color{60, 65, 75, 150};
-        textColor = Color{120, 125, 135, 255};
-        subTextColor = Color{90, 95, 105, 255};
+        fillColor = Color{22, 26, 34, 180};
+        borderColor = Color{50, 58, 72, 150};
+        textColor = Color{130, 140, 155, 255};
+        subTextColor = Color{100, 112, 128, 255};
     } else if (m_isPressed) {
         fillColor = Color{
             static_cast<unsigned char>(std::clamp(static_cast<int>(m_baseColor.r) - 10, 0, 255)),
