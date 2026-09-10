@@ -215,27 +215,34 @@ int main() {
     double animTime = 0.0;
 
     // 6. İnteraktif Butonlar - Sade, şık, göz yormayan profesyonel koyu tema
-    const Color cardBg{22, 28, 38, 255};
-    const Color borderSubtle{48, 60, 80, 255};
-    const Color borderCyan{45, 140, 240, 255};
+    const Color cardBg{18, 23, 33, 255};
+    const Color borderSubtle{40, 52, 72, 255};
+    const Color borderCyan{56, 145, 235, 255};
+
+    enum class RightTabMode { HARDWARE, OPERATIONS };
+    RightTabMode rightTabMode = RightTabMode::HARDWARE;
+
+    Render::UIButton btnRightTabHardware(Rectangle{}, "DONANIM", "Pazar, Rig & PSU", Color{28, 42, 62, 255}, borderCyan);
+    Render::UIButton btnRightTabOperations(Rectangle{}, "OPERASYON", "Ayar, Termal & Salter", cardBg, borderSubtle);
 
     Render::UIButton btnBuyGPU(Rectangle{}, "DONANIM MARKETS", "", cardBg, borderCyan);
-    Render::UIButton btnBuyRig(Rectangle{}, "YENI RIG SATIN AL", "", cardBg, Color{34, 197, 94, 255});
+    Render::UIButton btnBuyRig(Rectangle{}, "YENI RIG SATIN AL", "", cardBg, Color{16, 185, 129, 255});
 
     Render::UIButton btnToggleRigPower(Rectangle{}, "RIG'I KAPAT", "", Color{45, 24, 28, 255}, Color{239, 68, 68, 255});
     Render::UIButton btnSellRig(Rectangle{}, "RIG'I SAT", "+$1,200", cardBg, Color{217, 119, 6, 255});
     Render::UIButton btnUpgradeRigFrame(Rectangle{}, "KASAYI YUKSELT", "", cardBg, borderCyan);
 
-    Render::UIButton btnTabRigDetail(Rectangle{}, "DETAYLI RIG", "", Color{30, 44, 64, 255}, borderCyan);
+    Render::UIButton btnTabRigDetail(Rectangle{}, "DETAYLI RIG", "", Color{28, 42, 62, 255}, borderCyan);
     Render::UIButton btnTabOverview(Rectangle{}, "DEPO GENEL BAKIS", "", cardBg, borderSubtle);
 
     Render::UIButton btnSellCrypto(Rectangle{}, "KRIPTO BORSASI", "", cardBg, Color{234, 179, 8, 255});
+    Render::UIButton btnQuickCashOut(Rectangle{}, "HIZLI BOZDUR (%50)", "Aninda Nakit [SPACE]", cardBg, Color{16, 185, 129, 255});
     Render::UIButton btnUpgradeCooling(Rectangle{}, "SOGUTMAYI YUKSELT", "", cardBg, borderCyan);
 
     Render::UIButton btnOverclock(Rectangle{}, "HIZ ASIRTMA (+5% OC)", "Daha Fazla MH/s", cardBg, borderSubtle);
     Render::UIButton btnUndervolt(Rectangle{}, "VOLTAJ DUSUR (-5% UV)", "Daha Az Guc ve Isi", cardBg, borderSubtle);
-    Render::UIButton btnThermalToggle(Rectangle{}, "TERMAL VIZYON MODU", "FLIR Isı Haritasi", cardBg, borderSubtle);
-    Render::UIButton btnResetBreaker(Rectangle{}, "SIGORTA SALTERINI AC", "Sistem Normal", Color{45, 24, 28, 255}, Color{239, 68, 68, 255});
+    Render::UIButton btnThermalToggle(Rectangle{}, "TERMAL VIZYON MODU", "FLIR Isı Haritasi [TAB]", cardBg, borderSubtle);
+    Render::UIButton btnResetBreaker(Rectangle{}, "SIGORTA SALTERINI AC", "Sistem Normal", Color{28, 42, 34, 255}, Color{16, 185, 129, 255});
 
     Render::UIButton btnOpenSettings(Rectangle{}, "AYARLAR", "", cardBg, borderSubtle);
     Render::UIButton btnQuickSave(Rectangle{}, "KAYDET", "F5", Color{20, 40, 30, 255}, Color{34, 197, 94, 255});
@@ -667,22 +674,56 @@ int main() {
             }
         }
 
-        // Sağ Paneldeki Butonların Dinamik Konumları (9 Buton)
-        const float btnW = rightW - 32.0f;
-        const float btnH = std::clamp((contentH - 95.0f) / 9.2f, 44.0f, 58.0f);
-        const float btnGap = 5.0f;
-        const float startBtnY = contentY + 46.0f;
-        const float btnX = rightX + 16.0f;
+        // Sağ Panel Sekmeleri (DONANIM & PAZAR vs OPERASYON & AYARLAR)
+        const float rightTabW = (rightW - 38.0f) / 2.0f;
+        btnRightTabHardware.SetBounds(Rectangle{rightX + 16.0f, contentY + 44.0f, rightTabW, 34.0f});
+        btnRightTabOperations.SetBounds(Rectangle{rightX + 22.0f + rightTabW, contentY + 44.0f, rightTabW, 34.0f});
 
-        btnBuyGPU.SetBounds(Rectangle{btnX, startBtnY + (0 * (btnH + btnGap)), btnW, btnH});
-        btnBuyRig.SetBounds(Rectangle{btnX, startBtnY + (1 * (btnH + btnGap)), btnW, btnH});
-        btnUpgradePSU.SetBounds(Rectangle{btnX, startBtnY + (2 * (btnH + btnGap)), btnW, btnH});
-        btnSellCrypto.SetBounds(Rectangle{btnX, startBtnY + (3 * (btnH + btnGap)), btnW, btnH});
-        btnUpgradeCooling.SetBounds(Rectangle{btnX, startBtnY + (4 * (btnH + btnGap)), btnW, btnH});
-        btnOverclock.SetBounds(Rectangle{btnX, startBtnY + (5 * (btnH + btnGap)), btnW, btnH});
-        btnUndervolt.SetBounds(Rectangle{btnX, startBtnY + (6 * (btnH + btnGap)), btnW, btnH});
-        btnThermalToggle.SetBounds(Rectangle{btnX, startBtnY + (7 * (btnH + btnGap)), btnW, btnH});
-        btnResetBreaker.SetBounds(Rectangle{btnX, startBtnY + (8 * (btnH + btnGap)), btnW, btnH});
+        if (!isAnyModalOpen) {
+            if (btnRightTabHardware.UpdateAndCheckClick()) {
+                rightTabMode = RightTabMode::HARDWARE;
+            }
+            if (btnRightTabOperations.UpdateAndCheckClick()) {
+                rightTabMode = RightTabMode::OPERATIONS;
+            }
+        }
+
+        // Aktif sekmeye göre sekme butonlarının renklerini güncelle
+        if (rightTabMode == RightTabMode::HARDWARE) {
+            btnRightTabHardware.SetBaseColor(Color{28, 42, 62, 255});
+            btnRightTabHardware.SetAccentColor(borderCyan);
+            btnRightTabOperations.SetBaseColor(cardBg);
+            btnRightTabOperations.SetAccentColor(borderSubtle);
+        } else {
+            btnRightTabHardware.SetBaseColor(cardBg);
+            btnRightTabHardware.SetAccentColor(borderSubtle);
+            btnRightTabOperations.SetBaseColor(Color{28, 42, 62, 255});
+            btnRightTabOperations.SetAccentColor(borderCyan);
+        }
+
+        // Sağ Panel Butonlarının Dinamik Konumları (Ferah, Geniş ve Yüksek)
+        const float btnW = rightW - 32.0f;
+        const float btnX = rightX + 16.0f;
+        const float startBtnY = contentY + 86.0f;
+
+        if (rightTabMode == RightTabMode::HARDWARE) {
+            const float btnH = std::clamp((contentH - 96.0f) / 5.5f, 52.0f, 68.0f);
+            const float btnGap = 8.0f;
+
+            btnBuyGPU.SetBounds(Rectangle{btnX, startBtnY + (0 * (btnH + btnGap)), btnW, btnH});
+            btnBuyRig.SetBounds(Rectangle{btnX, startBtnY + (1 * (btnH + btnGap)), btnW, btnH});
+            btnUpgradePSU.SetBounds(Rectangle{btnX, startBtnY + (2 * (btnH + btnGap)), btnW, btnH});
+            btnUpgradeCooling.SetBounds(Rectangle{btnX, startBtnY + (3 * (btnH + btnGap)), btnW, btnH});
+            btnQuickCashOut.SetBounds(Rectangle{btnX, startBtnY + (4 * (btnH + btnGap)), btnW, btnH});
+        } else {
+            const float btnH = std::clamp((contentH - 150.0f) / 4.4f, 54.0f, 72.0f);
+            const float btnGap = 8.0f;
+
+            btnOverclock.SetBounds(Rectangle{btnX, startBtnY + (0 * (btnH + btnGap)), btnW, btnH});
+            btnUndervolt.SetBounds(Rectangle{btnX, startBtnY + (1 * (btnH + btnGap)), btnW, btnH});
+            btnThermalToggle.SetBounds(Rectangle{btnX, startBtnY + (2 * (btnH + btnGap)), btnW, btnH});
+            btnResetBreaker.SetBounds(Rectangle{btnX, startBtnY + (3 * (btnH + btnGap)), btnW, btnH});
+        }
 
         // Kart Tıklama Tespiti (Viewport içerisindeki GPU'ya tıklandı mı?)
         const float rigBaseW = std::clamp(leftW - 40.0f, 740.0f, 1040.0f);
@@ -711,139 +752,175 @@ int main() {
         }
 
         if (!isAnyModalOpen) {
-            // [B] veya [E] kısayolu ile Borsayı aç
+            // Hızlı Klavye Kısayolları (Oynamayı aşırı kolaylaştırır)
             if (IsKeyPressed(KEY_B) || IsKeyPressed(KEY_E)) {
                 cryptoExchangeModal.Open();
             }
-
-            // 1. Donanım ve Tesis Marketi
-            btnBuyGPU.SetTitle(isTR ? "DONANIM VE TESIS MARKETI" : "HARDWARE & SITES STORE");
-            std::string gpuSub = isTR ? "Farkli Modeller, Trafo ve Tesis" : "Different Models, Power & Facilities";
-            btnBuyGPU.SetSubtitle(gpuSub);
-            btnBuyGPU.SetDisabled(false);
-            if (btnBuyGPU.UpdateAndCheckClick()) {
+            if (IsKeyPressed(KEY_M)) {
                 marketModal.Open();
             }
-
-            // 2. Yeni Rig Satın Al ($2,500)
-            btnBuyRig.SetTitle(Core::LocalizationManager::Tr("BTN_BUY_RIG"));
-            bool isRigCapFull = (warehouse.GetRigCount() >= warehouse.GetMaxRigCapacity());
-            btnBuyRig.SetDisabled(economy.GetFiatBalance() < 2500.0 || isRigCapFull);
-            std::string rigSub;
-            if (isRigCapFull) {
-                rigSub = isTR ? ("KAPASITE DOLU (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + ") - HARITADAN YENI DEPO ALIN")
-                              : ("CAPACITY FULL (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + ") - BUY NEW SITE");
-            } else {
-                rigSub = (isTR ? "Maliyet: " : "Cost: ") + economy.FormatFiat(2500.0) + (isTR ? " | Kapasite: " : " | Capacity: ") + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity());
+            if (IsKeyPressed(KEY_H)) {
+                worldMapModal.Open();
             }
-            btnBuyRig.SetSubtitle(rigSub);
-            if (btnBuyRig.UpdateAndCheckClick() && !isRigCapFull) {
-                if (economy.DeductFiat(2500.0)) {
-                    std::string newRigName = std::string("Rig ") + (warehouse.GetRigCount() < 9 ? "0" : "") + std::to_string(warehouse.GetRigCount() + 1) + " - Frame";
-                    warehouse.AddNewRig(newRigName, 6);
-                    warehouse.SetActiveRigIndex(warehouse.GetRigCount() - 1);
+            if (IsKeyPressed(KEY_T) || IsKeyPressed(KEY_G)) {
+                taskModal.Open();
+            }
+
+            if (rightTabMode == RightTabMode::HARDWARE) {
+                // 1. Donanım ve Tesis Marketi
+                btnBuyGPU.SetTitle(isTR ? "DONANIM VE TESIS MARKETI" : "HARDWARE & SITES STORE");
+                std::string gpuSub = isTR ? "Farkli GPU/CPU, Trafo ve Tesis [M]" : "Hardware, Power & Sites [M]";
+                btnBuyGPU.SetSubtitle(gpuSub);
+                btnBuyGPU.SetDisabled(false);
+                if (btnBuyGPU.UpdateAndCheckClick()) {
+                    marketModal.Open();
                 }
-            }
 
-            // 3. Rig İçi PSU Yükseltme
-            if (activeRig) {
-                if (activeRig->CanUpgradePSU()) {
-                    btnUpgradePSU.SetTitle(Core::LocalizationManager::Tr("BTN_UPGRADE_PSU"));
-                    double psuCost = activeRig->GetNextPSUCost();
-                    std::string psuSub = activeRig->GetNextPSUName() + " (" + economy.FormatFiat(psuCost) + ")";
-                    btnUpgradePSU.SetSubtitle(psuSub);
-                    btnUpgradePSU.SetDisabled(economy.GetFiatBalance() < psuCost);
-                    if (btnUpgradePSU.UpdateAndCheckClick()) {
-                        if (economy.DeductFiat(psuCost)) {
-                            activeRig->UpgradePSU();
+                // 2. Yeni Rig Satın Al ($2,500)
+                btnBuyRig.SetTitle(Core::LocalizationManager::Tr("BTN_BUY_RIG"));
+                bool isRigCapFull = (warehouse.GetRigCount() >= warehouse.GetMaxRigCapacity());
+                btnBuyRig.SetDisabled(economy.GetFiatBalance() < 2500.0 || isRigCapFull);
+                std::string rigSub;
+                if (isRigCapFull) {
+                    rigSub = isTR ? ("KAPASITE DOLU (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + ") - HARITADAN YENI DEPO ALIN")
+                                  : ("CAPACITY FULL (" + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity()) + ") - BUY NEW SITE");
+                } else {
+                    rigSub = (isTR ? "Maliyet: " : "Cost: ") + economy.FormatFiat(2500.0) + (isTR ? " | Kapasite: " : " | Capacity: ") + std::to_string(warehouse.GetRigCount()) + "/" + std::to_string(warehouse.GetMaxRigCapacity());
+                }
+                btnBuyRig.SetSubtitle(rigSub);
+                if (btnBuyRig.UpdateAndCheckClick() && !isRigCapFull) {
+                    if (economy.DeductFiat(2500.0)) {
+                        std::string newRigName = std::string("Rig ") + (warehouse.GetRigCount() < 9 ? "0" : "") + std::to_string(warehouse.GetRigCount() + 1) + " - Frame";
+                        warehouse.AddNewRig(newRigName, 6);
+                        warehouse.SetActiveRigIndex(warehouse.GetRigCount() - 1);
+                    }
+                }
+
+                // 3. Rig İçi PSU Yükseltme
+                if (activeRig) {
+                    if (activeRig->CanUpgradePSU()) {
+                        btnUpgradePSU.SetTitle(Core::LocalizationManager::Tr("BTN_UPGRADE_PSU"));
+                        double psuCost = activeRig->GetNextPSUCost();
+                        std::string psuSub = activeRig->GetNextPSUName() + " (" + economy.FormatFiat(psuCost) + ")";
+                        btnUpgradePSU.SetSubtitle(psuSub);
+                        btnUpgradePSU.SetDisabled(economy.GetFiatBalance() < psuCost);
+                        if (btnUpgradePSU.UpdateAndCheckClick()) {
+                            if (economy.DeductFiat(psuCost)) {
+                                activeRig->UpgradePSU();
+                            }
+                        }
+                    } else {
+                        btnUpgradePSU.SetTitle(Core::LocalizationManager::Tr("PSU_MAX_REACHED"));
+                        btnUpgradePSU.SetSubtitle("2600W Server Dual PSU");
+                        btnUpgradePSU.SetDisabled(true);
+                    }
+                }
+
+                // 4. Soğutmayı Kademeli Yükselt
+                size_t nextCoolingTier = 0;
+                const auto& coolingTiers = coolingManager.GetTiers();
+                for (size_t i = 1; i < coolingTiers.size(); ++i) {
+                    if (!coolingTiers[i].isInstalled) {
+                        nextCoolingTier = i;
+                        break;
+                    }
+                }
+
+                if (nextCoolingTier > 0) {
+                    const auto& nextTierInfo = coolingTiers[nextCoolingTier];
+                    btnUpgradeCooling.SetTitle(nextTierInfo.name);
+                    std::string coolSub = (isTR ? "Maliyet: " : "Cost: ") + economy.FormatFiat(nextTierInfo.cost) + " (+" + std::to_string(static_cast<int>(nextTierInfo.addedCoolingWatts)) + "W)";
+                    btnUpgradeCooling.SetSubtitle(coolSub);
+                    btnUpgradeCooling.SetDisabled(economy.GetFiatBalance() < nextTierInfo.cost);
+
+                    if (btnUpgradeCooling.UpdateAndCheckClick()) {
+                        if (economy.DeductFiat(nextTierInfo.cost)) {
+                            coolingManager.UpgradeTier(nextCoolingTier);
+                            thermalModel.SetCoolingPowerWatts(coolingManager.CalculateTotalCoolingWatts());
                         }
                     }
                 } else {
-                    btnUpgradePSU.SetTitle(Core::LocalizationManager::Tr("PSU_MAX_REACHED"));
-                    btnUpgradePSU.SetSubtitle("2600W Server Dual PSU");
-                    btnUpgradePSU.SetDisabled(true);
+                    btnUpgradeCooling.SetTitle(isTR ? "DALDIRMA SIVI SOGUTMA AKTIF" : "IMMERSION COOLING ACTIVE");
+                    btnUpgradeCooling.SetSubtitle(isTR ? "Maksimum Sogutma (6,000W) - Kartlar Asla Yanmaz" : "Max Cooling (6,000W) - Overheat Immune");
+                    btnUpgradeCooling.SetDisabled(true);
                 }
-            }
 
-            // 4. Kripto Borsa & Canlı Grafik Masası
-            btnSellCrypto.SetTitle(isTR ? "KRIPTO BORSASI - AL / SAT" : "CRYPTO EXCHANGE - TRADE");
-            const double totalPortfolioUSD = economy.GetTotalPortfolioValueUSD();
-            std::string cryptoSub = (isTR ? "Portfoy: " : "Portfolio: ") + economy.FormatFiat(totalPortfolioUSD) + " (" + std::to_string(economy.GetCoins().size()) + (isTR ? " Coin)" : " Coins)");
-            btnSellCrypto.SetSubtitle(cryptoSub);
-            btnSellCrypto.SetDisabled(false);
-            if (btnSellCrypto.UpdateAndCheckClick()) {
-                cryptoExchangeModal.Open();
-            }
-
-            // 4. Soğutmayı Kademeli Yükselt
-            size_t nextCoolingTier = 0;
-            const auto& coolingTiers = coolingManager.GetTiers();
-            for (size_t i = 1; i < coolingTiers.size(); ++i) {
-                if (!coolingTiers[i].isInstalled) {
-                    nextCoolingTier = i;
-                    break;
+                // 5. Hızlı Coin Bozdur (%50) & Kripto Borsa Butonu
+                double activeCoinBal = economy.GetCryptoBalance();
+                double activeCoinPrice = economy.GetCryptoPrice();
+                double halfValueUSD = (activeCoinBal * 0.5) * activeCoinPrice;
+                if (activeCoinBal > 0.0001 && halfValueUSD >= 0.01) {
+                    char cashBuf[64];
+                    snprintf(cashBuf, sizeof(cashBuf), "+%s (50%%) [SPACE]", economy.FormatFiat(halfValueUSD).c_str());
+                    btnQuickCashOut.SetTitle(isTR ? "HIZLI COIN BOZDUR" : "QUICK CASH OUT");
+                    btnQuickCashOut.SetSubtitle(cashBuf);
+                    btnQuickCashOut.SetDisabled(false);
+                } else {
+                    btnQuickCashOut.SetTitle(isTR ? "KRIPTO BORSASI (AL/SAT)" : "CRYPTO EXCHANGE");
+                    btnQuickCashOut.SetSubtitle(isTR ? "Tum Cuzdan & Grafikler [B]" : "All Wallets & Charts [B]");
+                    btnQuickCashOut.SetDisabled(false);
                 }
-            }
 
-            if (nextCoolingTier > 0) {
-                const auto& nextTierInfo = coolingTiers[nextCoolingTier];
-                btnUpgradeCooling.SetTitle(nextTierInfo.name);
-                std::string coolSub = (isTR ? "Maliyet: " : "Cost: ") + economy.FormatFiat(nextTierInfo.cost) + " (+" + std::to_string(static_cast<int>(nextTierInfo.addedCoolingWatts)) + "W)";
-                btnUpgradeCooling.SetSubtitle(coolSub);
-                btnUpgradeCooling.SetDisabled(economy.GetFiatBalance() < nextTierInfo.cost);
-
-                if (btnUpgradeCooling.UpdateAndCheckClick()) {
-                    if (economy.DeductFiat(nextTierInfo.cost)) {
-                        coolingManager.UpgradeTier(nextCoolingTier);
-                        thermalModel.SetCoolingPowerWatts(coolingManager.CalculateTotalCoolingWatts());
+                if (btnQuickCashOut.UpdateAndCheckClick() || (IsKeyPressed(KEY_SPACE) && !isAnyModalOpen)) {
+                    if (activeCoinBal > 0.0001 && halfValueUSD >= 0.01) {
+                        double sellAmount = activeCoinBal * 0.5;
+                        if (economy.SellCrypto(sellAmount)) {
+                            triggerSaveToast(isTR ? (economy.FormatFiat(halfValueUSD) + " Nakite Cevrildi!") : (economy.FormatFiat(halfValueUSD) + " Cashed Out!"));
+                        }
+                    } else {
+                        cryptoExchangeModal.Open();
                     }
                 }
             } else {
-                btnUpgradeCooling.SetTitle(isTR ? "DALDIRMA SIVI SOGUTMA AKTIF" : "IMMERSION COOLING ACTIVE");
-                btnUpgradeCooling.SetSubtitle(isTR ? "Maksimum Sogutma (6,000W) - Kartlar Asla Yanmaz" : "Max Cooling (6,000W) - Overheat Immune");
-                btnUpgradeCooling.SetDisabled(true);
-            }
+                // OPERATIONS TAB
+                // 1. Overclock
+                btnOverclock.SetTitle(Core::LocalizationManager::Tr("BTN_OVERCLOCK"));
+                btnOverclock.SetSubtitle(Core::LocalizationManager::Tr("BTN_OVERCLOCK_SUB"));
+                if (btnOverclock.UpdateAndCheckClick()) {
+                    for (const auto& r : warehouse.GetAllRigs()) {
+                        if (r) {
+                            for (const auto& gpu : r->GetGPUs()) {
+                                if (gpu) gpu->SetOverclockMultiplier(gpu->GetOverclockMultiplier() + 0.05);
+                            }
+                        }
+                    }
+                    taskManager.NotifyCardOverclocked();
+                }
 
-            // 5. Overclock
-            btnOverclock.SetTitle(Core::LocalizationManager::Tr("BTN_OVERCLOCK"));
-            btnOverclock.SetSubtitle(Core::LocalizationManager::Tr("BTN_OVERCLOCK_SUB"));
-            if (btnOverclock.UpdateAndCheckClick()) {
-                for (const auto& r : warehouse.GetAllRigs()) {
-                    if (r) {
-                        for (const auto& gpu : r->GetGPUs()) {
-                            if (gpu) gpu->SetOverclockMultiplier(gpu->GetOverclockMultiplier() + 0.05);
+                // 2. Undervolt
+                btnUndervolt.SetTitle(Core::LocalizationManager::Tr("BTN_UNDERVOLT"));
+                btnUndervolt.SetSubtitle(Core::LocalizationManager::Tr("BTN_UNDERVOLT_SUB"));
+                if (btnUndervolt.UpdateAndCheckClick()) {
+                    for (const auto& r : warehouse.GetAllRigs()) {
+                        if (r) {
+                            for (const auto& gpu : r->GetGPUs()) {
+                                if (gpu) gpu->SetOverclockMultiplier(gpu->GetOverclockMultiplier() - 0.05);
+                            }
                         }
                     }
                 }
-                taskManager.NotifyCardOverclocked();
-            }
 
-            // 6. Undervolt
-            btnUndervolt.SetTitle(Core::LocalizationManager::Tr("BTN_UNDERVOLT"));
-            btnUndervolt.SetSubtitle(Core::LocalizationManager::Tr("BTN_UNDERVOLT_SUB"));
-            if (btnUndervolt.UpdateAndCheckClick()) {
-                for (const auto& r : warehouse.GetAllRigs()) {
-                    if (r) {
-                        for (const auto& gpu : r->GetGPUs()) {
-                            if (gpu) gpu->SetOverclockMultiplier(gpu->GetOverclockMultiplier() - 0.05);
-                        }
-                    }
+                // 3. Termal Vizyon
+                btnThermalToggle.SetTitle(Core::LocalizationManager::Tr("BTN_THERMAL"));
+                btnThermalToggle.SetSubtitle(shaderManager.IsThermalActive() ? Core::LocalizationManager::Tr("BTN_THERMAL_ON") : Core::LocalizationManager::Tr("BTN_THERMAL_OFF"));
+                if (btnThermalToggle.UpdateAndCheckClick() || IsKeyPressed(KEY_TAB)) {
+                    shaderManager.ToggleThermal();
                 }
-            }
 
-            // 7. Termal Vizyon
-            btnThermalToggle.SetTitle(Core::LocalizationManager::Tr("BTN_THERMAL"));
-            btnThermalToggle.SetSubtitle(shaderManager.IsThermalActive() ? Core::LocalizationManager::Tr("BTN_THERMAL_ON") : Core::LocalizationManager::Tr("BTN_THERMAL_OFF"));
-            if (btnThermalToggle.UpdateAndCheckClick() || IsKeyPressed(KEY_TAB)) {
-                shaderManager.ToggleThermal();
-            }
-
-            // 8. Sigorta Şalteri
-            btnResetBreaker.SetTitle(Core::LocalizationManager::Tr("BTN_BREAKER_RESET"));
-            btnResetBreaker.SetDisabled(!powerGrid.IsBreakerTripped());
-            btnResetBreaker.SetSubtitle(powerGrid.IsBreakerTripped() ? Core::LocalizationManager::Tr("BTN_BREAKER_TRIPPED") : Core::LocalizationManager::Tr("BTN_BREAKER_OK"));
-            if (btnResetBreaker.UpdateAndCheckClick() || (powerGrid.IsBreakerTripped() && IsKeyPressed(KEY_K))) {
-                powerGrid.ResetBreaker();
+                // 4. Sigorta Şalteri
+                btnResetBreaker.SetTitle(Core::LocalizationManager::Tr("BTN_BREAKER_RESET"));
+                btnResetBreaker.SetDisabled(!powerGrid.IsBreakerTripped());
+                btnResetBreaker.SetSubtitle(powerGrid.IsBreakerTripped() ? Core::LocalizationManager::Tr("BTN_BREAKER_TRIPPED") : Core::LocalizationManager::Tr("BTN_BREAKER_OK"));
+                if (powerGrid.IsBreakerTripped()) {
+                    btnResetBreaker.SetBaseColor(Color{120, 20, 25, 255});
+                    btnResetBreaker.SetAccentColor(Color{255, 60, 60, 255});
+                } else {
+                    btnResetBreaker.SetBaseColor(Color{20, 28, 24, 255});
+                    btnResetBreaker.SetAccentColor(Color{34, 197, 94, 255});
+                }
+                if (btnResetBreaker.UpdateAndCheckClick() || (powerGrid.IsBreakerTripped() && IsKeyPressed(KEY_K))) {
+                    powerGrid.ResetBreaker();
+                }
             }
         }
 
@@ -1025,11 +1102,11 @@ int main() {
 
         ssTemp << std::fixed << std::setprecision(1) << thermalModel.GetAmbientTemperature() << " C";
 
-        Render::UIFrame::DrawStatBadge(pad + (0 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, currentAvatar, Core::LocalizationManager::Tr("BADGE_COMPANY"), userProfile.GetCompanyName(), Color{0, 230, 255, 255});
-        Render::UIFrame::DrawStatBadge(pad + (1 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "$", Core::LocalizationManager::Tr("BADGE_CASH"), economy.FormatFiat(economy.GetFiatBalance()), Color{0, 255, 150, 255});
-        Render::UIFrame::DrawStatBadge(pad + (2 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "CRYPTO", Core::LocalizationManager::Tr("BADGE_CRYPTO"), ssCrypto.str(), Color{255, 210, 50, 255});
-        Render::UIFrame::DrawStatBadge(pad + (3 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "PIYASA", std::string("1 ") + economy.GetCoinSymbol(), economy.FormatPrice(economy.GetCryptoPrice()), Color{170, 200, 255, 255});
-        Render::UIFrame::DrawStatBadge(pad + (4 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "HASH", Core::LocalizationManager::Tr("BADGE_SPEED"), ssHashStr, Color{100, 230, 255, 255});
+        Render::UIFrame::DrawStatBadge(pad + (0 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, currentAvatar, Core::LocalizationManager::Tr("BADGE_COMPANY"), userProfile.GetCompanyName(), Color{56, 160, 240, 255});
+        Render::UIFrame::DrawStatBadge(pad + (1 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "$", Core::LocalizationManager::Tr("BADGE_CASH"), economy.FormatFiat(economy.GetFiatBalance()), Color{16, 185, 129, 255});
+        Render::UIFrame::DrawStatBadge(pad + (2 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "CRYPTO", Core::LocalizationManager::Tr("BADGE_CRYPTO"), ssCrypto.str(), Color{245, 158, 11, 255});
+        Render::UIFrame::DrawStatBadge(pad + (3 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "PIYASA", std::string("1 ") + economy.GetCoinSymbol(), economy.FormatPrice(economy.GetCryptoPrice()), Color{168, 130, 255, 255});
+        Render::UIFrame::DrawStatBadge(pad + (4 * (badgeW + badgeGap)), badgeY, badgeW, badgeH, "HASH", Core::LocalizationManager::Tr("BADGE_SPEED"), ssHashStr, Color{59, 130, 246, 255});
 
         // Wallet veya Market rozetine tıklayarak doğrudan Borsayı açma
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !isAnyModalOpen) {
@@ -1206,19 +1283,51 @@ int main() {
         // Altın Nonce (Lucky Golden Nonce) ve Parçacık Animasyonunu Çiz
         multiplierManager.Draw(static_cast<float>(animTime));
 
-        // 3. SAĞ PANEL: KONTROL VE YÜKSELTME MERKEZİ
+        // 3. SAĞ PANEL: KONTROL VE OPERASYON MERKEZİ
         const Rectangle managementRect{rightX, contentY, rightW, contentH};
-        Render::UIFrame::DrawCard(managementRect, "DEPO VE OPERASYON MERKEZI", Color{56, 160, 240, 255});
+        Render::UIFrame::DrawCard(managementRect, "OPERASYON VE PAZAR MERKEZI", Color{56, 160, 240, 255});
 
-        btnBuyGPU.Draw();
-        btnBuyRig.Draw();
-        btnUpgradePSU.Draw();
-        btnSellCrypto.Draw();
-        btnUpgradeCooling.Draw();
-        btnOverclock.Draw();
-        btnUndervolt.Draw();
-        btnThermalToggle.Draw();
-        btnResetBreaker.Draw();
+        // Sekme Butonlarını Çiz
+        btnRightTabHardware.Draw();
+        btnRightTabOperations.Draw();
+
+        if (rightTabMode == RightTabMode::HARDWARE) {
+            btnBuyGPU.Draw();
+            btnBuyRig.Draw();
+            btnUpgradePSU.Draw();
+            btnUpgradeCooling.Draw();
+            btnQuickCashOut.Draw();
+        } else {
+            btnOverclock.Draw();
+            btnUndervolt.Draw();
+            btnThermalToggle.Draw();
+            btnResetBreaker.Draw();
+
+            // Canlı Sistem & Tesis Özet Paneli
+            const float statusCardY = btnResetBreaker.GetBounds().y + btnResetBreaker.GetBounds().height + 14.0f;
+            const float statusCardH = (contentY + contentH - 12.0f) - statusCardY;
+            if (statusCardH >= 55.0f) {
+                Rectangle statusRec{rightX + 16.0f, statusCardY, rightW - 32.0f, statusCardH};
+                DrawRectangleRounded(statusRec, 0.2f, 4, Color{18, 24, 34, 240});
+                DrawRectangleRoundedLines(statusRec, 0.2f, 4, 1.0f, Color{42, 56, 78, 200});
+
+                double totalWatts = powerGrid.GetTotalConsumptionWatts();
+                double maxWatts = powerGrid.GetMaxCapacityWatts();
+                double ambTemp = thermalModel.GetAmbientTemperature();
+                size_t totalGPUs = 0;
+                for (const auto& r : warehouse.GetAllRigs()) {
+                    if (r) totalGPUs += r->GetGPUCount();
+                }
+
+                char line1[80], line2[80];
+                snprintf(line1, sizeof(line1), "Guc Yuku: %.0fW / %.0fW (%%%.0f)", totalWatts, maxWatts, (totalWatts / maxWatts) * 100.0);
+                snprintf(line2, sizeof(line2), "Oda: %.1f C  |  Toplam: %zu GPU (%zu Rig)", ambTemp, totalGPUs, warehouse.GetRigCount());
+
+                Render::UIFrame::DrawTextCustom("TESIS CALISMA TELEMETRISI", statusRec.x + 14.0f, statusRec.y + 10.0f, 13.5f, Color{100, 180, 255, 255}, true);
+                Render::UIFrame::DrawTextCustom(line1, statusRec.x + 14.0f, statusRec.y + 32.0f, 13.0f, Color{220, 235, 255, 255}, false);
+                Render::UIFrame::DrawTextCustom(line2, statusRec.x + 14.0f, statusRec.y + 52.0f, 13.0f, Color{160, 190, 225, 255}, false);
+            }
+        }
 
         // 4. ALT BİLGİ VE KONTROL ŞERİDİ
         DrawRectangle(0, static_cast<int>(screenH - footerH), static_cast<int>(screenW), static_cast<int>(footerH), Color{14, 17, 23, 250});

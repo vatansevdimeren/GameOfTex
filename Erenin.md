@@ -1421,4 +1421,39 @@ Kullanıcının geri bildirimi doğrultusunda oyunun açılışındaki yazılar�
   - Güç barı yüksekliği **30px** yapıldı.
   - Kazanç ve gider gösterge şeridi yüksekliği **40px**, yazı boyutu **15.5px Bold** yapılarak anında okunabilir kılındı.
 
+---
+
+## 💎 30. Sağ Panel Sekmeli Düzen, Hızlı Bozdurma ve Oynanış Süresi Eğrisi (v2.7.0)
+
+Kullanıcının *"Renkleri daha zarif yap, oynamayı kolaylaştır, her şey her yerde olmasın, sade olsun"* talebi doğrultusunda sağ kontrol panelindeki 9 sıkışık buton kaldırılmış, 2 net kategori sekmesine bölünmüş ve tek tıkla coin bozdurma aksiyonu eklenmiştir.
+
+### 30.1. Sağ Panel 2 Kademeli Akıllı Sekme Düzeni (`main.cpp`)
+* **Sekme 1: `DONANIM` (Pazar, Rig & PSU):**
+  - `btnBuyGPU` - Donanım ve Tesis Marketi (GPU, CPU, Trafo, Tesis) [Kısayol: `M`]
+  - `btnBuyRig` - Yeni Rig Satın Al ($2,500)
+  - `btnUpgradePSU` - PSU / Güç Yükselt
+  - `btnUpgradeCooling` - Havalandırma & Soğutma
+  - `btnQuickCashOut` - Hızlı Coin Bozdur (%50) & Kripto Borsası [Kısayol: `SPACE` / `B`]
+* **Sekme 2: `OPERASYON` (Ayar, Termal & Şalter):**
+  - `btnOverclock` - Hız Aşırtma (+%5 OC)
+  - `btnUndervolt` - Voltaj Düşür (-%5 UV)
+  - `btnThermalToggle` - Termal Vizyon Modu [Kısayol: `TAB`]
+  - `btnResetBreaker` - Sigorta Şalterini Aç (Normalde yeşil stabil, attığında kırmızı alarm) [Kısayol: `K`]
+  - **Canlı Tesis Çalışma Telemetrisi Kartı:** Şebeke yükü oranı, oda sıcaklığı ve toplam GPU/Rig istatistikleri.
+* **Ferah Boyutlar:** Buton yükseklikleri 44px sıkışıklıktan **54px - 68px** aralığına çıkarıldı.
+
+### 30.2. Hızlı Coin Bozdurma ve Akıllı Klavye Kısayolları (`main.cpp`)
+* **Tek Tıkla Bozdurma (`btnQuickCashOut` / `SPACE`):** Oyuncunun sürekli borsa penceresine girip çıkma zahmetini ortadan kaldırır. Tek tuşla aktif coinin %50'sini anında nakite çevirip ekranda yeşil bildirim rozeti gösterir.
+* **Global Kısayollar:** `M` (Market), `B` (Borsa), `H` (Harita), `R` (Ar-Ge), `T/G` (Görevler), `TAB` (Termal Görüş), `F5` (Hızlı Kayıt).
+
+### 30.3. Renk Paletinin Lüks Koyu Slate/Titanium Temaya Dönüştürülmesi
+* Üst HUD Rozetleri:
+  - Şirket Rozeti: Rafine Buz Mavisi (`Color{56, 160, 240, 255}`)
+  - Nakit Rozeti: Canlı Zümrüt Yeşili (`Color{16, 185, 129, 255}`)
+  - Kripto Rozeti: Sıcak Kehribar (`Color{245, 158, 11, 255}`)
+  - Piyasa Fiyatı: Lüks Ametist / Mor Slate (`Color{168, 130, 255, 255}`)
+  - Hashrate Rozeti: Safir Mavisi (`Color{59, 130, 246, 255}`)
+* Kart ve Panel Yüzeyleri: `Color{18, 23, 33, 250}` derin kurşuni zemin, `Color{40, 52, 72, 255}` yumuşak çelik kenarlıklar.
+
+
 
