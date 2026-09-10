@@ -59,11 +59,14 @@ double PowerGrid::GetNetGridDrawWatts() const {
 
 double PowerGrid::CalculateCostForDuration(double durationSeconds) const {
     // Net Watt -> Kilowatt saat (kWh) dönüşümü:
-    // (NetWatts / 1000.0) * (durationSeconds / 3600.0)
-    const double netWatts = GetNetGridDrawWatts();
+    const double netWatts = std::max(0.0, GetNetGridDrawWatts());
     const double hours = durationSeconds / 3600.0;
     const double kwh = (netWatts / 1000.0) * hours;
-    return kwh * m_gridPricePerKwh;
+    // Ticari Sanayi Şebeke Altyapı, Trafo Kapasitesi & PUE Dağıtım Çarpanı:
+    // Madencilik gelirinin ~%12-18'i bandında dengelenir; oyuncuyu asla boğmaz,
+    // ancak lokasyon seçimi, yeşil enerji ve ekonomist hedging indirimlerini gerçek anlamda değerli kılar.
+    constexpr double COMMERCIAL_FACILITY_SCALE = 65.0;
+    return kwh * m_gridPricePerKwh * COMMERCIAL_FACILITY_SCALE;
 }
 
 bool PowerGrid::IsBreakerTripped() const {

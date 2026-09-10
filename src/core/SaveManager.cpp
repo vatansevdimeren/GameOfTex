@@ -197,6 +197,10 @@ bool SaveManager::SaveGame(const std::string& filepath,
         file << "[" << fSec << "]\n";
         file << "id=" << fac.id << "\n";
         file << "isPurchased=" << (fac.isPurchased ? "1" : "0") << "\n";
+        file << "economist_level=" << fac.economist.level << "\n";
+        file << "economist_profit=" << std::fixed << std::setprecision(2) << fac.economist.totalProfitLifetime << "\n";
+        file << "economist_success=" << fac.economist.successfulTrades << "\n";
+        file << "economist_fail=" << fac.economist.failedTrades << "\n";
         
         if (fac.powerGrid) {
             file << "maxGridWatts=" << fac.powerGrid->GetMaxCapacityWatts() << "\n";
@@ -351,6 +355,12 @@ bool SaveManager::LoadGame(const std::string& filepath,
 
         std::string fSec = "FACILITY_" + std::to_string(fIdx) + ".";
         fac->isPurchased = GetValBool(kv, fSec + "isPurchased", fIdx == 0);
+
+        int ecoLevel = GetValInt(kv, fSec + "economist_level", 0);
+        fac->economist.ApplyLevelStats(ecoLevel);
+        fac->economist.totalProfitLifetime = GetValDouble(kv, fSec + "economist_profit", 0.0);
+        fac->economist.successfulTrades = GetValInt(kv, fSec + "economist_success", 0);
+        fac->economist.failedTrades = GetValInt(kv, fSec + "economist_fail", 0);
 
         if (fac->powerGrid) {
             double maxWatts = GetValDouble(kv, fSec + "maxGridWatts", fac->baseGridWatts);

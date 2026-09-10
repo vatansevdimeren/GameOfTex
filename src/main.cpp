@@ -988,7 +988,8 @@ int main() {
                         activeMaxCardTemp = std::max(activeMaxCardTemp, fThermal.GetAmbientTemperature());
                     }
                 } else {
-                    const double electricityCost = fPowerGrid.CalculateCostForDuration(dt) * researchManager.GetPowerCostReductionMultiplier();
+                    const double ecoHedge = (fac ? fac->economist.hedgeDiscountPercent : 0.0);
+                    const double electricityCost = fPowerGrid.CalculateCostForDuration(dt) * researchManager.GetPowerCostReductionMultiplier() * (1.0 - ecoHedge);
                     economy.DeductFiat(electricityCost);
 
                     const double thermalLoad = warehousePower * (fPowerGrid.IsGridStrained() ? 1.15 : 1.0) * researchManager.GetHeatReductionMultiplier();
@@ -1054,6 +1055,13 @@ int main() {
 
         economy.UpdateMarket(dt);
         newsManager.Update(dt, economy);
+
+        std::string economistToast;
+        facilityManager.UpdateEconomists(dt, economy, economistToast);
+        if (!economistToast.empty()) {
+            triggerSaveToast(economistToast);
+        }
+
         taskManager.UpdateProgress(warehouse, economy, coolingManager, powerGrid, &facilityManager);
         multiplierManager.SetSpawnArea(Rectangle{pad + 20.0f, contentY + 60.0f, leftW - 40.0f, contentH - 120.0f});
         multiplierManager.Update(dt, economy, warehouse, thermalModel);
@@ -1211,7 +1219,8 @@ int main() {
                 double rigWatts = activeRig->CalculateTotalPowerWatts();
                 double hourlyRev = economy.CalculateRigHourlyRevenueUSD(rigHash, cpuHash);
                 double dailyRev = hourlyRev * 24.0;
-                double hourlyCost = (rigWatts / 1000.0) * activeFacility->gridPricePerKwh;
+                double ecoDiscount = (activeFacility ? activeFacility->economist.hedgeDiscountPercent : 0.0);
+                double hourlyCost = (rigWatts / 1000.0) * activeFacility->gridPricePerKwh * 65.0 * researchManager.GetPowerCostReductionMultiplier() * (1.0 - ecoDiscount);
                 double dailyCost = hourlyCost * 24.0;
                 double dailyProfit = dailyRev - dailyCost;
 

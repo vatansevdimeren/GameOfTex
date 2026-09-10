@@ -11,7 +11,8 @@ WorldMapModal::WorldMapModal()
     : m_isOpen(false),
       m_selectedFacilityIndex(0),
       m_btnClose(Rectangle{0, 0, 0, 0}, "X", "", Color{180, 40, 40, 255}, Color{255, 80, 80, 255}),
-      m_btnAction(Rectangle{0, 0, 0, 0}, "SEC", "", Color{30, 80, 60, 255}, Color{40, 220, 140, 255})
+      m_btnAction(Rectangle{0, 0, 0, 0}, "SEC", "", Color{30, 80, 60, 255}, Color{40, 220, 140, 255}),
+      m_btnUpgradeEconomist(Rectangle{0, 0, 0, 0}, "EKONOMIST", "", Color{35, 45, 65, 255}, Color{255, 210, 60, 255})
 {
     for (int i = 0; i < 8; ++i) {
         m_facilityListButtons.emplace_back(Rectangle{0, 0, 0, 0}, "", "", Color{25, 32, 45, 255}, Color{60, 160, 240, 255});
@@ -106,10 +107,14 @@ void WorldMapModal::Update(Core::FacilityManager& facilityManager, Core::Economy
         }
     }
 
-    // Update Action Button
+    // Update Economist & Action Buttons
     float infoW = (modalW - 50.0f) * 0.40f;
     float infoX = mapArea.x + mapArea.width + 10.0f;
     float infoY = mapArea.y;
+
+    Rectangle btnEcoRec{infoX + 15.0f, infoY + mapH - 96.0f, infoW - 30.0f, 38.0f};
+    m_btnUpgradeEconomist.SetBounds(btnEcoRec);
+
     Rectangle btnActionRec{infoX + 15.0f, infoY + mapH - 50.0f, infoW - 30.0f, 42.0f};
     m_btnAction.SetBounds(btnActionRec);
 
@@ -117,6 +122,37 @@ void WorldMapModal::Update(Core::FacilityManager& facilityManager, Core::Economy
         const auto& selFac = facilities[m_selectedFacilityIndex];
         bool isActive = (m_selectedFacilityIndex == facilityManager.GetActiveFacilityIndex());
 
+        // Economist Upgrade / Hire Button
+        if (!selFac.isPurchased) {
+            m_btnUpgradeEconomist.SetTitle("ONCE TESISI ALIN (EKONOMIST)");
+            m_btnUpgradeEconomist.SetSubtitle("");
+            m_btnUpgradeEconomist.SetDisabled(true);
+            m_btnUpgradeEconomist.SetAccentColor(Color{100, 100, 110, 255});
+            m_btnUpgradeEconomist.SetBaseColor(Color{25, 30, 40, 255});
+        } else if (selFac.economist.level >= 5) {
+            m_btnUpgradeEconomist.SetTitle("MAKSIMUM SEVIYE (Lv 5)");
+            m_btnUpgradeEconomist.SetSubtitle("Yapay Zeka Destekli Bas Ekonomist");
+            m_btnUpgradeEconomist.SetDisabled(true);
+            m_btnUpgradeEconomist.SetAccentColor(Color{180, 140, 255, 255});
+            m_btnUpgradeEconomist.SetBaseColor(Color{40, 30, 60, 255});
+        } else {
+            double cost = facilityManager.GetEconomistUpgradeCost(m_selectedFacilityIndex);
+            bool canAfford = economy.GetFiatBalance() >= cost;
+            std::string btnText = (selFac.economist.level == 0)
+                ? ("EKONOMIST TUT (" + economy.FormatFiat(cost) + ")")
+                : ("YUKSELT Lv " + std::to_string(selFac.economist.level + 1) + " (" + economy.FormatFiat(cost) + ")");
+            m_btnUpgradeEconomist.SetTitle(btnText);
+            m_btnUpgradeEconomist.SetSubtitle(facilityManager.GetEconomistNextTitle(m_selectedFacilityIndex));
+            m_btnUpgradeEconomist.SetDisabled(!canAfford);
+            m_btnUpgradeEconomist.SetAccentColor(canAfford ? Color{255, 200, 50, 255} : Color{120, 120, 130, 255});
+            m_btnUpgradeEconomist.SetBaseColor(canAfford ? Color{45, 50, 65, 255} : Color{25, 28, 38, 255});
+
+            if (m_btnUpgradeEconomist.UpdateAndCheckClick()) {
+                facilityManager.HireOrUpgradeEconomist(m_selectedFacilityIndex, economy);
+            }
+        }
+
+        // Facility Switch / Purchase Button
         if (isActive) {
             m_btnAction.SetTitle(Core::LocalizationManager::Tr("FAC_BTN_ACTIVE"));
             m_btnAction.SetDisabled(true);
@@ -148,37 +184,45 @@ void WorldMapModal::DrawWorldMapTacticalGrid(Rectangle mapArea) const {
 
     // Radar coordinate grid lines (Latitude & Longitude)
     for (int y = 1; y < 6; ++y) {
-        float ly = mapArea.y + (mapArea.height / 6.0f) * y;
-        DrawLineEx(Vector2{mapArea.x + 5.0f, ly}, Vector2{mapArea.x + mapArea.width - 5.0f, ly}, 1.0f, Color{28, 42, 60, 160});
+        float lineY = mapArea.y + (mapArea.height / 6.0f) * y;
+        DrawLine(static_cast<int>(mapArea.x), static_cast<int>(lineY), static_cast<int>(mapArea.x + mapArea.width), static_cast<int>(lineY), Color{35, 50, 75, 120});
     }
     for (int x = 1; x < 8; ++x) {
-        float lx = mapArea.x + (mapArea.width / 8.0f) * x;
-        DrawLineEx(Vector2{lx, mapArea.y + 5.0f}, Vector2{lx, mapArea.y + mapArea.height - 5.0f}, 1.0f, Color{28, 42, 60, 160});
+        float lineX = mapArea.x + (mapArea.width / 8.0f) * x;
+        DrawLine(static_cast<int>(lineX), static_cast<int>(mapArea.y), static_cast<int>(lineX), static_cast<int>(mapArea.y + mapArea.height), Color{35, 50, 75, 120});
     }
 
-    // World Map Continents Simplified Vector Silhouettes
-    Color landColor = Color{26, 38, 54, 255};
-    Color landBorder = Color{48, 70, 98, 255};
+    // Concentric radar scan rings
+    Vector2 center{mapArea.x + mapArea.width * 0.5f, mapArea.y + mapArea.height * 0.5f};
+    DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), mapArea.height * 0.25f, Color{40, 60, 90, 100});
+    DrawCircleLines(static_cast<int>(center.x), static_cast<int>(center.y), mapArea.height * 0.45f, Color{40, 60, 90, 80});
 
+    // Approximate continent stylized shapes (tactical vector polygons)
     // North America
-    Rectangle na{mapArea.x + mapArea.width * 0.12f, mapArea.y + mapArea.height * 0.22f, mapArea.width * 0.22f, mapArea.height * 0.35f};
-    DrawRectangleRounded(na, 0.3f, 4, landColor);
-    DrawRectangleRoundedLines(na, 0.3f, 4, 1.0f, landBorder);
-
+    DrawTriangle(Vector2{mapArea.x + mapArea.width * 0.15f, mapArea.y + mapArea.height * 0.25f},
+                 Vector2{mapArea.x + mapArea.width * 0.28f, mapArea.y + mapArea.height * 0.45f},
+                 Vector2{mapArea.x + mapArea.width * 0.10f, mapArea.y + mapArea.height * 0.48f},
+                 Color{35, 52, 78, 160});
+    // South America
+    DrawTriangle(Vector2{mapArea.x + mapArea.width * 0.24f, mapArea.y + mapArea.height * 0.55f},
+                 Vector2{mapArea.x + mapArea.width * 0.35f, mapArea.y + mapArea.height * 0.65f},
+                 Vector2{mapArea.x + mapArea.width * 0.27f, mapArea.y + mapArea.height * 0.88f},
+                 Color{35, 52, 78, 140});
     // Europe
-    Rectangle eu{mapArea.x + mapArea.width * 0.44f, mapArea.y + mapArea.height * 0.18f, mapArea.width * 0.16f, mapArea.height * 0.26f};
-    DrawRectangleRounded(eu, 0.3f, 4, landColor);
-    DrawRectangleRoundedLines(eu, 0.3f, 4, 1.0f, landBorder);
-
+    DrawTriangle(Vector2{mapArea.x + mapArea.width * 0.45f, mapArea.y + mapArea.height * 0.20f},
+                 Vector2{mapArea.x + mapArea.width * 0.56f, mapArea.y + mapArea.height * 0.35f},
+                 Vector2{mapArea.x + mapArea.width * 0.46f, mapArea.y + mapArea.height * 0.42f},
+                 Color{40, 60, 90, 180});
+    // Africa
+    DrawTriangle(Vector2{mapArea.x + mapArea.width * 0.48f, mapArea.y + mapArea.height * 0.45f},
+                 Vector2{mapArea.x + mapArea.width * 0.60f, mapArea.y + mapArea.height * 0.52f},
+                 Vector2{mapArea.x + mapArea.width * 0.53f, mapArea.y + mapArea.height * 0.82f},
+                 Color{35, 52, 78, 140});
     // Asia / Siberia
-    Rectangle as{mapArea.x + mapArea.width * 0.60f, mapArea.y + mapArea.height * 0.15f, mapArea.width * 0.32f, mapArea.height * 0.42f};
-    DrawRectangleRounded(as, 0.3f, 4, landColor);
-    DrawRectangleRoundedLines(as, 0.3f, 4, 1.0f, landBorder);
-
-    // Dynamic scanning radar sweep line
-    float scanPhase = std::fmod(static_cast<float>(GetTime()) * 0.25f, 1.0f);
-    float scanX = mapArea.x + scanPhase * mapArea.width;
-    DrawLineEx(Vector2{scanX, mapArea.y + 4.0f}, Vector2{scanX, mapArea.y + mapArea.height - 4.0f}, 2.0f, Color{0, 220, 255, 90});
+    DrawTriangle(Vector2{mapArea.x + mapArea.width * 0.55f, mapArea.y + mapArea.height * 0.18f},
+                 Vector2{mapArea.x + mapArea.width * 0.88f, mapArea.y + mapArea.height * 0.28f},
+                 Vector2{mapArea.x + mapArea.width * 0.68f, mapArea.y + mapArea.height * 0.52f},
+                 Color{40, 62, 92, 180});
 }
 
 void WorldMapModal::Draw(const Core::FacilityManager& facilityManager, const Core::EconomyManager& economy) const {
@@ -187,73 +231,56 @@ void WorldMapModal::Draw(const Core::FacilityManager& facilityManager, const Cor
     int screenW = GetScreenWidth();
     int screenH = GetScreenHeight();
 
-    // Dark backdrop
-    DrawRectangle(0, 0, screenW, screenH, Color{8, 10, 15, 225});
+    // Dark semi-transparent modal backdrop
+    DrawRectangle(0, 0, screenW, screenH, Color{0, 0, 0, 180});
 
     float modalW = std::min(980.0f, screenW - 40.0f);
     float modalH = std::min(640.0f, screenH - 50.0f);
     float modalX = (screenW - modalW) * 0.5f;
     float modalY = (screenH - modalH) * 0.5f;
-
-    // Modal Outer Frame
     Rectangle modalRec{modalX, modalY, modalW, modalH};
-    DrawRectangleRounded(modalRec, 0.03f, 8, Color{16, 20, 30, 252});
-    DrawRectangleRoundedLines(modalRec, 0.03f, 8, 2.0f, Color{40, 160, 240, 230});
 
-    // Top Header Banner
-    DrawRectangleRounded(Rectangle{modalX + 10.0f, modalY + 10.0f, modalW - 20.0f, 48.0f}, 0.08f, 6, Color{24, 32, 50, 255});
-    DrawRectangleRoundedLines(Rectangle{modalX + 10.0f, modalY + 10.0f, modalW - 20.0f, 48.0f}, 0.08f, 6, 1.0f, Color{70, 130, 210, 140});
+    // Modal base card
+    DrawRectangleRounded(modalRec, 0.03f, 8, Color{16, 20, 32, 255});
+    DrawRectangleRoundedLines(modalRec, 0.03f, 8, 2.0f, Color{45, 65, 100, 255});
 
-    const char* titleText = Core::LocalizationManager::Tr("WORLD_MAP_TITLE");
-    UIFrame::DrawTextCustom(titleText, modalX + 25.0f, modalY + 20.0f, 22.0f, Color{0, 230, 255, 255}, true);
+    // Header Title
+    UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_MAP_TITLE"), modalX + 24.0f, modalY + 18.0f, 20.0f, Color{255, 220, 80, 255}, true);
+    UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_MAP_SUBTITLE"), modalX + 24.0f, modalY + 44.0f, 13.0f, Color{140, 160, 190, 255}, false);
 
+    // Close button
     m_btnClose.Draw();
 
-    // Map Area & Info Panel
+    const auto& facilities = facilityManager.GetAllFacilities();
+
+    // Left map area & Right dossier area
     float mapW = (modalW - 50.0f) * 0.60f;
     float mapH = modalH - 160.0f;
     Rectangle mapArea{modalX + 20.0f, modalY + 70.0f, mapW, mapH};
 
+    // 1. Draw World Map Tactical Grid
     DrawWorldMapTacticalGrid(mapArea);
 
-    const auto& facilities = facilityManager.GetAllFacilities();
-
-    // Draw connection lines between facilities
-    for (size_t i = 0; i + 1 < facilities.size(); ++i) {
-        float x1 = mapArea.x + facilities[i].mapNormX * mapArea.width;
-        float y1 = mapArea.y + facilities[i].mapNormY * mapArea.height;
-        float x2 = mapArea.x + facilities[i + 1].mapNormX * mapArea.width;
-        float y2 = mapArea.y + facilities[i + 1].mapNormY * mapArea.height;
-        DrawLineEx(Vector2{x1, y1}, Vector2{x2, y2}, 1.2f, Color{50, 80, 120, 120});
-    }
-
-    // Draw Facility Nodes on Map
+    // 2. Draw Facility Nodes on Map
     for (size_t i = 0; i < facilities.size(); ++i) {
         const auto& fac = facilities[i];
         float nodeX = mapArea.x + fac.mapNormX * mapArea.width;
         float nodeY = mapArea.y + fac.mapNormY * mapArea.height;
-
-        bool isActive = (i == facilityManager.GetActiveFacilityIndex());
         bool isSelected = (i == m_selectedFacilityIndex);
+        bool isActive = (i == facilityManager.GetActiveFacilityIndex());
 
-        Color nodeColor = Color{240, 180, 40, 255};
-        if (isActive) nodeColor = Color{0, 240, 160, 255};
-        else if (fac.isPurchased) nodeColor = Color{60, 180, 255, 255};
+        Color ringColor = isSelected ? Color{255, 220, 60, 255} : (isActive ? Color{0, 240, 160, 255} : (fac.isPurchased ? Color{60, 160, 240, 255} : Color{180, 120, 30, 255}));
+        Color fillColor = isSelected ? Color{255, 220, 60, 80} : (isActive ? Color{0, 240, 160, 60} : Color{30, 40, 60, 180});
 
-        // Concentric pulse if selected or active
-        if (isActive || isSelected) {
-            float pulseRadius = 14.0f + 6.0f * std::sin(static_cast<float>(GetTime()) * 4.0f);
-            DrawCircleLines(static_cast<int>(nodeX), static_cast<int>(nodeY), pulseRadius, nodeColor);
-        }
-
-        DrawCircle(static_cast<int>(nodeX), static_cast<int>(nodeY), 9.0f, nodeColor);
+        DrawCircle(static_cast<int>(nodeX), static_cast<int>(nodeY), 14.0f, fillColor);
+        DrawCircleLines(static_cast<int>(nodeX), static_cast<int>(nodeY), 14.0f, ringColor);
         DrawCircle(static_cast<int>(nodeX), static_cast<int>(nodeY), 4.0f, Color{20, 20, 25, 255});
 
         // City Name Tag
         const char* cityName = Core::LocalizationManager::Tr(fac.countryKey);
         float nameW = UIFrame::MeasureTextCustom(cityName, 11.0f, true);
-        DrawRectangle(static_cast<int>(nodeX - nameW / 2.0f - 6.0f), static_cast<int>(nodeY + 12.0f), static_cast<int>(nameW + 12.0f), 18, Color{15, 20, 30, 230});
-        UIFrame::DrawTextCustom(cityName, nodeX - nameW / 2.0f, nodeY + 13.0f, 11.0f, RAYWHITE, true);
+        DrawRectangle(static_cast<int>(nodeX - nameW / 2.0f - 6.0f), static_cast<int>(nodeY + 16.0f), static_cast<int>(nameW + 12.0f), 18, Color{16, 20, 30, 230});
+        UIFrame::DrawTextCustom(cityName, nodeX - nameW / 2.0f, nodeY + 17.0f, 11.0f, RAYWHITE, true);
     }
 
     // Right Location Dossier Panel
@@ -270,37 +297,37 @@ void WorldMapModal::Draw(const Core::FacilityManager& facilityManager, const Cor
         bool isActive = (m_selectedFacilityIndex == facilityManager.GetActiveFacilityIndex());
 
         // Location Title & Country
-        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.nameKey), infoX + 16.0f, infoY + 14.0f, 17.0f, Color{255, 220, 80, 255}, true);
-        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.countryKey), infoX + 16.0f, infoY + 38.0f, 13.0f, Color{140, 165, 195, 255}, false);
+        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.nameKey), infoX + 16.0f, infoY + 12.0f, 16.0f, Color{255, 220, 80, 255}, true);
+        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.countryKey), infoX + 16.0f, infoY + 32.0f, 12.0f, Color{140, 165, 195, 255}, false);
 
         // Status Badge
-        Rectangle statusRec{infoX + infoW - 130.0f, infoY + 14.0f, 115.0f, 24.0f};
+        Rectangle statusRec{infoX + infoW - 130.0f, infoY + 12.0f, 115.0f, 22.0f};
         if (isActive) {
             DrawRectangleRounded(statusRec, 0.3f, 4, Color{20, 120, 70, 255});
-            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_ACTIVE"), statusRec.x + 8.0f, statusRec.y + 4.0f, 12.0f, WHITE, true);
+            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_ACTIVE"), statusRec.x + 8.0f, statusRec.y + 3.0f, 11.0f, WHITE, true);
         } else if (fac.isPurchased) {
             DrawRectangleRounded(statusRec, 0.3f, 4, Color{30, 80, 140, 255});
-            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_OWNED"), statusRec.x + 12.0f, statusRec.y + 4.0f, 12.0f, WHITE, true);
+            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_OWNED"), statusRec.x + 12.0f, statusRec.y + 3.0f, 11.0f, WHITE, true);
         } else {
             DrawRectangleRounded(statusRec, 0.3f, 4, Color{130, 90, 20, 255});
-            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_FOR_SALE"), statusRec.x + 10.0f, statusRec.y + 4.0f, 12.0f, WHITE, true);
+            UIFrame::DrawTextCustom(Core::LocalizationManager::Tr("FAC_BADGE_FOR_SALE"), statusRec.x + 10.0f, statusRec.y + 3.0f, 11.0f, WHITE, true);
         }
 
         // Description
-        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.descKey), infoX + 16.0f, infoY + 66.0f, 12.0f, Color{180, 195, 215, 255}, false);
+        UIFrame::DrawTextCustom(Core::LocalizationManager::Tr(fac.descKey), infoX + 16.0f, infoY + 56.0f, 11.0f, Color{180, 195, 215, 255}, false);
 
         // Parameters Badges List
-        float paramY = infoY + 115.0f;
-        float paramH = 34.0f;
-        float gap = 8.0f;
+        float paramY = infoY + 98.0f;
+        float paramH = 26.0f;
+        float gap = 4.0f;
 
         auto drawParamRow = [&](const char* label, const std::string& val, Color valColor) {
             Rectangle pRec{infoX + 14.0f, paramY, infoW - 28.0f, paramH};
             DrawRectangleRounded(pRec, 0.2f, 4, Color{26, 34, 52, 255});
             DrawRectangleRoundedLines(pRec, 0.2f, 4, 1.0f, Color{45, 60, 85, 200});
-            UIFrame::DrawTextCustom(label, pRec.x + 12.0f, pRec.y + 9.0f, 13.0f, Color{150, 170, 195, 255}, false);
-            float vw = UIFrame::MeasureTextCustom(val.c_str(), 14.0f, true);
-            UIFrame::DrawTextCustom(val.c_str(), pRec.x + pRec.width - vw - 12.0f, pRec.y + 8.0f, 14.0f, valColor, true);
+            UIFrame::DrawTextCustom(label, pRec.x + 10.0f, pRec.y + 6.0f, 11.0f, Color{150, 170, 195, 255}, false);
+            float vw = UIFrame::MeasureTextCustom(val.c_str(), 12.0f, true);
+            UIFrame::DrawTextCustom(val.c_str(), pRec.x + pRec.width - vw - 10.0f, pRec.y + 5.0f, 12.0f, valColor, true);
             paramY += paramH + gap;
         };
 
@@ -330,7 +357,44 @@ void WorldMapModal::Draw(const Core::FacilityManager& facilityManager, const Cor
         std::string costStr = fac.isPurchased ? Core::LocalizationManager::Tr("FAC_ALREADY_PURCHASED") : economy.FormatFiat(fac.purchaseCostUSD);
         drawParamRow(Core::LocalizationManager::Tr("FAC_PARAM_COST"), costStr, fac.isPurchased ? Color{100, 240, 150, 255} : Color{255, 210, 80, 255});
 
-        // Action Button
+        // Economist & Arbitrage Management Card
+        Rectangle ecoBox{infoX + 14.0f, infoY + 250.0f, infoW - 28.0f, 124.0f};
+        DrawRectangleRounded(ecoBox, 0.08f, 4, Color{24, 32, 48, 255});
+        DrawRectangleRoundedLines(ecoBox, 0.08f, 4, 1.2f, (fac.economist.level > 0) ? Color{60, 160, 240, 200} : Color{50, 65, 90, 180});
+
+        // Header: Economist Name & Status Badge
+        std::string ecoTitle = (fac.economist.level == 0) ? (fac.economist.name + " (Ise Alinabilir)") : (fac.economist.name + " - " + fac.economist.title);
+        UIFrame::DrawTextCustom("TESIS FINANS UZMANI", ecoBox.x + 10.0f, ecoBox.y + 8.0f, 11.0f, Color{130, 160, 200, 255}, true);
+        
+        std::string lvlBadge = (fac.economist.level == 0) ? "PASIF (LV 0)" : ("SEVIYE " + std::to_string(fac.economist.level));
+        float lvlW = UIFrame::MeasureTextCustom(lvlBadge.c_str(), 11.0f, true);
+        DrawRectangleRounded(Rectangle{ecoBox.x + ecoBox.width - lvlW - 16.0f, ecoBox.y + 6.0f, lvlW + 12.0f, 18.0f}, 0.3f, 4, (fac.economist.level > 0) ? Color{30, 100, 160, 255} : Color{60, 65, 75, 255});
+        UIFrame::DrawTextCustom(lvlBadge.c_str(), ecoBox.x + ecoBox.width - lvlW - 10.0f, ecoBox.y + 9.0f, 11.0f, (fac.economist.level > 0) ? Color{100, 220, 255, 255} : Color{180, 180, 190, 255}, true);
+
+        UIFrame::DrawTextCustom(ecoTitle.c_str(), ecoBox.x + 10.0f, ecoBox.y + 28.0f, 13.0f, Color{255, 225, 110, 255}, true);
+
+        // Stats: Win Rate & Hedge Discount & Lifetime PnL
+        char statsBuf[128];
+        snprintf(statsBuf, sizeof(statsBuf), "Kazanma: %%%.0f  |  Hedge: -%%%.0f Enerji  |  K/Z: %s",
+                 fac.economist.winRate * 100.0,
+                 fac.economist.hedgeDiscountPercent * 100.0,
+                 economy.FormatFiat(fac.economist.totalProfitLifetime).c_str());
+        UIFrame::DrawTextCustom(statsBuf, ecoBox.x + 10.0f, ecoBox.y + 50.0f, 11.0f, Color{200, 215, 235, 255}, false);
+
+        // Trade Counts & Last Trade Log
+        char tradeStatsBuf[128];
+        snprintf(tradeStatsBuf, sizeof(tradeStatsBuf), "Islem Gecmisi: %d Basarili / %d Zarar", fac.economist.successfulTrades, fac.economist.failedTrades);
+        UIFrame::DrawTextCustom(tradeStatsBuf, ecoBox.x + 10.0f, ecoBox.y + 70.0f, 11.0f, Color{140, 165, 190, 255}, false);
+
+        std::string logText = fac.economist.lastTradeLog.empty() 
+            ? (fac.economist.level == 0 ? "Ekonomist tutuldugunda periyodik arbitraj ve elektrik indirimi kazandirir." : "Piyasa analizi yapiliyor, arbitraj firsati bekleniyor...")
+            : ("Son: " + fac.economist.lastTradeLog);
+        Color logCol = (fac.economist.lastTradeProfit >= 0.0) ? Color{80, 240, 140, 255} : Color{255, 110, 110, 255};
+        if (fac.economist.lastTradeLog.empty()) logCol = Color{150, 170, 190, 255};
+        UIFrame::DrawTextCustom(logText.c_str(), ecoBox.x + 10.0f, ecoBox.y + 90.0f, 11.0f, logCol, false);
+
+        // Buttons
+        m_btnUpgradeEconomist.Draw();
         m_btnAction.Draw();
     }
 

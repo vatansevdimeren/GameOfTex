@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "raylib.h"
 #include "UIButton.hpp"
@@ -31,6 +31,7 @@ private:
 
     UIButton m_btnClose;
     UIButton m_btnAction;
+    UIButton m_btnUpgradeEconomist;
     std::vector<UIButton> m_facilityListButtons;
 
     void DrawWorldMapTacticalGrid(Rectangle mapArea) const;

@@ -1455,5 +1455,54 @@ Kullanıcının *"Renkleri daha zarif yap, oynamayı kolaylaştır, her şey her
   - Hashrate Rozeti: Safir Mavisi (`Color{59, 130, 246, 255}`)
 * Kart ve Panel Yüzeyleri: `Color{18, 23, 33, 250}` derin kurşuni zemin, `Color{40, 52, 72, 255}` yumuşak çelik kenarlıklar.
 
+---
+
+## 📈 31. Tesis Seviyeli Finans Ekonomistleri, Arbitraj Sistemi ve Enerji Maliyeti Dengesi (v2.8.0)
+
+Kullanıcının *"seviyeli ekonomistler alırız her bir depo için haritada, bu para kaybedebilir, seviye atlatırız; ama şu an elektriğe çok az para ödüyoruz, ne kullanıcıyı sıkacak ne çok zorlayacak bir dengede tutmalıyız"* talebi doğrultusunda hem finansal derinlik kazandıran **Tesis Ekonomisti Arbitraj Mekaniği** eklenmiş hem de **Ticari Elektrik Tüketim Dengesi** yeniden kalibre edilmiştir.
+
+### 31.1. Tesis Seviyeli Ekonomist Yapısı (`FacilityEconomist` - `FacilityManager.hpp`)
+Her küresel tesis/depo için bağımsız bir finans uzmanı tanımlanmıştır:
+* **Teksas:** Dr. Austin Miller
+* **İzlanda:** Gunnar Sigurdsson
+* **Norveç:** Freja Lind
+* **Almanya:** Hans Becker
+* **Sibirya:** Dmitri Volkov
+
+#### Seviye İlerleme ve İstatistik Tablosu:
+* **Seviye 0 (Henüz Alınmadı):** Pasif, kazanç/kayıp veya indirim sağlamaz.
+* **Seviye 1 (Stajyer Finans Analisti):** %55 Kazanma Oranı, %5 Elektrik Hedging İndirimi, 28 sn işlem periyodu. (Maliyet: $1,200)
+* **Seviye 2 (Kıdemli Piyasa Analisti):** %65 Kazanma Oranı, %10 Elektrik Hedging İndirimi, 25 sn işlem periyodu. (Maliyet: $3,000)
+* **Seviye 3 (Kripto Portföy Yöneticisi):** %75 Kazanma Oranı, %18 Elektrik Hedging İndirimi, 22 sn işlem periyodu. (Maliyet: $6,000)
+* **Seviye 4 (Kantitatif Algoritmik Trader):** %85 Kazanma Oranı, %25 Elektrik Hedging İndirimi, 18 sn işlem periyodu. (Maliyet: $14,400)
+* **Seviye 5 (Yapay Zeka Destekli Baş Ekonomist):** %95 Kazanma Oranı, %35 Elektrik Hedging İndirimi, 15 sn işlem periyodu. (Maliyet: $33,600)
+
+### 31.2. Otomatik Risk/Kazanç Arbitraj Döngüsü ve Para Kaybetme Mekaniği
+* Belirli zaman aralıklarında (`tradeInterval`), ekonomist piyasada arbitraj fırsatları arar.
+* Bir rastgele sayı üretici (`std::mt19937`) ile zar atılır (`roll < winRate`).
+* **Başarılı İşlem:** Oyuncunun nakit bakiyesine göre orantılı kâr (`+$35` ila `+$850+`) elde edilir ve kasaya eklenir.
+* **Başarısız İşlem (Para Kaybetme):** Piyasa tersine döner ve zarar (`-$20` ila `-$450`) oluşarak kasadan düşülür.
+* **İflas Koruma Eşiği:** Oyuncunun nakit bakiyesi **$150'nin altına indiğinde ekonomist işlem yapmayı durdurur**. Tek bir işlemdeki maksimum zarar oyuncunun mevcut nakdinin **%12'sini asla geçemez**.
+
+### 31.3. Ticari Elektrik Tüketiminin Dengelenmesi (`PowerGrid.cpp`)
+* **Önceki Durum:** Tek bir rig saatte yalnızca ~$0.049 elektrik tüketiyordu. $30/saatlik kazanç yanında elektrik harcaması %0.15 seviyesinde kalarak tesis seçimini (İzlanda'nın ucuz elektriği vs. Almanya) anlamsız kılıyordu.
+* **Yeni Dengeleme:** `COMMERCIAL_FACILITY_SCALE = 65.0` ölçeği entegre edildi.
+  - Başlangıç Teksas deposunda elektrik gideri saatlik nominal kazancın yaklaşık **%12 - %18'ine** denk gelir (~$3.18/saat).
+  - Tesis net kâr bırakmaya devam eder (asla oyuncuyu boğmaz veya iflas ettirmez), ancak İzlanda'nın $0.05/kWh tarifesi (~$1.14/saat) veya Norveç'in $0.06/kWh tarifesi doğrudan hissedilir bir avantaja dönüşür.
+  - Ekonomistlerin %5 ila %35 arasındaki **Elektrik Hedging İndirimi**, voltaj düşürme (Undervolt) ve yeşil enerji Ar-Ge geliştirmeleriyle birleştiğinde elektrik faturasını dramatik oranda düşürür.
+
+### 31.4. Dünya Haritası Arayüzü & Ekonomist Yönetim Kartı (`WorldMapModal.cpp`)
+* Harita sağ bilgi panelinde 5 temel tesis verisi ferahlatılmış ve altına özel bir **"TESİS FİNANS UZMANI"** kartı eklenmiştir.
+* Kart üzerinde:
+  - Uzmanın adı, unvanı ve seviye rozeti (PASİF veya SEVİYE 1-5).
+  - Kazanma oranı, elektrik indirim yüzdesi ve toplam kâr/zarar bakiyesi.
+  - Başarılı / başarısız işlem sayaçları.
+  - Son işlem sonucu ve renk kodlu log satırı (Yeşil kâr / Kırmızı zarar).
+* **Ekonomist Tut / Yükselt Butonu (`m_btnUpgradeEconomist`):** Tesis satın alındıktan sonra seviye atlatma ve maliyet bilgisini dinamik olarak sunar.
+
+### 31.5. Kalıcı Kayıt ve Geri Yükleme Desteği (`SaveManager.cpp`)
+* Her tesisin ekonomist seviyesi (`economist_level`), toplam kârı (`economist_profit`), başarılı işlem sayısı (`economist_success`) ve hatalı işlem sayısı (`economist_fail`) diskteki kayıt dosyasına (`FACILITY_X`) kalıcı olarak yazılır ve oyun açılışında eksiksiz geri yüklenir.
+
+
 
 

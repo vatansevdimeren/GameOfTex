@@ -1,5 +1,9 @@
-﻿#include "FacilityManager.hpp"
+#include "FacilityManager.hpp"
 #include "EconomyManager.hpp"
+#include <random>
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
 
 namespace Core {
 
@@ -31,6 +35,9 @@ FacilityManager::FacilityManager() {
         fac.coolingManager = std::make_unique<CoolingManager>();
         fac.thermalModel->SetCoolingPowerWatts(fac.coolingManager->CalculateTotalCoolingWatts());
 
+        fac.economist.name = "Dr. Austin Miller";
+        fac.economist.title = "Stajyer Finans Analisti";
+
         m_facilities.push_back(std::move(fac));
     }
 
@@ -56,6 +63,9 @@ FacilityManager::FacilityManager() {
         fac.powerGrid = std::make_unique<PowerGrid>(fac.baseGridWatts, fac.gridPricePerKwh);
         fac.coolingManager = std::make_unique<CoolingManager>();
         fac.thermalModel->SetCoolingPowerWatts(fac.coolingManager->CalculateTotalCoolingWatts());
+
+        fac.economist.name = "Gunnar Sigurdsson";
+        fac.economist.title = "Stajyer Finans Analisti";
 
         m_facilities.push_back(std::move(fac));
     }
@@ -83,6 +93,9 @@ FacilityManager::FacilityManager() {
         fac.coolingManager = std::make_unique<CoolingManager>();
         fac.thermalModel->SetCoolingPowerWatts(fac.coolingManager->CalculateTotalCoolingWatts());
 
+        fac.economist.name = "Freja Lind";
+        fac.economist.title = "Stajyer Finans Analisti";
+
         m_facilities.push_back(std::move(fac));
     }
 
@@ -109,6 +122,9 @@ FacilityManager::FacilityManager() {
         fac.coolingManager = std::make_unique<CoolingManager>();
         fac.thermalModel->SetCoolingPowerWatts(fac.coolingManager->CalculateTotalCoolingWatts());
 
+        fac.economist.name = "Hans Becker";
+        fac.economist.title = "Stajyer Finans Analisti";
+
         m_facilities.push_back(std::move(fac));
     }
 
@@ -134,6 +150,9 @@ FacilityManager::FacilityManager() {
         fac.powerGrid = std::make_unique<PowerGrid>(fac.baseGridWatts, fac.gridPricePerKwh);
         fac.coolingManager = std::make_unique<CoolingManager>();
         fac.thermalModel->SetCoolingPowerWatts(fac.coolingManager->CalculateTotalCoolingWatts());
+
+        fac.economist.name = "Dmitri Volkov";
+        fac.economist.title = "Stajyer Finans Analisti";
 
         m_facilities.push_back(std::move(fac));
     }
@@ -204,6 +223,107 @@ bool FacilityManager::SwitchFacility(size_t index) {
         return true;
     }
     return false;
+}
+
+double FacilityManager::GetEconomistUpgradeCost(size_t facilityIndex) const {
+    if (facilityIndex >= m_facilities.size()) return 0.0;
+    const auto& fac = m_facilities[facilityIndex];
+    int curLevel = fac.economist.level;
+    if (curLevel >= 5) return 0.0;
+
+    double baseCosts[] = {1200.0, 2400.0, 6000.0, 15000.0, 35000.0};
+    double base = (facilityIndex < 5) ? baseCosts[facilityIndex] : 2000.0;
+
+    switch (curLevel) {
+        case 0: return base;
+        case 1: return base * 2.5;
+        case 2: return base * 5.0;
+        case 3: return base * 12.0;
+        case 4: return base * 28.0;
+        default: return 0.0;
+    }
+}
+
+std::string FacilityManager::GetEconomistNextTitle(size_t facilityIndex) const {
+    if (facilityIndex >= m_facilities.size()) return "";
+    int nextLevel = m_facilities[facilityIndex].economist.level + 1;
+    switch (nextLevel) {
+        case 1: return "Stajyer Finans Analisti";
+        case 2: return "Kidemli Piyasa Analisti";
+        case 3: return "Kripto Portfoy Yoneticisi";
+        case 4: return "Kantitatif Algoritmik Trader";
+        case 5: return "Yapay Zeka Destekli Bas Ekonomist";
+        default: return "Maksimum Seviye";
+    }
+}
+
+bool FacilityManager::HireOrUpgradeEconomist(size_t facilityIndex, EconomyManager& economy) {
+    if (facilityIndex >= m_facilities.size()) return false;
+    auto& fac = m_facilities[facilityIndex];
+    if (fac.economist.level >= 5) return false;
+
+    double cost = GetEconomistUpgradeCost(facilityIndex);
+    if (cost <= 0.0 || economy.GetFiatBalance() < cost) return false;
+
+    if (economy.DeductFiat(cost)) {
+        fac.economist.ApplyLevelStats(fac.economist.level + 1);
+        return true;
+    }
+    return false;
+}
+
+void FacilityManager::UpdateEconomists(double dt, EconomyManager& economy, std::string& outNotification) {
+    outNotification.clear();
+    static std::mt19937 rng(4242);
+
+    for (size_t i = 0; i < m_facilities.size(); ++i) {
+        auto& fac = m_facilities[i];
+        if (!fac.isPurchased || fac.economist.level <= 0) continue;
+
+        fac.economist.tradeTimer += dt;
+        if (fac.economist.tradeTimer >= fac.economist.tradeInterval) {
+            fac.economist.tradeTimer = 0.0;
+
+            double fiat = economy.GetFiatBalance();
+            if (fiat < 150.0) continue;
+
+            double baseTrades[] = { 180.0, 360.0, 850.0, 2200.0, 5500.0 };
+            double baseAmount = (i < 5 ? baseTrades[i] : 250.0) * std::pow(1.8, fac.economist.level - 1);
+
+            std::uniform_real_distribution<double> rollDist(0.0, 1.0);
+            std::uniform_real_distribution<double> varDist(0.85, 1.25);
+            double roll = rollDist(rng);
+
+            if (roll < fac.economist.winRate) {
+                // KÂRLI İŞLEM
+                double profit = baseAmount * varDist(rng);
+                economy.AddFiat(profit);
+                fac.economist.lastTradeProfit = profit;
+                fac.economist.totalProfitLifetime += profit;
+                fac.economist.successfulTrades++;
+                fac.economist.lastTradeLog = "+" + economy.FormatFiat(profit) + " (Kar)";
+
+                if (outNotification.empty()) {
+                    outNotification = fac.economist.name + ": Basarili Arbitraj (+" + economy.FormatFiat(profit) + ")";
+                }
+            } else {
+                // ZARARLI İŞLEM (Piyasa Düzeltmesi Kaybı - En fazla mevcut nakdin %12'si)
+                double lossRaw = baseAmount * 0.55 * varDist(rng);
+                double maxLoss = fiat * 0.12;
+                double actualLoss = std::clamp(lossRaw, 10.0, maxLoss);
+
+                economy.DeductFiat(actualLoss);
+                fac.economist.lastTradeProfit = -actualLoss;
+                fac.economist.totalProfitLifetime -= actualLoss;
+                fac.economist.failedTrades++;
+                fac.economist.lastTradeLog = "-" + economy.FormatFiat(actualLoss) + " (Zarar)";
+
+                if (outNotification.empty()) {
+                    outNotification = fac.economist.name + ": Piyasa Kaybi (-" + economy.FormatFiat(actualLoss) + ")";
+                }
+            }
+        }
+    }
 }
 
 } // namespace Core
